@@ -1,0 +1,96 @@
+---
+title: "Landbird Data Processing Workflow"
+output:
+  html_notebook:
+    toc: yes
+---
+
+# Overview
+
+The purpose of this document is to provide a reproducible workflow for processing data collected annually by the Landbird section of USFWS Alaska Migratory Bird Management. Data processing is just one component of data management. For complete guidance, view the [Alaska Region Interim Data Management User Guide.](https://ak-region-dst.gitbook.io/alaska-region-interim-data-management-user-guide/)
+
+# Data preprocessing
+
+### Download: data entry templates, dictionaries
+
+### Data entry: scans to csv
+
+# Workplace setup
+
+```{r}
+#
+```
+
+# Data quality checks
+
+### Summarize: capture, resight, nest, survey
+
+SpeciesCode, Date, Location, Attachments (bands, tags), Morphometrics
+
+```{r}
+#
+```
+
+### Validation: data file v. dictionary
+
+```{r}
+#
+```
+
+# Merge data file with authoritative copy
+
+```{r}
+#
+```
+
+# Data quality checks (cont.)
+
+### Validation: data file v. dictionary
+
+```{r}
+#
+```
+
+# Data postprocessing
+
+uuids, versioning
+
+```{r}
+#
+```
+
+# Archive in the Regional Data Repository
+
+```{r}
+#
+```
+
+# Capture data transformations
+
+### Biological samples inventory
+
+```{r}
+#
+```
+
+### Banders portal
+
+```{r}
+#
+```
+
+# Survey data transformations
+
+### ebird
+
+```{r}
+#
+```
+
+### 
+
+
+
+
+
+
