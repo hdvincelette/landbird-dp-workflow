@@ -1,8 +1,0 @@
----
-title: "Landbird Data Management Workflow"
-output: html_notebook
----
-
-```{r}
-plot(cars)
-```
