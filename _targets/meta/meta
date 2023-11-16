@@ -1,0 +1,18 @@
+name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
+.Random.seed|object|f4b9146c46c32b0b|||||||||||||||
+add_metadata|function|a7e3d2ac8674ed4e|||||||||||||||
+BMI|object|bb8c2ad543739197|||||||||||||||
+clean_df|stem|c427c368ec57a65d|817e64c3ba3de7fd|9129ef722490daa2|-1126825698||t19674.8677045842s|547e07aab7de3845|27247|rds|local|vector|||0.02||
+create_metadata|function|19d08bf8733a328d|||||||||||||||
+DIABETES|object|fd81ad0527b2568a|||||||||||||||
+EDUCATION|object|7df32ba0a88b61a7|||||||||||||||
+education_vs_bmi|stem|002cc2f733414ee0|1e9f0bdc5927ed0a|26e762434ae40b93|-349701958||t19674.8677051166s|5f8cd20106e532bd|140410|rds|local|vector|||0||
+extract_metadata|function|f43b7f4560a5b7ff|||||||||||||||
+get_raw_data|function|ff5ef3eb301cf9ea|||||||||||||||
+metadata|stem|8d9e26dde19c84c0|c1f4afb3eb08de6b|ef46db3751d8e999|2062409165|C:/Users/hvincelette/OneDrive - DOI/Documents/GitHub/landbird-dp-workflow/metadata.csv|t19674.854177128s|bbe0e43529942e5e|163|file|local|vector|||0.12|package ggplot2 was built under R version 4.2.3. package glue was built under R version 4.2.3. package NHANES was built under R version 4.2.3. package purrr was built under R version 4.2.3. package readr was built under R version 4.2.3. package readxl was built under R version 4.2.3. package renv was built under R version 4.2.3. package stringr was built under R version 4.2.3. package tibble was built under R version 4.2.3. package tidyr was built under R version 4.2.3. package uuid was built under R version 4.2.3. package visNetwork was built under R version 4.2.3|
+nhanes_df|stem|1f9efdf70dc7237c|ea05c2060f364c8f|701b97256bef015a|1367859359||t19674.8632656006s|ae2ad758e67cb752|529395|rds|local|vector|||0.19||
+raw_data|stem|4298dda7c6241b4d|cc3c340596868c4b|cd814a63187c77eb|-979620141|C:/Users/hvincelette/OneDrive - DOI/Documents/GitHub/landbird-dp-workflow/data-raw/nhanes.csv|t19674.863260494s|4dafe0151fd02838|3206008|file|local|vector|||0.39||
+report|stem|d664d647198ac3ca|dd9bac58dc97a188|a2d2a5308d55f36a|-237041703|doc/report.html*doc/report.qmd|t19674.866229986s|d86895d0699859ad|11281|file|local|vector|||6||
+rm_metadata|function|632666aac3498c31|||||||||||||||
+write_internal_data|function|ffd1700d94cdc900|||||||||||||||
+write_sys_data|stem|15d7f6b08f6e9a66|6e0a6d418493e852|fb1f7382339a2230|-1197615591||t19674.8632618478s|a1c456b03adbfbf8|44|rds|local|vector|||0.11||

@@ -1,5 +1,12 @@
 ---
 title: "Landbird Data Processing Workflow"
+name: Hannah
+surname: Vincelette
+position: "Wildlife Biologist"
+address: "Alaska Regional Office 1011 E Tudor Rd, Anchorage, AK"
+email: "hannah_vincelette@fws.gov"
+github: https://github.com/hdvincelette/landbird-dp-workflow
+date: "`r format(Sys.time(), '%B %Y')`"
 output:
   html_notebook:
     toc: yes
@@ -9,17 +16,141 @@ output:
 
 The purpose of this document is to provide a reproducible workflow for processing data collected annually by the Landbird section of USFWS Alaska Migratory Bird Management. Data processing is just one component of data management. For complete guidance, view the [Alaska Region Interim Data Management User Guide.](https://ak-region-dst.gitbook.io/alaska-region-interim-data-management-user-guide/)
 
+#### What is an R Notebook?
+
+["An R Notebook is an R Markdown document with chunks that can be executed independently and interactively, with output visible immediately beneath the input." - R Markdown: The Definitive Guide](https://bookdown.org/yihui/rmarkdown/notebook.html)
+
+#### How to use this guide
+
+This document is meant to be interactive, with text prompts and "code chunks" which may require input before being executed. The following workflow was created for tabular data collected annually for projects archived on the Regional Data Repository. While effort is made to generalize code to all actively collected data, further edits may be required to process data in an standardized format. In this case, it is recommended users duplicate and rename the "landbird-dp-workflow.Rmd" before making changes.
+
 # Data preprocessing
 
-### Download: data entry templates, dictionaries
+### Download authoritative copies of project files
 
-### Data entry: scans to csv
+Open the [Migratory Bird Management Regional Data Repository](file://ifw7ro-file.fws.doi.net/datamgt/mbm/) and navigate to the project folder. If you are working from a remote location, you must be connected to the VPN (Virtual Private Network) to access this folder.
+
+Paste the names of the project folder, data dictionary(ies), and data entry template(s). Make sure to include the file extensions (often XLSX or CSV). Run the code chunk.
+
+```{r}
+project.folder <- "mbmlb_010_Grey_headed_chickadee_hybridization"
+dictionary.list <- c("dictionary")
+template.list <- c("template")
+
+```
+
+Now run the following code chunk.
+
+```{r include=FALSE, results=}
+#comment
+
+options(download.file.method = "curl")
+
+for (a in 1:length(dictionary.list)) {
+  dictionary.loc <-
+    list.files(
+      path = paste0(
+        "//ifw7ro-file.fws.doi.net/datamgt/mbm/",
+        project.folder,
+        "/"
+      ),
+      pattern = dictionary.list[a],
+      ignore.case = TRUE,
+      recursive = TRUE
+    )
+  
+  if (rlang::is_empty(dictionary.loc) == TRUE) {
+    stop("Execution halted: no dictionary found with the keyword provided")
+  }
+  
+  dictionary.url <-
+    paste0("file://ifw7ro-file.fws.doi.net/datamgt/mbm/",
+           project.folder,
+           "/", dictionary.loc
+    )
+  for (b in 1:length(dictionary.url)) {
+    download.file(
+      url = dictionary.url[b],
+      file.path(
+        "downloads",
+        destfile = basename(dictionary.url[b])
+      ),
+      mode = "auto"
+    )
+  }
+}
+
+for (a in 1:length(template.list)) {
+  template.loc <-
+    list.files(
+      path = paste0(
+        "//ifw7ro-file.fws.doi.net/datamgt/mbm/",
+        project.folder,
+        "/"
+      ),
+      pattern = template.list[a],
+      ignore.case = TRUE,
+      recursive = TRUE
+    )
+  
+  if (rlang::is_empty(template.loc) == TRUE) {
+    stop("Execution halted: no template found with the keyword provided")
+  }
+  
+  template.url <-
+    paste0("file://ifw7ro-file.fws.doi.net/datamgt/mbm/",
+           project.folder,
+           "/", template.loc
+    )
+  for (b in 1:length(template.url)) {
+    download.file(
+      url = template.url[b],
+      file.path(
+        "downloads",
+        destfile = basename(template.url[b])
+      ),
+      mode = "auto"
+    )
+  }
+}
+
+```
+
+View the downloaded data dictionary(ies) and data entry template(s) in the "downloads" sub-folder of this R project. You can navigate here using the "Files" tab in the lower left pane. This should default to the project directory. If not, click "Session" in the toolbar, hover over "Set Working Directory," and click "To Project Directory." Click the "downloads" sub-folder, navigate to the blue cog wheel ("More file commands"), and select "Show Folder in New Window." A File Explorer window should open up to the "downloads" sub-folder. Verify all your data dictionaries and data entry templates are contained here.
+
+*Optional: You can skip the above steps and download everything manually from the [Migratory Bird Management Regional Data Repository](file://ifw7ro-file.fws.doi.net/datamgt/mbm/) project folder. Data dictionaries and data entry templates should be available in the "metadata" sub-folder. Make sure to save a copy of data dictionary(ies) in the "downloads/data_dictionaries" sub-folder of this R project.*
+
+### Enter scanned or hard copy data
+
+Save the data entry template(s) in a preferred location (this can be in a in the "data-raw" sub-folder of this R project). Use a unique and descriptive name - refer to [Best Practices in Naming Conventions](https://ak-region-dst.gitbook.io/alaska-region-interim-data-management-user-guide/alaska-data-management-101/file-organization-and-best-practices/best-practices-in-naming-conventions). It's okay to save this file in an Excel file format to preserve validation rules.
+
+Enter scanned or hard copy data according to the respective data dictionary(ies). Review entered data to check for errors. The Excel Filter function (Home\>Editing\>Filter) is especially useful for viewing unique values and value ranges.
+
+Save the entered data file(s) in the "data-raw" sub-folder of this R project. Convert the file(s) to comma-separated values (CSV) format, if necessary. Make sure the correct sheet is selected when converting if more than one sheet is used (i.e., validation rules).
 
 # Workplace setup
 
+### Compile requisite files
+
+Make sure all entered data and data dictionary(ies) are saved in the sub-folders of this R project ("data-raw" and "downloads/data_dictionaries," respectively).
+
+### Install mdJSONdictio
+
+Install the mdJSONdictio R package from GitHub by running the following code chunk.
+
 ```{r}
-#
+devtools::install_github("hdvincelette/mdJSONdictio")
+
 ```
+
+If you encounter an error, try running the following instead.
+
+```{r}
+options(download.file.method = "wininet")
+devtools::install_github("hdvincelette/mdJSONdictio")
+```
+
+If the installation fails again, refer to [Install mdJSONdictio R package](https://hdvincelette.github.io/mdJSONdictio/articles/03_Setup_mdJSONdictio.html#install-mdjsondictio-r-package) for troubleshooting tips.
 
 # Data quality checks
 
@@ -84,12 +215,23 @@ uuids, versioning
 ### ebird
 
 ```{r}
-#
+library("auk")
+
+# ebird
+# usfwslandbirds
+# fwslandbirds
+# API key: e2m7tt6sfo4n
+
+
 ```
 
-### 
+# Tracking data transformations
 
+```{r}
+library("move")
 
+# Movebank
+# mbmlandbirds
+# AKmove2018!
 
-
-
+```

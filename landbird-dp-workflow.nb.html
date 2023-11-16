@@ -1511,7 +1511,7 @@ window.initializeCodeFolding = function(show) {
     $(this).detach().appendTo(div);
 
     // add a show code button right above
-    var showCodeText = $('<span>' + (showThis ? 'Hide' : 'Code') + '</span>');
+    var showCodeText = $('<span>' + (showThis ? 'Hide' : 'Show') + '</span>');
     var showCodeButton = $('<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm code-folding-btn pull-right float-right"></button>');
     showCodeButton.append(showCodeText);
     showCodeButton
@@ -1537,7 +1537,7 @@ window.initializeCodeFolding = function(show) {
     //   * Change text
     //   * add a class for intermediate states styling
     div.on('hide.bs.collapse', function () {
-      showCodeText.text('Code');
+      showCodeText.text('Show');
       showCodeButton.addClass('btn-collapsing');
     });
     div.on('hidden.bs.collapse', function () {
@@ -1747,6 +1747,7 @@ display: none;
 
 
 <h1 class="title toc-ignore">Landbird Data Processing Workflow</h1>
+<h4 class="date">November 2023</h4>
 
 </div>
 
@@ -1756,12 +1757,17 @@ display: none;
 <li><a href="#data-preprocessing" id="toc-data-preprocessing">Data
 preprocessing</a>
 <ul>
-<li><a href="#download-data-entry-templates-dictionaries" id="toc-download-data-entry-templates-dictionaries">Download: data entry
-templates, dictionaries</a></li>
-<li><a href="#data-entry-scans-to-csv" id="toc-data-entry-scans-to-csv">Data entry: scans to csv</a></li>
+<li><a href="#download-authoritative-copies-of-project-files" id="toc-download-authoritative-copies-of-project-files">Download
+authoritative copies of project files</a></li>
+<li><a href="#enter-scanned-or-hard-copy-data" id="toc-enter-scanned-or-hard-copy-data">Enter scanned or hard copy
+data</a></li>
 </ul></li>
 <li><a href="#workplace-setup" id="toc-workplace-setup">Workplace
-setup</a></li>
+setup</a>
+<ul>
+<li><a href="#compile-requisite-files" id="toc-compile-requisite-files">Compile requisite files</a></li>
+<li><a href="#install-mdjsondictio" id="toc-install-mdjsondictio">Install mdJSONdictio</a></li>
+</ul></li>
 <li><a href="#data-quality-checks" id="toc-data-quality-checks">Data
 quality checks</a>
 <ul>
@@ -1791,8 +1797,9 @@ portal</a></li>
 <li><a href="#survey-data-transformations" id="toc-survey-data-transformations">Survey data transformations</a>
 <ul>
 <li><a href="#ebird" id="toc-ebird">ebird</a></li>
-<li><a href="#section" id="toc-section"></a></li>
 </ul></li>
+<li><a href="#tracking-data-transformations" id="toc-tracking-data-transformations">Tracking data
+transformations</a></li>
 </ul>
 </div>
 
@@ -1804,25 +1811,155 @@ for processing data collected annually by the Landbird section of USFWS
 Alaska Migratory Bird Management. Data processing is just one component
 of data management. For complete guidance, view the <a href="https://ak-region-dst.gitbook.io/alaska-region-interim-data-management-user-guide/">Alaska
 Region Interim Data Management User Guide.</a></p>
+<div id="what-is-an-r-notebook" class="section level4">
+<h4>What is an R Notebook?</h4>
+<p><a href="https://bookdown.org/yihui/rmarkdown/notebook.html">“An R
+Notebook is an R Markdown document with chunks that can be executed
+independently and interactively, with output visible immediately beneath
+the input.” - R Markdown: The Definitive Guide</a></p>
+</div>
+<div id="how-to-use-this-guide" class="section level4">
+<h4>How to use this guide</h4>
+<p>This document is meant to be interactive, with text prompts and “code
+chunks” which may require input before being executed. The following
+workflow was created for tabular data collected annually for projects
+archived on the Regional Data Repository. While effort is made to
+generalize code to all actively collected data, further edits may be
+required to process data in an standardized format. In this case, it is
+recommended users duplicate and rename the “landbird-dp-workflow.Rmd”
+before making changes.</p>
+</div>
 </div>
 <div id="data-preprocessing" class="section level1">
 <h1>Data preprocessing</h1>
-<div id="download-data-entry-templates-dictionaries" class="section level3">
-<h3>Download: data entry templates, dictionaries</h3>
+<div id="download-authoritative-copies-of-project-files" class="section level3">
+<h3>Download authoritative copies of project files</h3>
+<p>Open the <a href="file://ifw7ro-file.fws.doi.net/datamgt/mbm/">Migratory Bird
+Management Regional Data Repository</a> and navigate to the project
+folder. If you are working from a remote location, you must be connected
+to the VPN (Virtual Private Network) to access this folder.</p>
+<p>Paste the names of the project folder, data dictionary(ies), and data
+entry template(s). Make sure to include the file extensions (often XLSX
+or CSV). Run the code chunk.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI2NvbW1lbnRcbnByb2plY3QuZm9sZGVyIDwtIFwibWJtbGJfMDEwX0dyZXlfaGVhZGVkX2NoaWNrYWRlZV9oeWJyaWRpemF0aW9uXCJcbmRpY3Rpb25hcnkubGlzdCA8LSBjKFwiZGljdGlvbmFyeVwiKVxudGVtcGxhdGUubGlzdCA8LSBjKFwiVGVtcGxhdGVcIilcblxuYGBgIn0= -->
+<pre class="r"><code>#comment
+project.folder &lt;- &quot;mbmlb_010_Grey_headed_chickadee_hybridization&quot;
+dictionary.list &lt;- c(&quot;dictionary&quot;)
+template.list &lt;- c(&quot;Template&quot;)
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Now run the following code chunk.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZm9yIChhIGluIDE6bGVuZ3RoKHRlbXBsYXRlLmxpc3QpKSB7XG4gIHRlbXBsYXRlLmxvYyA8LVxuICAgIGxpc3QuZmlsZXMoXG4gICAgICBwYXRoID0gcGFzdGUwKFxuICAgICAgICBcIi8vaWZ3N3JvLWZpbGUuZndzLmRvaS5uZXQvZGF0YW1ndC9tYm0vXCIsXG4gICAgICAgIHByb2plY3QuZm9sZGVyLFxuICAgICAgICBcIi9cIlxuICAgICAgKSxcbiAgICAgIHBhdHRlcm4gPSB0ZW1wbGF0ZS5saXN0W2FdLFxuICAgICAgaWdub3JlLmNhc2UgPSBUUlVFLFxuICAgICAgcmVjdXJzaXZlID0gVFJVRVxuICAgIClcbiAgXG4gIGlmIChybGFuZzo6aXNfZW1wdHkodGVtcGxhdGUubG9jKSA9PSBUUlVFKSB7XG4gICAgc3RvcChcIkV4ZWN1dGlvbiBoYWx0ZWQ6IG5vIHRlbXBsYXRlIGZvdW5kIHdpdGggdGhlIGtleXdvcmQgcHJvdmlkZWRcIilcbiAgfVxuICBcbiAgdGVtcGxhdGUudXJsIDwtXG4gICAgcGFzdGUwKFwiZmlsZTovL2lmdzdyby1maWxlLmZ3cy5kb2kubmV0L2RhdGFtZ3QvbWJtL1wiLFxuICAgICAgICAgICBwcm9qZWN0LmZvbGRlcixcbiAgICAgICAgICAgXCIvXCIsIHRlbXBsYXRlLmxvY1xuICAgIClcbiAgZm9yIChiIGluIDE6bGVuZ3RoKHRlbXBsYXRlLnVybCkpIHtcbiAgICBkb3dubG9hZC5maWxlKFxuICAgICAgdXJsID0gdGVtcGxhdGUudXJsW2JdLFxuICAgICAgZmlsZS5wYXRoKFxuICAgICAgICBcImRvd25sb2Fkcy9kYXRhX2RpY3Rpb25hcmllc1wiLFxuICAgICAgICBkZXN0ZmlsZSA9IGJhc2VuYW1lKHRlbXBsYXRlLnVybFtiXSlcbiAgICAgICksXG4gICAgICBtb2RlID0gXCJhdXRvXCJcbiAgICApXG4gIH1cbn1cblxuYGBgIn0= -->
+<pre class="r"><code>for (a in 1:length(template.list)) {
+  template.loc &lt;-
+    list.files(
+      path = paste0(
+        &quot;//ifw7ro-file.fws.doi.net/datamgt/mbm/&quot;,
+        project.folder,
+        &quot;/&quot;
+      ),
+      pattern = template.list[a],
+      ignore.case = TRUE,
+      recursive = TRUE
+    )
+  
+  if (rlang::is_empty(template.loc) == TRUE) {
+    stop(&quot;Execution halted: no template found with the keyword provided&quot;)
+  }
+  
+  template.url &lt;-
+    paste0(&quot;file://ifw7ro-file.fws.doi.net/datamgt/mbm/&quot;,
+           project.folder,
+           &quot;/&quot;, template.loc
+    )
+  for (b in 1:length(template.url)) {
+    download.file(
+      url = template.url[b],
+      file.path(
+        &quot;downloads/data_dictionaries&quot;,
+        destfile = basename(template.url[b])
+      ),
+      mode = &quot;auto&quot;
+    )
+  }
+}
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>View the downloaded data dictionary(ies) and data entry template(s)
+in the “downloads” sub-folder of this R project. You can navigate here
+using the “Files” tab in the lower left pane. This should default to the
+project directory. If not, click “Session” in the toolbar, hover over
+“Set Working Directory,” and click “To Project Directory.” Click the
+“downloads” sub-folder, navigate to the blue cog wheel (“More file
+commands”), and select “Show Folder in New Window.” A File Explorer
+window should open up to the “downloads” sub-folder. Verify all your
+data dictionaries and data entry templates are contained here.</p>
+<p><em>Optional: You can skip the above steps and download everything
+manually from the <a href="file://ifw7ro-file.fws.doi.net/datamgt/mbm/">Migratory Bird
+Management Regional Data Repository</a> project folder. Data
+dictionaries and data entry templates should be available in the
+“metadata” sub-folder. Make sure to save a copy of data dictionary(ies)
+in the “downloads/data_dictionaries” sub-folder of this R
+project.</em></p>
 </div>
-<div id="data-entry-scans-to-csv" class="section level3">
-<h3>Data entry: scans to csv</h3>
+<div id="enter-scanned-or-hard-copy-data" class="section level3">
+<h3>Enter scanned or hard copy data</h3>
+<p>Save the data entry template(s) in a preferred location (this can be
+in a in the “data-raw” sub-folder of this R project). Use a unique and
+descriptive name - refer to <a href="https://ak-region-dst.gitbook.io/alaska-region-interim-data-management-user-guide/alaska-data-management-101/file-organization-and-best-practices/best-practices-in-naming-conventions">Best
+Practices in Naming Conventions</a>. It’s okay to save this file in an
+Excel file format to preserve validation rules.</p>
+<p>Enter scanned or hard copy data according to the respective data
+dictionary(ies). Review entered data to check for errors. The Excel
+Filter function (Home&gt;Editing&gt;Filter) is especially useful for
+viewing unique values and value ranges.</p>
+<p>Save the entered data file(s) in the “data-raw” sub-folder of this R
+project. Convert the file(s) to comma-separated values (CSV) format, if
+necessary. Make sure the correct sheet is selected when converting if
+more than one sheet is used (i.e., validation rules).</p>
 </div>
 </div>
 <div id="workplace-setup" class="section level1">
 <h1>Workplace setup</h1>
+<div id="compile-requisite-files" class="section level3">
+<h3>Compile requisite files</h3>
+<p>Make sure all entered data and data dictionary(ies) are saved in the
+sub-folders of this R project (“data-raw” and
+“downloads/data_dictionaries,” respectively).</p>
+</div>
+<div id="install-mdjsondictio" class="section level3">
+<h3>Install mdJSONdictio</h3>
+<p>Install the mdJSONdictio R package from GitHub by running the
+following code chunk.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI1xuYGBgIn0= -->
-<pre class="r"><code>#</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5kZXZ0b29sczo6aW5zdGFsbF9naXRodWIoXCJoZHZpbmNlbGV0dGUvbWRKU09OZGljdGlvXCIpXG5cbmBgYCJ9 -->
+<pre class="r"><code>
+devtools::install_github(&quot;hdvincelette/mdJSONdictio&quot;)
+</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
+<p>If you encounter an error, try running the following instead.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3B0aW9ucyhkb3dubG9hZC5maWxlLm1ldGhvZCA9IFwid2luaW5ldFwiKVxuZGV2dG9vbHM6Omluc3RhbGxfZ2l0aHViKFwiaGR2aW5jZWxldHRlL21kSlNPTmRpY3Rpb1wiKVxuYGBgIn0= -->
+<pre class="r"><code>options(download.file.method = &quot;wininet&quot;)
+devtools::install_github(&quot;hdvincelette/mdJSONdictio&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>If the installation fails again, refer to <a href="https://hdvincelette.github.io/mdJSONdictio/articles/03_Setup_mdJSONdictio.html#install-mdjsondictio-r-package">Install
+mdJSONdictio R package</a> for troubleshooting tips.</p>
+</div>
 </div>
 <div id="data-quality-checks" class="section level1">
 <h1>Data quality checks</h1>
@@ -1922,19 +2059,35 @@ Morphometrics</p>
 <h3>ebird</h3>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI1xuYGBgIn0= -->
-<pre class="r"><code>#</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShcImF1a1wiKVxuXG4jIGViaXJkXG4jIHVzZndzbGFuZGJpcmRzXG4jIGZ3c2xhbmRiaXJkc1xuIyBBUEkga2V5OiBlMm03dHQ2c2ZvNG5cblxuXG5gYGAifQ== -->
+<pre class="r"><code>library(&quot;auk&quot;)
+
+# ebird
+# usfwslandbirds
+# fwslandbirds
+# API key: e2m7tt6sfo4n
+</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
-<div id="section" class="section level3">
-<h3></h3>
-<!-- rnb-text-end -->
 </div>
+<div id="tracking-data-transformations" class="section level1">
+<h1>Tracking data transformations</h1>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShcIm1vdmVcIilcblxuIyBNb3ZlYmFua1xuIyBtYm1sYW5kYmlyZHNcbiMgQUttb3ZlMjAxOCFcblxuYGBgIn0= -->
+<pre class="r"><code>library(&quot;move&quot;)
+
+# Movebank
+# mbmlandbirds
+# AKmove2018!
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
 </div>
 
-<div id="rmd-source-code">LS0tDQp0aXRsZTogIkxhbmRiaXJkIERhdGEgUHJvY2Vzc2luZyBXb3JrZmxvdyINCm91dHB1dDoNCiAgaHRtbF9ub3RlYm9vazoNCiAgICB0b2M6IHllcw0KLS0tDQoNCiMgT3ZlcnZpZXcNCg0KVGhlIHB1cnBvc2Ugb2YgdGhpcyBkb2N1bWVudCBpcyB0byBwcm92aWRlIGEgcmVwcm9kdWNpYmxlIHdvcmtmbG93IGZvciBwcm9jZXNzaW5nIGRhdGEgY29sbGVjdGVkIGFubnVhbGx5IGJ5IHRoZSBMYW5kYmlyZCBzZWN0aW9uIG9mIFVTRldTIEFsYXNrYSBNaWdyYXRvcnkgQmlyZCBNYW5hZ2VtZW50LiBEYXRhIHByb2Nlc3NpbmcgaXMganVzdCBvbmUgY29tcG9uZW50IG9mIGRhdGEgbWFuYWdlbWVudC4gRm9yIGNvbXBsZXRlIGd1aWRhbmNlLCB2aWV3IHRoZSBbQWxhc2thIFJlZ2lvbiBJbnRlcmltIERhdGEgTWFuYWdlbWVudCBVc2VyIEd1aWRlLl0oaHR0cHM6Ly9hay1yZWdpb24tZHN0LmdpdGJvb2suaW8vYWxhc2thLXJlZ2lvbi1pbnRlcmltLWRhdGEtbWFuYWdlbWVudC11c2VyLWd1aWRlLykNCg0KIyBEYXRhIHByZXByb2Nlc3NpbmcNCg0KIyMjIERvd25sb2FkOiBkYXRhIGVudHJ5IHRlbXBsYXRlcywgZGljdGlvbmFyaWVzDQoNCiMjIyBEYXRhIGVudHJ5OiBzY2FucyB0byBjc3YNCg0KIyBXb3JrcGxhY2Ugc2V0dXANCg0KYGBge3J9DQojDQpgYGANCg0KIyBEYXRhIHF1YWxpdHkgY2hlY2tzDQoNCiMjIyBTdW1tYXJpemU6IGNhcHR1cmUsIHJlc2lnaHQsIG5lc3QsIHN1cnZleQ0KDQpTcGVjaWVzQ29kZSwgRGF0ZSwgTG9jYXRpb24sIEF0dGFjaG1lbnRzIChiYW5kcywgdGFncyksIE1vcnBob21ldHJpY3MNCg0KYGBge3J9DQojDQpgYGANCg0KIyMjIFZhbGlkYXRpb246IGRhdGEgZmlsZSB2LiBkaWN0aW9uYXJ5DQoNCmBgYHtyfQ0KIw0KYGBgDQoNCiMgTWVyZ2UgZGF0YSBmaWxlIHdpdGggYXV0aG9yaXRhdGl2ZSBjb3B5DQoNCmBgYHtyfQ0KIw0KYGBgDQoNCiMgRGF0YSBxdWFsaXR5IGNoZWNrcyAoY29udC4pDQoNCiMjIyBWYWxpZGF0aW9uOiBkYXRhIGZpbGUgdi4gZGljdGlvbmFyeQ0KDQpgYGB7cn0NCiMNCmBgYA0KDQojIERhdGEgcG9zdHByb2Nlc3NpbmcNCg0KdXVpZHMsIHZlcnNpb25pbmcNCg0KYGBge3J9DQojDQpgYGANCg0KIyBBcmNoaXZlIGluIHRoZSBSZWdpb25hbCBEYXRhIFJlcG9zaXRvcnkNCg0KYGBge3J9DQojDQpgYGANCg0KIyBDYXB0dXJlIGRhdGEgdHJhbnNmb3JtYXRpb25zDQoNCiMjIyBCaW9sb2dpY2FsIHNhbXBsZXMgaW52ZW50b3J5DQoNCmBgYHtyfQ0KIw0KYGBgDQoNCiMjIyBCYW5kZXJzIHBvcnRhbA0KDQpgYGB7cn0NCiMNCmBgYA0KDQojIFN1cnZleSBkYXRhIHRyYW5zZm9ybWF0aW9ucw0KDQojIyMgZWJpcmQNCg0KYGBge3J9DQojDQpgYGANCg0KIyMjIA0KDQoNCg0KDQoNCg0K</div>
+<div id="rmd-source-code">LS0tDQp0aXRsZTogIkxhbmRiaXJkIERhdGEgUHJvY2Vzc2luZyBXb3JrZmxvdyINCm5hbWU6IEhhbm5haA0Kc3VybmFtZTogVmluY2VsZXR0ZQ0KcG9zaXRpb246ICJXaWxkbGlmZSBCaW9sb2dpc3QiDQphZGRyZXNzOiAiQWxhc2thIFJlZ2lvbmFsIE9mZmljZSAxMDExIEUgVHVkb3IgUmQsIEFuY2hvcmFnZSwgQUsiDQplbWFpbDogImhhbm5haF92aW5jZWxldHRlQGZ3cy5nb3YiDQpnaXRodWI6IGh0dHBzOi8vZ2l0aHViLmNvbS9oZHZpbmNlbGV0dGUvbGFuZGJpcmQtZHAtd29ya2Zsb3cNCmRhdGU6ICJgciBmb3JtYXQoU3lzLnRpbWUoKSwgJyVCICVZJylgIg0Kb3V0cHV0Og0KICBodG1sX25vdGVib29rOg0KICAgIHRvYzogeWVzDQotLS0NCg0KIyBPdmVydmlldw0KDQpUaGUgcHVycG9zZSBvZiB0aGlzIGRvY3VtZW50IGlzIHRvIHByb3ZpZGUgYSByZXByb2R1Y2libGUgd29ya2Zsb3cgZm9yIHByb2Nlc3NpbmcgZGF0YSBjb2xsZWN0ZWQgYW5udWFsbHkgYnkgdGhlIExhbmRiaXJkIHNlY3Rpb24gb2YgVVNGV1MgQWxhc2thIE1pZ3JhdG9yeSBCaXJkIE1hbmFnZW1lbnQuIERhdGEgcHJvY2Vzc2luZyBpcyBqdXN0IG9uZSBjb21wb25lbnQgb2YgZGF0YSBtYW5hZ2VtZW50LiBGb3IgY29tcGxldGUgZ3VpZGFuY2UsIHZpZXcgdGhlIFtBbGFza2EgUmVnaW9uIEludGVyaW0gRGF0YSBNYW5hZ2VtZW50IFVzZXIgR3VpZGUuXShodHRwczovL2FrLXJlZ2lvbi1kc3QuZ2l0Ym9vay5pby9hbGFza2EtcmVnaW9uLWludGVyaW0tZGF0YS1tYW5hZ2VtZW50LXVzZXItZ3VpZGUvKQ0KDQojIyMjIFdoYXQgaXMgYW4gUiBOb3RlYm9vaz8NCg0KWyJBbiBSIE5vdGVib29rIGlzIGFuIFIgTWFya2Rvd24gZG9jdW1lbnQgd2l0aCBjaHVua3MgdGhhdCBjYW4gYmUgZXhlY3V0ZWQgaW5kZXBlbmRlbnRseSBhbmQgaW50ZXJhY3RpdmVseSwgd2l0aCBvdXRwdXQgdmlzaWJsZSBpbW1lZGlhdGVseSBiZW5lYXRoIHRoZSBpbnB1dC4iIC0gUiBNYXJrZG93bjogVGhlIERlZmluaXRpdmUgR3VpZGVdKGh0dHBzOi8vYm9va2Rvd24ub3JnL3lpaHVpL3JtYXJrZG93bi9ub3RlYm9vay5odG1sKQ0KDQojIyMjIEhvdyB0byB1c2UgdGhpcyBndWlkZQ0KDQpUaGlzIGRvY3VtZW50IGlzIG1lYW50IHRvIGJlIGludGVyYWN0aXZlLCB3aXRoIHRleHQgcHJvbXB0cyBhbmQgImNvZGUgY2h1bmtzIiB3aGljaCBtYXkgcmVxdWlyZSBpbnB1dCBiZWZvcmUgYmVpbmcgZXhlY3V0ZWQuIFRoZSBmb2xsb3dpbmcgd29ya2Zsb3cgd2FzIGNyZWF0ZWQgZm9yIHRhYnVsYXIgZGF0YSBjb2xsZWN0ZWQgYW5udWFsbHkgZm9yIHByb2plY3RzIGFyY2hpdmVkIG9uIHRoZSBSZWdpb25hbCBEYXRhIFJlcG9zaXRvcnkuIFdoaWxlIGVmZm9ydCBpcyBtYWRlIHRvIGdlbmVyYWxpemUgY29kZSB0byBhbGwgYWN0aXZlbHkgY29sbGVjdGVkIGRhdGEsIGZ1cnRoZXIgZWRpdHMgbWF5IGJlIHJlcXVpcmVkIHRvIHByb2Nlc3MgZGF0YSBpbiBhbiBzdGFuZGFyZGl6ZWQgZm9ybWF0LiBJbiB0aGlzIGNhc2UsIGl0IGlzIHJlY29tbWVuZGVkIHVzZXJzIGR1cGxpY2F0ZSBhbmQgcmVuYW1lIHRoZSAibGFuZGJpcmQtZHAtd29ya2Zsb3cuUm1kIiBiZWZvcmUgbWFraW5nIGNoYW5nZXMuDQoNCiMgRGF0YSBwcmVwcm9jZXNzaW5nDQoNCiMjIyBEb3dubG9hZCBhdXRob3JpdGF0aXZlIGNvcGllcyBvZiBwcm9qZWN0IGZpbGVzDQoNCk9wZW4gdGhlIFtNaWdyYXRvcnkgQmlyZCBNYW5hZ2VtZW50IFJlZ2lvbmFsIERhdGEgUmVwb3NpdG9yeV0oZmlsZTovL2lmdzdyby1maWxlLmZ3cy5kb2kubmV0L2RhdGFtZ3QvbWJtLykgYW5kIG5hdmlnYXRlIHRvIHRoZSBwcm9qZWN0IGZvbGRlci4gSWYgeW91IGFyZSB3b3JraW5nIGZyb20gYSByZW1vdGUgbG9jYXRpb24sIHlvdSBtdXN0IGJlIGNvbm5lY3RlZCB0byB0aGUgVlBOIChWaXJ0dWFsIFByaXZhdGUgTmV0d29yaykgdG8gYWNjZXNzIHRoaXMgZm9sZGVyLg0KDQpQYXN0ZSB0aGUgbmFtZXMgb2YgdGhlIHByb2plY3QgZm9sZGVyLCBkYXRhIGRpY3Rpb25hcnkoaWVzKSwgYW5kIGRhdGEgZW50cnkgdGVtcGxhdGUocykuIE1ha2Ugc3VyZSB0byBpbmNsdWRlIHRoZSBmaWxlIGV4dGVuc2lvbnMgKG9mdGVuIFhMU1ggb3IgQ1NWKS4gUnVuIHRoZSBjb2RlIGNodW5rLg0KDQpgYGB7cn0NCnByb2plY3QuZm9sZGVyIDwtICJtYm1sYl8wMTBfR3JleV9oZWFkZWRfY2hpY2thZGVlX2h5YnJpZGl6YXRpb24iDQpkaWN0aW9uYXJ5Lmxpc3QgPC0gYygiZGljdGlvbmFyeV8xIikNCnRlbXBsYXRlLmxpc3QgPC0gYygiVGVtcGxhdGUiKQ0KDQpgYGANCg0KTm93IHJ1biB0aGUgZm9sbG93aW5nIGNvZGUgY2h1bmsuDQoNCmBgYHtyLCByZXN1bHRzID0gRkFMU0V9DQoNCm9wdGlvbnMoZG93bmxvYWQuZmlsZS5tZXRob2QgPSAiY3VybCIpDQoNCmZvciAoYSBpbiAxOmxlbmd0aChkaWN0aW9uYXJ5Lmxpc3QpKSB7DQogIGRpY3Rpb25hcnkubG9jIDwtDQogICAgbGlzdC5maWxlcygNCiAgICAgIHBhdGggPSBwYXN0ZTAoDQogICAgICAgICIvL2lmdzdyby1maWxlLmZ3cy5kb2kubmV0L2RhdGFtZ3QvbWJtLyIsDQogICAgICAgIHByb2plY3QuZm9sZGVyLA0KICAgICAgICAiLyINCiAgICAgICksDQogICAgICBwYXR0ZXJuID0gZGljdGlvbmFyeS5saXN0W2FdLA0KICAgICAgaWdub3JlLmNhc2UgPSBUUlVFLA0KICAgICAgcmVjdXJzaXZlID0gVFJVRQ0KICAgICkNCiAgDQogIGlmIChybGFuZzo6aXNfZW1wdHkoZGljdGlvbmFyeS5sb2MpID09IFRSVUUpIHsNCiAgICBzdG9wKCJFeGVjdXRpb24gaGFsdGVkOiBubyBkaWN0aW9uYXJ5IGZvdW5kIHdpdGggdGhlIGtleXdvcmQgcHJvdmlkZWQiKQ0KICB9DQogIA0KICBkaWN0aW9uYXJ5LnVybCA8LQ0KICAgIHBhc3RlMCgiZmlsZTovL2lmdzdyby1maWxlLmZ3cy5kb2kubmV0L2RhdGFtZ3QvbWJtLyIsDQogICAgICAgICAgIHByb2plY3QuZm9sZGVyLA0KICAgICAgICAgICAiLyIsIGRpY3Rpb25hcnkubG9jDQogICAgKQ0KICBmb3IgKGIgaW4gMTpsZW5ndGgoZGljdGlvbmFyeS51cmwpKSB7DQogICAgZG93bmxvYWQuZmlsZSgNCiAgICAgIHVybCA9IGRpY3Rpb25hcnkudXJsW2JdLA0KICAgICAgZmlsZS5wYXRoKA0KICAgICAgICAiZG93bmxvYWRzL2RhdGFfZGljdGlvbmFyaWVzIiwNCiAgICAgICAgZGVzdGZpbGUgPSBiYXNlbmFtZShkaWN0aW9uYXJ5LnVybFtiXSkNCiAgICAgICksDQogICAgICBtb2RlID0gImF1dG8iDQogICAgKQ0KICB9DQp9DQoNCmZvciAoYSBpbiAxOmxlbmd0aCh0ZW1wbGF0ZS5saXN0KSkgew0KICB0ZW1wbGF0ZS5sb2MgPC0NCiAgICBsaXN0LmZpbGVzKA0KICAgICAgcGF0aCA9IHBhc3RlMCgNCiAgICAgICAgIi8vaWZ3N3JvLWZpbGUuZndzLmRvaS5uZXQvZGF0YW1ndC9tYm0vIiwNCiAgICAgICAgcHJvamVjdC5mb2xkZXIsDQogICAgICAgICIvIg0KICAgICAgKSwNCiAgICAgIHBhdHRlcm4gPSB0ZW1wbGF0ZS5saXN0W2FdLA0KICAgICAgaWdub3JlLmNhc2UgPSBUUlVFLA0KICAgICAgcmVjdXJzaXZlID0gVFJVRQ0KICAgICkNCiAgDQogIGlmIChybGFuZzo6aXNfZW1wdHkodGVtcGxhdGUubG9jKSA9PSBUUlVFKSB7DQogICAgc3RvcCgiRXhlY3V0aW9uIGhhbHRlZDogbm8gdGVtcGxhdGUgZm91bmQgd2l0aCB0aGUga2V5d29yZCBwcm92aWRlZCIpDQogIH0NCiAgDQogIHRlbXBsYXRlLnVybCA8LQ0KICAgIHBhc3RlMCgiZmlsZTovL2lmdzdyby1maWxlLmZ3cy5kb2kubmV0L2RhdGFtZ3QvbWJtLyIsDQogICAgICAgICAgIHByb2plY3QuZm9sZGVyLA0KICAgICAgICAgICAiLyIsIHRlbXBsYXRlLmxvYw0KICAgICkNCiAgZm9yIChiIGluIDE6bGVuZ3RoKHRlbXBsYXRlLnVybCkpIHsNCiAgICBkb3dubG9hZC5maWxlKA0KICAgICAgdXJsID0gdGVtcGxhdGUudXJsW2JdLA0KICAgICAgZmlsZS5wYXRoKA0KICAgICAgICAiZG93bmxvYWRzL2RhdGFfZGljdGlvbmFyaWVzIiwNCiAgICAgICAgZGVzdGZpbGUgPSBiYXNlbmFtZSh0ZW1wbGF0ZS51cmxbYl0pDQogICAgICApLA0KICAgICAgbW9kZSA9ICJhdXRvIg0KICAgICkNCiAgfQ0KfQ0KDQpgYGANCg0KVmlldyB0aGUgZG93bmxvYWRlZCBkYXRhIGRpY3Rpb25hcnkoaWVzKSBhbmQgZGF0YSBlbnRyeSB0ZW1wbGF0ZShzKSBpbiB0aGUgImRvd25sb2FkcyIgc3ViLWZvbGRlciBvZiB0aGlzIFIgcHJvamVjdC4gWW91IGNhbiBuYXZpZ2F0ZSBoZXJlIHVzaW5nIHRoZSAiRmlsZXMiIHRhYiBpbiB0aGUgbG93ZXIgbGVmdCBwYW5lLiBUaGlzIHNob3VsZCBkZWZhdWx0IHRvIHRoZSBwcm9qZWN0IGRpcmVjdG9yeS4gSWYgbm90LCBjbGljayAiU2Vzc2lvbiIgaW4gdGhlIHRvb2xiYXIsIGhvdmVyIG92ZXIgIlNldCBXb3JraW5nIERpcmVjdG9yeSwiIGFuZCBjbGljayAiVG8gUHJvamVjdCBEaXJlY3RvcnkuIiBDbGljayB0aGUgImRvd25sb2FkcyIgc3ViLWZvbGRlciwgbmF2aWdhdGUgdG8gdGhlIGJsdWUgY29nIHdoZWVsICgiTW9yZSBmaWxlIGNvbW1hbmRzIiksIGFuZCBzZWxlY3QgIlNob3cgRm9sZGVyIGluIE5ldyBXaW5kb3cuIiBBIEZpbGUgRXhwbG9yZXIgd2luZG93IHNob3VsZCBvcGVuIHVwIHRvIHRoZSAiZG93bmxvYWRzIiBzdWItZm9sZGVyLiBWZXJpZnkgYWxsIHlvdXIgZGF0YSBkaWN0aW9uYXJpZXMgYW5kIGRhdGEgZW50cnkgdGVtcGxhdGVzIGFyZSBjb250YWluZWQgaGVyZS4NCg0KKk9wdGlvbmFsOiBZb3UgY2FuIHNraXAgdGhlIGFib3ZlIHN0ZXBzIGFuZCBkb3dubG9hZCBldmVyeXRoaW5nIG1hbnVhbGx5IGZyb20gdGhlIFtNaWdyYXRvcnkgQmlyZCBNYW5hZ2VtZW50IFJlZ2lvbmFsIERhdGEgUmVwb3NpdG9yeV0oZmlsZTovL2lmdzdyby1maWxlLmZ3cy5kb2kubmV0L2RhdGFtZ3QvbWJtLykgcHJvamVjdCBmb2xkZXIuIERhdGEgZGljdGlvbmFyaWVzIGFuZCBkYXRhIGVudHJ5IHRlbXBsYXRlcyBzaG91bGQgYmUgYXZhaWxhYmxlIGluIHRoZSAibWV0YWRhdGEiIHN1Yi1mb2xkZXIuIE1ha2Ugc3VyZSB0byBzYXZlIGEgY29weSBvZiBkYXRhIGRpY3Rpb25hcnkoaWVzKSBpbiB0aGUgImRvd25sb2Fkcy9kYXRhX2RpY3Rpb25hcmllcyIgc3ViLWZvbGRlciBvZiB0aGlzIFIgcHJvamVjdC4qDQoNCiMjIyBFbnRlciBzY2FubmVkIG9yIGhhcmQgY29weSBkYXRhDQoNClNhdmUgdGhlIGRhdGEgZW50cnkgdGVtcGxhdGUocykgaW4gYSBwcmVmZXJyZWQgbG9jYXRpb24gKHRoaXMgY2FuIGJlIGluIGEgaW4gdGhlICJkYXRhLXJhdyIgc3ViLWZvbGRlciBvZiB0aGlzIFIgcHJvamVjdCkuIFVzZSBhIHVuaXF1ZSBhbmQgZGVzY3JpcHRpdmUgbmFtZSAtIHJlZmVyIHRvIFtCZXN0IFByYWN0aWNlcyBpbiBOYW1pbmcgQ29udmVudGlvbnNdKGh0dHBzOi8vYWstcmVnaW9uLWRzdC5naXRib29rLmlvL2FsYXNrYS1yZWdpb24taW50ZXJpbS1kYXRhLW1hbmFnZW1lbnQtdXNlci1ndWlkZS9hbGFza2EtZGF0YS1tYW5hZ2VtZW50LTEwMS9maWxlLW9yZ2FuaXphdGlvbi1hbmQtYmVzdC1wcmFjdGljZXMvYmVzdC1wcmFjdGljZXMtaW4tbmFtaW5nLWNvbnZlbnRpb25zKS4gSXQncyBva2F5IHRvIHNhdmUgdGhpcyBmaWxlIGluIGFuIEV4Y2VsIGZpbGUgZm9ybWF0IHRvIHByZXNlcnZlIHZhbGlkYXRpb24gcnVsZXMuDQoNCkVudGVyIHNjYW5uZWQgb3IgaGFyZCBjb3B5IGRhdGEgYWNjb3JkaW5nIHRvIHRoZSByZXNwZWN0aXZlIGRhdGEgZGljdGlvbmFyeShpZXMpLiBSZXZpZXcgZW50ZXJlZCBkYXRhIHRvIGNoZWNrIGZvciBlcnJvcnMuIFRoZSBFeGNlbCBGaWx0ZXIgZnVuY3Rpb24gKEhvbWVcPkVkaXRpbmdcPkZpbHRlcikgaXMgZXNwZWNpYWxseSB1c2VmdWwgZm9yIHZpZXdpbmcgdW5pcXVlIHZhbHVlcyBhbmQgdmFsdWUgcmFuZ2VzLg0KDQpTYXZlIHRoZSBlbnRlcmVkIGRhdGEgZmlsZShzKSBpbiB0aGUgImRhdGEtcmF3IiBzdWItZm9sZGVyIG9mIHRoaXMgUiBwcm9qZWN0LiBDb252ZXJ0IHRoZSBmaWxlKHMpIHRvIGNvbW1hLXNlcGFyYXRlZCB2YWx1ZXMgKENTVikgZm9ybWF0LCBpZiBuZWNlc3NhcnkuIE1ha2Ugc3VyZSB0aGUgY29ycmVjdCBzaGVldCBpcyBzZWxlY3RlZCB3aGVuIGNvbnZlcnRpbmcgaWYgbW9yZSB0aGFuIG9uZSBzaGVldCBpcyB1c2VkIChpLmUuLCB2YWxpZGF0aW9uIHJ1bGVzKS4NCg0KIyBXb3JrcGxhY2Ugc2V0dXANCg0KIyMjIENvbXBpbGUgcmVxdWlzaXRlIGZpbGVzDQoNCk1ha2Ugc3VyZSBhbGwgZW50ZXJlZCBkYXRhIGFuZCBkYXRhIGRpY3Rpb25hcnkoaWVzKSBhcmUgc2F2ZWQgaW4gdGhlIHN1Yi1mb2xkZXJzIG9mIHRoaXMgUiBwcm9qZWN0ICgiZGF0YS1yYXciIGFuZCAiZG93bmxvYWRzL2RhdGFfZGljdGlvbmFyaWVzLCIgcmVzcGVjdGl2ZWx5KS4NCg0KIyMjIEluc3RhbGwgbWRKU09OZGljdGlvDQoNCkluc3RhbGwgdGhlIG1kSlNPTmRpY3RpbyBSIHBhY2thZ2UgZnJvbSBHaXRIdWIgYnkgcnVubmluZyB0aGUgZm9sbG93aW5nIGNvZGUgY2h1bmsuDQoNCmBgYHtyfQ0KDQpkZXZ0b29sczo6aW5zdGFsbF9naXRodWIoImhkdmluY2VsZXR0ZS9tZEpTT05kaWN0aW8iKQ0KDQpgYGANCg0KSWYgeW91IGVuY291bnRlciBhbiBlcnJvciwgdHJ5IHJ1bm5pbmcgdGhlIGZvbGxvd2luZyBpbnN0ZWFkLg0KDQpgYGB7cn0NCm9wdGlvbnMoZG93bmxvYWQuZmlsZS5tZXRob2QgPSAid2luaW5ldCIpDQpkZXZ0b29sczo6aW5zdGFsbF9naXRodWIoImhkdmluY2VsZXR0ZS9tZEpTT05kaWN0aW8iKQ0KYGBgDQoNCklmIHRoZSBpbnN0YWxsYXRpb24gZmFpbHMgYWdhaW4sIHJlZmVyIHRvIFtJbnN0YWxsIG1kSlNPTmRpY3RpbyBSIHBhY2thZ2VdKGh0dHBzOi8vaGR2aW5jZWxldHRlLmdpdGh1Yi5pby9tZEpTT05kaWN0aW8vYXJ0aWNsZXMvMDNfU2V0dXBfbWRKU09OZGljdGlvLmh0bWwjaW5zdGFsbC1tZGpzb25kaWN0aW8tci1wYWNrYWdlKSBmb3IgdHJvdWJsZXNob290aW5nIHRpcHMuDQoNCiMgRGF0YSBxdWFsaXR5IGNoZWNrcw0KDQojIyMgU3VtbWFyaXplOiBjYXB0dXJlLCByZXNpZ2h0LCBuZXN0LCBzdXJ2ZXkNCg0KU3BlY2llc0NvZGUsIERhdGUsIExvY2F0aW9uLCBBdHRhY2htZW50cyAoYmFuZHMsIHRhZ3MpLCBNb3JwaG9tZXRyaWNzDQoNCmBgYHtyfQ0KIw0KYGBgDQoNCiMjIyBWYWxpZGF0aW9uOiBkYXRhIGZpbGUgdi4gZGljdGlvbmFyeQ0KDQpgYGB7cn0NCiMNCmBgYA0KDQojIE1lcmdlIGRhdGEgZmlsZSB3aXRoIGF1dGhvcml0YXRpdmUgY29weQ0KDQpgYGB7cn0NCiMNCmBgYA0KDQojIERhdGEgcXVhbGl0eSBjaGVja3MgKGNvbnQuKQ0KDQojIyMgVmFsaWRhdGlvbjogZGF0YSBmaWxlIHYuIGRpY3Rpb25hcnkNCg0KYGBge3J9DQojDQpgYGANCg0KIyBEYXRhIHBvc3Rwcm9jZXNzaW5nDQoNCnV1aWRzLCB2ZXJzaW9uaW5nDQoNCmBgYHtyfQ0KIw0KYGBgDQoNCiMgQXJjaGl2ZSBpbiB0aGUgUmVnaW9uYWwgRGF0YSBSZXBvc2l0b3J5DQoNCmBgYHtyfQ0KIw0KYGBgDQoNCiMgQ2FwdHVyZSBkYXRhIHRyYW5zZm9ybWF0aW9ucw0KDQojIyMgQmlvbG9naWNhbCBzYW1wbGVzIGludmVudG9yeQ0KDQpgYGB7cn0NCiMNCmBgYA0KDQojIyMgQmFuZGVycyBwb3J0YWwNCg0KYGBge3J9DQojDQpgYGANCg0KIyBTdXJ2ZXkgZGF0YSB0cmFuc2Zvcm1hdGlvbnMNCg0KIyMjIGViaXJkDQoNCmBgYHtyfQ0KbGlicmFyeSgiYXVrIikNCg0KIyBlYmlyZA0KIyB1c2Z3c2xhbmRiaXJkcw0KIyBmd3NsYW5kYmlyZHMNCiMgQVBJIGtleTogZTJtN3R0NnNmbzRuDQoNCg0KYGBgDQoNCiMgVHJhY2tpbmcgZGF0YSB0cmFuc2Zvcm1hdGlvbnMNCg0KYGBge3J9DQpsaWJyYXJ5KCJtb3ZlIikNCg0KIyBNb3ZlYmFuaw0KIyBtYm1sYW5kYmlyZHMNCiMgQUttb3ZlMjAxOCENCg0KYGBgDQo=</div>
 
 
 
@@ -1981,7 +2134,7 @@ $(document).ready(function () {
 <!-- code folding -->
 <script>
 $(document).ready(function () {
-  window.initializeSourceEmbed("landbird-dm-workflow.Rmd");
+  window.initializeSourceEmbed("landbird-dp-workflow.Rmd");
   window.initializeCodeFolding("show" === "show");
 });
 </script>
