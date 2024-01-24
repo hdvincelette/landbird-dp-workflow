@@ -99,113 +99,103 @@ get.move.data <-
     }
     
     
-      time.choice <-
-        utils::menu(c("Filter", "All data"),
-                    title =
-                      cat(paste0(
-                        "\nFilter by date or import all available data?\n"
-                      )))
-      
-      if (time.choice == 1) {
-        min.timestamp <- format(as.POSIXct(
-          lubridate::parse_date_time(
-            min(study.choice.df$timestamp_first_deployed_location),
-            lubridate::guess_formats(
-              min(study.choice.df$timestamp_first_deployed_location),
-              c("%Y-%m-%d %H:%M:%S", "%Y-%m-%d")
-            )
-          )
-        ),
-        "%Y-%m-%d %H:%M:%S")
-        
-        max.timestamp <- format(as.POSIXct(
-          lubridate::parse_date_time(
-            max(study.choice.df$timestamp_last_deployed_location),
-            lubridate::guess_formats(
-              max(study.choice.df$timestamp_last_deployed_location),
-              c("%Y-%m-%d %H:%M:%S", "%Y-%m-%d")
-            )
-          )
-        ),
-        "%Y-%m-%d %H:%M:%S")
-        
-        time.message<- c()
-          
-        for(a in 1:nrow(study.choice.df)){
-          
-          min.timestamp <- format(as.POSIXct(
-            lubridate::parse_date_time(
-              min(study.choice.df$timestamp_first_deployed_location[a]),
-              lubridate::guess_formats(
-                min(study.choice.df$timestamp_first_deployed_location[a]),
-                c("%Y-%m-%d %H:%M:%S", "%Y-%m-%d")
-              )
-            )
-          ),
-          "%Y-%m-%d %H:%M:%S")
-          
-          max.timestamp <- format(as.POSIXct(
-            lubridate::parse_date_time(
-              max(study.choice.df$timestamp_last_deployed_location[a]),
-              lubridate::guess_formats(
-                max(study.choice.df$timestamp_last_deployed_location[a]),
-                c("%Y-%m-%d %H:%M:%S", "%Y-%m-%d")
-              )
-            )
-          ),
-          "%Y-%m-%d %H:%M:%S")
-          
-          
-            time.message[a]<- paste0(study.choice.df$name[a],": ",min.timestamp," - ",max.timestamp)
+    time.choice <-
+      utils::menu(c("Filter", "All data"),
+                  title =
+                    cat(paste0(
+                      "\nFilter by date or import all available data?\n"
+                    )))
     
-        }
-        
-        message(cat(
-          paste0(
-            
-            "\nThe selected study(ies) has/have location data for the following time range(s):"
-          ),
-          paste0("\n", time.message)
-        ))
-        
-        message(
-          cat(
-            "\nEnter a start date for the Movebank attribute 'timestamp-start' (e.g., 2000-01-31 00:00:00):\n"
+    ## Display study time range
+    time.message <- c()
+    
+    for (a in 1:nrow(study.choice.df)) {
+      min.timestamp <- format(as.POSIXct(
+        lubridate::parse_date_time(
+          min(study.choice.df$timestamp_first_deployed_location[a]),
+          lubridate::guess_formats(
+            min(study.choice.df$timestamp_first_deployed_location[a]),
+            c("%Y-%m-%d %H:%M:%S", "%Y-%m-%d")
           )
         )
-        start.time <-
-          as.POSIXct(strptime(
-            as.character(readline(prompt =)),
-            format = "%Y-%m-%d %H:%M:%S",
-            tz = 'UTC'
-          ))
-        
-        message(
-          cat(
-            "\nEnter an end date for the Movebank attribute 'timestamp-end' (e.g., 2050-12-31 23:59:59):"
+      ),
+      "%Y-%m-%d %H:%M:%S")
+      
+      max.timestamp <- format(as.POSIXct(
+        lubridate::parse_date_time(
+          max(study.choice.df$timestamp_last_deployed_location[a]),
+          lubridate::guess_formats(
+            max(study.choice.df$timestamp_last_deployed_location[a]),
+            c("%Y-%m-%d %H:%M:%S", "%Y-%m-%d")
           )
         )
-        end.time <-
-          as.POSIXct(strptime(
-            as.character(readline(prompt =)),
-            format = "%Y-%m-%d %H:%M:%S",
-            tz = 'UTC'
-          ))
-        
-        for (c in 1:nrow(study.choice.df)) {
-          if (!study.choice.df$timestamp_first_deployed_location[c] <= end.time |
-              !study.choice.df$timestamp_last_deployed_location[c] >= start.time) {
-            stop(cat(
-              paste0(
-                "Operation canceled: time selection out of range for one or more selected studies."
-              )
-            ))
-          }
-        }
+      ),
+      "%Y-%m-%d %H:%M:%S")
+      
+      
+      time.message[a] <-
+        paste0(study.choice.df$name[a],
+               ": ",
+               min.timestamp,
+               " - ",
+               max.timestamp)
+      
+    }
+    
+    message(cat(
+      paste0(
+        "\nThe selected study(ies) has/have location data for the following time range(s):"
+      ),
+      paste0("\n", time.message)
+    ))
+    
+    ## Get time range input
+    message(
+      cat(
+        "\nEnter a start date for the Movebank attribute 'timestamp-start' (e.g., 2000-01-31 00:00:00):\n"
+      )
+    )
+    start.time <-
+      as.POSIXct(strptime(as.character(readline(prompt =)),
+                          format = "%Y-%m-%d %H:%M:%S",
+                          tz = 'UTC'))
+    
+    message(
+      cat(
+        "\nEnter an end date for the Movebank attribute 'timestamp-end' (e.g., 2050-12-31 23:59:59):"
+      )
+    )
+    end.time <-
+      as.POSIXct(strptime(as.character(readline(prompt =)),
+                          format = "%Y-%m-%d %H:%M:%S",
+                          tz = 'UTC'))
+    
+    ## Check if study(ies) out of time range
+    for (c in 1:nrow(study.choice.df)) {
+      if (!study.choice.df$timestamp_first_deployed_location[c] <= end.time |
+          !study.choice.df$timestamp_last_deployed_location[c] >= start.time) {
+        study.choice <- study.choice[!study.choice %in% study.choice.df$name[c]]
         
       }
+    }
+    if (length(study.choice) == 0) {
+      stop(cat(
+        paste0(
+          "Operation canceled: time selection out of range for one or more selected studies."
+        )
+      ))
+    } else {
       
-    
+      removed.studies<- study.choice.df$name[!study.choice.df$name %in% study.choice]
+      message(cat(
+        paste0(
+          "\nWARNING\nThe following studies do not have location data for the provided time range and will not be imported:"
+        ),
+        paste0("\n", removed.studies)
+      ))
+    }
+        
+      
     
     # Import options
     
