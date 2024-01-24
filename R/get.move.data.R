@@ -195,7 +195,6 @@ get.move.data <-
       ))
     }
         
-      
     
     # Import options
     
