@@ -10,7 +10,7 @@ devtools::document()
 renv::snapshot()
 
 # Create project folders in directory
-usethis::use_directory("doc")
+usethis::use_directory("docs")
 
 # Add packages to DESCRIPTION
 usethis::use_package("devtools")

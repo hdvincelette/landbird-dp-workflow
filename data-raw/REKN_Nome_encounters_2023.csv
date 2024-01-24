@@ -1,0 +1,154 @@
+﻿Year,Date,Region,Location,PlotID,Latitude,Longitude,EncounterType,FlagCode,FlagColor,CurrentFlagCode,CurrentFlagColor,Age,Sex,TrackerType1,TrackerType2,TrackerStatus1,TrackerStatus2,Observer,Comments
+2023,5/23/2023,Alaska,Nome,37 MI,64.84544,-166.08525,R,1MP,FEDG,1MP,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,5/24/2023,Alaska,Nome,Tombstone,64.94366,-166.20688,R,1NJ,FEDG,1NJ,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,5/24/2023,Alaska,Nome,37 MI,64.85517,-166.08270,R,1MT,FEDG,1MT,FEDG,AHY,,,,,,TOortwijn,
+2023,5/24/2023,Alaska,Nome,37 MI,64.84125,-166.08755,R,1MP,FEDG,1MP,FEDG,AHY,,,,,,TOortwijn,
+2023,5/25/2023,Alaska,Nome,Barrel,64.70663,-165.76692,C,1NV,FEDG,1NV,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,5/25/2023,Alaska,Nome,Barrel,64.70663,-165.76692,R,1MX,FEDG,1MX,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,5/27/2023,Alaska,Nome,37 MI,64.84738,-166.08438,R,1MH,FEDG,1MH,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,5/27/2023,Alaska,Nome,37 MI,64.85084,-166.09125,R,1NL,FEDG,1NL,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,5/28/2023,Alaska,Nome,34 MI,64.81341,-165.95924,R,1NK,FEDG,1NK,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,5/31/2023,Alaska,Nome,34 MI,64.82149,-166.03831,R,1MY,FEDG,1MY,FEDG,AHY,,,,,,TOortwijn,
+2023,5/31/2023,Alaska,Nome,34 MI,64.82149,-166.03831,R,1EP,FEDG,1EP,FEDG,AHY,,,,,,TOortwijn,
+2023,6/5/2023,Alaska,Nome,34 MI,64.82364,-166.03580,R,1NA,FEDG,1NA,FEDG,AHY,,,,,,TOortwijn,
+2023,6/6/2023,Alaska,Nome,34 MI,64.81568,-166.00510,R,1MY,FEDG,1MY,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/6/2023,Alaska,Nome,34 MI,64.81371,-165.95268,R,1MJ,FEDG,1MJ,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/8/2023,Alaska,Nome,37 MI,64.85334,-166.08131,R,1CX,FEDG,1CX,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/9/2023,Alaska,Nome,Tombstone,64.94388,-166.20480,C,1NX,FEDG,1NX,FEDG,AHY,,,,,,TOortwijn,
+2023,6/10/2023,Alaska,Nome,37 MI,64.84298,-166.08182,R,1MT,FEDG,1MT,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/10/2023,Alaska,Nome,37 MI,64.84624,-166.07990,R,1NE,FEDG,1NE,FEDG,AHY,,,,,,TOortwijn,
+2023,6/11/2023,Alaska,Nome,37 MI,64.84805,-166.08647,C,1NY,FEDG,1NY,FEDG,AHY,,,,,,TOortwijn,
+2023,6/11/2023,Alaska,Nome,37 MI,64.85123,-166.08031,R,6XH,FELG,6XH,FELG,AHY,,,,,,TOortwijn,
+2023,6/11/2023,Alaska,Nome,37 MI,64.84676,-166.08760,C,1PA,FEDG,1PA,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/11/2023,Alaska,Nome,37 MI,64.84751,-166.08745,R,1NC,FEDG,1NC,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/12/2023,Alaska,Nome,37 MI,64.85334,-166.08131,R,1HU,FEDG,1HU,FEDG,AHY,,,,,,TOortwijn,
+2023,6/16/2023,Alaska,Nome,34 MI,64.82364,-166.03580,C,1PC,FEDG,1PC,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/19/2023,Alaska,Nome,34 MI,64.82397,-166.04096,C,1PE,FEDG,1PE,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/19/2023,Alaska,Nome,34 MI,64.81348,-166.99275,R,1MN,FEDG,1MN,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/19/2023,Alaska,Nome,34 MI,64.81348,-166.99275,C,1PH,FEDG,1PH,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/19/2023,Alaska,Nome,34 MI,64.81350,-166.95936,C,1PJ,FEDG,1PJ,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/19/2023,Alaska,Nome,34 MI,64.81350,-166.95936,C,1PK,FEDG,1PK,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/20/2023,Alaska,Nome,34 MI,64.81762,-166.00618,R,1EP,FEDG,1EP,FEDG,AHY,,,,,,TOortwijn,
+2023,6/21/2023,Alaska,Nome,34 MI,64.81651,-166.99593,R,1NM,FEDG,1NM,FEDG,AHY,,,,,,TOortwijn,
+2023,6/21/2023,Alaska,Nome,37 MI,64.84628,-166.08137,R,1MP,FEDG,1MP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/23/2023,Alaska,Nome,Tombstone,64.94060,-166.20779,C,1PL,FEDG,1PL,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/23/2023,Alaska,Nome,34 MI,64.81328,-165.95722,C,1PM,FEDG,1PM,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/23/2023,Alaska,Nome,37 MI,64.84805,-166.08647,R,1MH,FEDG,1MH,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/24/2023,Alaska,Nome,34 MI,64.82364,-166.03580,R,1NA,FEDG,1NA,FEDG,AHY,,,,,,TOortwijn,
+2023,6/24/2023,Alaska,Nome,37 MI,64.85334,-166.08131,R,1CX,FEDG,1CX,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/24/2023,Alaska,Nome,37 MI,64.84514,-166.08385,R,1MP,FEDG,1MP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/24/2023,Alaska,Nome,37 MI,64.85041,-166.08038,R,1NL,FEDG,1NL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/25/2023,Alaska,Nome,Barrel,64.70828,-165.76466,R,1NV,FEDG,1NV,FEDG,AHY,,RADIO,,Lost,,TOortwijn,
+2023,6/25/2023,Alaska,Nome,37 MI,64.85334,-166.08131,R,1CX,FEDG,1CX,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/26/2023,Alaska,Nome,37 MI,64.85534,-166.07919,R,1CX,FEDG,1CX,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/26/2023,Alaska,Nome,37 MI,64.84988,-166.08417,R,1MH,FEDG,1MH,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/26/2023,Alaska,Nome,37 MI,64.84470,-166.08425,R,1MP,FEDG,1MP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/26/2023,Alaska,Nome,37 MI,64.85340,-166.08630,R,1MT,FEDG,1MT,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/26/2023,Alaska,Nome,37 MI,64.85031,-166.08085,R,1NL,FEDG,1NL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/26/2023,Alaska,Nome,Tombstone,64.93512,-166.20959,R,1PL,FEDG,1PL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/27/2023,Alaska,Nome,Steven,64.84456,-166.02062,R,1JP,FEDG,1JP,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/27/2023,Alaska,Nome,Feather East,64.84300,-165.91222,R,1PK,FEDG,1PK,FEDG,AHY,,RADIO,,Retained,,TOortwijn,
+2023,6/27/2023,Alaska,Nome,Steven,64.84456,-166.02062,R,1JP,FEDG,1JP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/29/2023,Alaska,Nome,34 MI,64.82158,-166.03708,R,1MV,FEDG,1MV,FEDG,AHY,,,,,,TOortwijn,
+2023,6/29/2023,Alaska,Nome,34 MI,64.82259,-166.04112,R,1MV,FEDG,1MV,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,6/29/2023,Alaska,Nome,37 MI,64.85156,-166.08131,R,1CX,FEDG,1CX,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/29/2023,Alaska,Nome,37 MI,64.84565,-166.08788,R,1MH,FEDG,1MH,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/29/2023,Alaska,Nome,37 MI,64.84658,-166.08109,R,1MP,FEDG,1MP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/29/2023,Alaska,Nome,37 MI,64.85178,-166.08498,R,1MT,FEDG,1MT,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/29/2023,Alaska,Nome,37 MI,64.84627,-166.08794,R,1NL,FEDG,1NL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/29/2023,Alaska,Nome,Tombstone,64.93654,-166.21025,R,1PL,FEDG,1PL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,6/30/2023,Alaska,Nome,34 MI,64.81328,-165.95722,R,1PJ,FEDG,1PJ,FEDG,AHY,,RADIO,,Retained,,TOortwijn,
+2023,6/30/2023,Alaska,Nome,34 MI,64.81328,-165.95722,R,1PK,FEDG,1PK,FEDG,AHY,,RADIO,,Retained,,TOortwijn,
+2023,6/30/2023,Alaska,Nome,34 MI,64.81328,-165.95722,R,1MJ,FEDG,1MJ,FEDG,AHY,,RADIO,,Retained,,TOortwijn,
+2023,6/30/2023,Alaska,Nome,Steven,64.84439,-166.01918,R,1JP,FEDG,1JP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/1/2023,Alaska,Nome,Feather,64.84123,-165.95923,R,1PH,FEDG,1PH,FEDG,AHY,,RADIO,,Retained,,TOortwijn,
+2023,7/1/2023,Alaska,Nome,34 MI,64.82364,-166.03580,R,1PC,FEDG,1PC,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/2/2023,Alaska,Nome,37 MI,64.85007,-166.09128,R,1KU,FEDG,1KU,FEDG,AHY,,,,,,TOortwijn,
+2023,7/2/2023,Alaska,Nome,37 MI,64.85502,-166.07948,R,1CX,FEDG,1CX,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/2/2023,Alaska,Nome,37 MI,64.84129,-166.08717,R,1MH,FEDG,1MH,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/2/2023,Alaska,Nome,37 MI,64.84535,-166.08385,R,1MP,FEDG,1MP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/2/2023,Alaska,Nome,37 MI,64.85284,-166.08928,R,1MT,FEDG,1MT,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/2/2023,Alaska,Nome,37 MI,64.84269,-166.08393,R,1NL,FEDG,1NL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/2/2023,Alaska,Nome,Tombstone,64.94117,-166.20730,R,1PL,FEDG,1PL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/3/2023,Alaska,Nome,Feather,64.84146,-165.95891,R,1NN,FEDG,1NN,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,7/3/2023,Alaska,Nome,Steven,64.84951,-166.00195,R,1JP,FEDG,1JP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/4/2023,Alaska,Nome,34 MI,64.82364,-166.03580,R,1MY,FEDG,1MY,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/4/2023,Alaska,Nome,34 MI,64.82384,-166.04020,R,1PC,FEDG,1PC,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/5/2023,Alaska,Nome,37 MI,64.84563,-166.08494,R,1KU,FEDG,1KU,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,7/5/2023,Alaska,Nome,37 MI,64.84035,-166.07830,R,1CX,FEDG,1CX,FEDG,AHY,,RADIO,,Retained,,ZPohlen,"Fecal: 1383, Attending brood"
+2023,7/5/2023,Alaska,Nome,37 MI,64.83983,-166.08142,R,1MH,FEDG,1MH,FEDG,AHY,,RADIO,,Retained,,ZPohlen,"Fecal: 1387, Attending brood"
+2023,7/5/2023,Alaska,Nome,37 MI,64.84211,-166.08388,R,1MP,FEDG,1MP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,"Fecal: 1373, Attending brood"
+2023,7/5/2023,Alaska,Nome,37 MI,64.84147,-166.07942,R,1MT,FEDG,1MT,FEDG,AHY,,RADIO,,Retained,,ZPohlen,"Fecal: 1378, 1380, Attending brood"
+2023,7/5/2023,Alaska,Nome,37 MI,64.84064,-166.08140,R,1NL,FEDG,1NL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/5/2023,Alaska,Nome,Tombstone,64.93842,-166.21052,R,1PL,FEDG,1PL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/6/2023,Alaska,Nome,Feather,64.85706,-165.94743,C,1PN,FEDG,1PN,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,7/6/2023,Alaska,Nome,Steven,64.84868,-166.00445,R,1JP,FEDG,1JP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/6/2023,Alaska,Nome,Feather,64.84224,-165.94943,R,1NN,FEDG,1NN,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/7/2023,Alaska,Nome,34 MI,64.81574,-165.99583,R,1MN,FEDG,1MN,FEDG,AHY,,RADIO,,Replaced,,TOortwijn,
+2023,7/7/2023,Alaska,Nome,34 MI,64.81538,-165.92691,R,1PP,FEDG,1PP,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,7/7/2023,Alaska,Nome,34 MI,64.81614,-165.93060,C,1PT,FEDG,1PT,FEDG,AHY,,RADIO,,New,,TOortwijn,
+2023,7/7/2023,Alaska,Nome,34 MI,64.82379,-166.03838,R,1MY,FEDG,1MY,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/7/2023,Alaska,Nome,34 MI,64.82323,-166.03889,R,1PC,FEDG,1PC,FEDG,AHY,,RADIO,,Retained,,ZPohlen,"Fecal: 1406, Attending brood"
+2023,7/7/2023,Alaska,Nome,Tombstone,64.93808,-166.21133,R,1PL,FEDG,1PL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/8/2023,Alaska,Nome,37 MI,64.83804,-166.06932,R,1CX,FEDG,1CX,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/8/2023,Alaska,Nome,37 MI,64.84950,-166.09150,R,1KU,FEDG,1KU,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/8/2023,Alaska,Nome,37 MI,64.84421,-166.08313,R,1MH,FEDG,1MH,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/8/2023,Alaska,Nome,37 MI,64.82224,-166.03530,R,1MP,FEDG,1MP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/8/2023,Alaska,Nome,37 MI,64.85090,-166.08123,R,1NL,FEDG,1NL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/10/2023,Alaska,Nome,Steven,64.85151,-165.99015,R,1JP,FEDG,1JP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/10/2023,Alaska,Nome,34 MI,64.82402,-166.03858,R,1MY,FEDG,1MY,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/10/2023,Alaska,Nome,34 MI,64.81903,-166.03583,R,1PC,FEDG,1PC,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/11/2023,Alaska,Nome,37 MI,64.83660,-166.08348,R,1MP,FEDG,1MP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,"Fecal: 1456, Attending brood"
+2023,7/11/2023,Alaska,Nome,37 MI,64.83555,-166.07179,R,1CX,FEDG,1CX,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/11/2023,Alaska,Nome,37 MI,64.84661,-166.08843,R,1KU,FEDG,1KU,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/11/2023,Alaska,Nome,37 MI,64.84106,-166.08638,R,1MH,FEDG,1MH,FEDG,AHY,,RADIO,,Retained,,ZPohlen,"Fecal: 1450, Attending brood"
+2023,7/11/2023,Alaska,Nome,37 MI,64.83555,-166.07179,R,1MT,FEDG,1MT,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/11/2023,Alaska,Nome,37 MI,64.84388,-166.08075,R,1NL,FEDG,1NL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/11/2023,Alaska,Nome,Tombstone,64.93388,-166.20800,R,1PL,FEDG,1PL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/11/2023,Alaska,Nome,34 MI,64.81572,-165.92424,R,1PP,FEDG,1PP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/11/2023,Alaska,Nome,34 MI,64.81617,-165.92765,R,1PT,FEDG,1PT,FEDG,AHY,,RADIO,,Retained,,ZPohlen,"Fecal: 1461, Attending brood"
+2023,7/12/2023,Alaska,Nome,Feather,64.84620,-165.94685,R,1NN,FEDG,1NN,FEDG,AHY,,RADIO,,Retained,,ZPohlen,"Fecal: 1470, Attending brood"
+2023,7/12/2023,Alaska,Nome,Feather,,,R,1PN,FEDG,1PN,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Brood not located
+2023,7/15/2023,Alaska,Nome,37 MI,64.83620,-166.07298,R,1CX,FEDG,1CX,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/15/2023,Alaska,Nome,37 MI,64.84526,-166.08523,R,1KU,FEDG,1KU,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/15/2023,Alaska,Nome,37 MI,64.84920,-166.08791,R,1MH,FEDG,1MH,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/15/2023,Alaska,Nome,37 MI,64.84112,-166.08508,R,1MP,FEDG,1MP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/15/2023,Alaska,Nome,Tombstone,64.93756,-166.21115,R,1PL,FEDG,1PL,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/16/2023,Alaska,Nome,34 MI,64.82343,-166.03942,R,1MY,FEDG,1MY,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/16/2023,Alaska,Nome,Feather,64.84522,-165.95093,R,1NN,FEDG,1NN,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/16/2023,Alaska,Nome,34 MI,64.81648,-166.01815,R,1PC,FEDG,1PC,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/18/2023,Alaska,Nome,37 MI,64.83844,-166.06918,R,1CX,FEDG,1CX,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/18/2023,Alaska,Nome,37 MI,64.84230,-166.08477,R,1KU,FEDG,1KU,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/18/2023,Alaska,Nome,37 MI,64.84612,-166.08172,R,1MH,FEDG,1MH,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/18/2023,Alaska,Nome,34 MI,64.82256,-166.03355,R,1MY,FEDG,1MY,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/18/2023,Alaska,Nome,34 MI,64.81878,-166.03457,R,1PC,FEDG,1PC,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/18/2023,Alaska,Nome,34 MI,64.81756,-165.93160,R,1PP,FEDG,1PP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/18/2023,Alaska,Nome,34 MI,64.81734,-165.95676,R,1PT,FEDG,1PT,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/21/2023,Alaska,Nome,37 MI,64.85134,-166.08759,R,1KU,FEDG,1KU,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/21/2023,Alaska,Nome,34 MI,64.82609,-166.03692,R,1MY,FEDG,1MY,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/21/2023,Alaska,Nome,34 MI,64.82116,-166.01345,R,1PC,FEDG,1PC,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/22/2023,Alaska,Nome,Feather,64.84862,-165.94324,R,1NN,FEDG,1NN,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/23/2023,Alaska,Nome,34 MI,64.82463,-166.03568,R,1MY,FEDG,1MY,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/23/2023,Alaska,Nome,34 MI,64.81904,-165.92871,R,1PP,FEDG,1PP,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/23/2023,Alaska,Nome,34 MI,64.81723,-165.95895,R,1PT,FEDG,1PT,FEDG,AHY,,RADIO,,Retained,,ZPohlen,Attending brood
+2023,7/15/2023,Alaska,Nome,37 MI,64.83620,-166.07298,R,1TH,FEDG,1TH,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/18/2023,Alaska,Nome,37 MI,64.83844,-166.06918,R,1TH,FEDG,1TH,FEDG,L,,,,,,ZPohlen,Juvenile
+2023,7/15/2023,Alaska,Nome,37 MI,64.83620,-166.07298,R,1TE,FEDG,1TE,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/18/2023,Alaska,Nome,37 MI,64.83844,-166.06918,R,1TE,FEDG,1TE,FEDG,L,,,,,,ZPohlen,Juvenile
+2023,7/15/2023,Alaska,Nome,37 MI,64.83620,-166.07298,R,1TJ,FEDG,1TJ,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/18/2023,Alaska,Nome,37 MI,64.83844,-166.06918,R,1TJ,FEDG,1TJ,FEDG,L,,,,,,ZPohlen,Juvenile
+2023,7/21/2023,Alaska,Nome,34 MI,64.82116,-166.01345,R,1TC,FEDG,1TC,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/22/2023,Alaska,Nome,Feather,64.84862,-165.94324,R,1TL,FEDG,1TL,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/22/2023,Alaska,Nome,Feather,64.84862,-165.94324,R,1TM,FEDG,1TM,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/11/2023,Alaska,Nome,37 MI,64.83660,-166.08348,R,1PU,FEDG,1PU,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/15/2023,Alaska,Nome,37 MI,64.84112,-166.08508,R,1PU,FEDG,1PU,FEDG,L,,,,,,ZPohlen,Juvenile
+2023,7/11/2023,Alaska,Nome,37 MI,64.83660,-166.08348,R,1PX,FEDG,1PX,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/15/2023,Alaska,Nome,37 MI,64.84112,-166.08508,R,1PX,FEDG,1PX,FEDG,L,,,,,,ZPohlen,Juvenile
+2023,7/11/2023,Alaska,Nome,37 MI,64.83660,-166.08348,R,1PV,FEDG,1PV,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/15/2023,Alaska,Nome,37 MI,64.84112,-166.08508,R,1PV,FEDG,1PV,FEDG,L,,,,,,ZPohlen,Juvenile
+2023,7/15/2023,Alaska,Nome,37 MI,64.84920,-166.08791,R,1TK,FEDG,1TK,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/18/2023,Alaska,Nome,37 MI,64.84612,-166.08172,R,1TK,FEDG,1TK,FEDG,L,,,,,,ZPohlen,Juvenile
+2023,7/11/2023,Alaska,Nome,Tombstone,64.93388,-166.20800,R,1TA,FEDG,1TA,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/15/2023,Alaska,Nome,Tombstone,64.93756,-166.21115,R,1TA,FEDG,1TA,FEDG,L,,,,,,ZPohlen,Juvenile
+2023,7/11/2023,Alaska,Nome,37 MI,64.84388,-166.08705,R,1PY,FEDG,1PY,FEDG,L,,,,,,ZPohlen,Juvenile captured and flagged
+2023,7/18/2023,Alaska,Nome,37 MI,64.84612,-166.08172,R,1PY,FEDG,1PY,FEDG,L,,,,,,ZPohlen,Juvenile

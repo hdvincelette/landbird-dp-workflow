@@ -1,15 +1,21 @@
 ---
 title: "Landbird Data Processing Workflow"
 name: Hannah
-surname: Vincelette
-position: "Wildlife Biologist"
-address: "Alaska Regional Office 1011 E Tudor Rd, Anchorage, AK"
-email: "hannah_vincelette@fws.gov"
-github: https://github.com/hdvincelette/landbird-dp-workflow
 date: "`r format(Sys.time(), '%B %Y')`"
 output:
   html_notebook:
     toc: yes
+    number_sections: yes
+  html_document:
+    toc: yes
+    df_print: paged
+address: Alaska Regional Office 1011 E Tudor Rd, Anchorage, AK
+email: hannah_vincelette@fws.gov
+github: "https://github.com/hdvincelette/landbird-dp-workflow"
+surname: Vincelette
+position: Wildlife Biologist
+editor_options:
+  chunk_output_type: console
 ---
 
 # Overview
@@ -24,135 +30,79 @@ The purpose of this document is to provide a reproducible workflow for processin
 
 This document is meant to be interactive, with text prompts and "code chunks" which may require input before being executed. The following workflow was created for tabular data collected annually for projects archived on the Regional Data Repository. While effort is made to generalize code to all actively collected data, further edits may be required to process data in an standardized format. In this case, it is recommended users duplicate and rename the "landbird-dp-workflow.Rmd" before making changes.
 
+# Workspace setup
+
+### Install FWSAkRDRtools R package
+
+Run the following installation code.
+
+```{r include=FALSE, results=TRUE}
+
+# Install missing packages
+if (!require("pacman"))
+  install.packages("pacman")
+pacman::p_load("devtools", "move", "auk", "dplyr")
+
+# (optional) Set GitHub download file method
+options(download.file.method = "wininet")
+
+# Install FWSAkRDRtools from GitHub
+devtools::install_github("hdvincelette/FWSAkRDRtools")
+
+# Install mdJSONdictio from GitHub
+devtools::install_github("hdvincelette/mdJSONdictio")
+
+```
+
+If the installations fail, refer to [Install mdJSONdictio R package](https://hdvincelette.github.io/mdJSONdictio/articles/03_Setup_mdJSONdictio.html#install-mdjsondictio-r-package) for troubleshooting tips.
+
 # Data preprocessing
 
 ### Download authoritative copies of project files
 
 Open the [Migratory Bird Management Regional Data Repository](file://ifw7ro-file.fws.doi.net/datamgt/mbm/) and navigate to the project folder. If you are working from a remote location, you must be connected to the VPN (Virtual Private Network) to access this folder.
 
-Paste the names of the project folder, data dictionary(ies), and data entry template(s). Make sure to include the file extensions (often XLSX or CSV). Run the code chunk.
+Paste the names of the project folder, data dictionary(ies), and data entry template(s).
 
-```{r}
-project.folder <- "mbmlb_010_Grey_headed_chickadee_hybridization"
+```{r include=FALSE}
+
+project.folder <- "mbmlb_003_Red_Knot_Breeding"
 dictionary.list <- c("dictionary")
 template.list <- c("template")
+local.path <- "C:/Users/hvincelette/OneDrive - DOI/Documents/GitHub/landbird-dp-workflow/downloads"
 
 ```
 
 Now run the following code chunk.
 
-```{r include=FALSE, results=}
-#comment
+```{r include=FALSE, results=FALSE}
 
-options(download.file.method = "curl")
-
-for (a in 1:length(dictionary.list)) {
-  dictionary.loc <-
-    list.files(
-      path = paste0(
-        "//ifw7ro-file.fws.doi.net/datamgt/mbm/",
-        project.folder,
-        "/"
-      ),
-      pattern = dictionary.list[a],
-      ignore.case = TRUE,
-      recursive = TRUE
-    )
-  
-  if (rlang::is_empty(dictionary.loc) == TRUE) {
-    stop("Execution halted: no dictionary found with the keyword provided")
-  }
-  
-  dictionary.url <-
-    paste0("file://ifw7ro-file.fws.doi.net/datamgt/mbm/",
-           project.folder,
-           "/", dictionary.loc
-    )
-  for (b in 1:length(dictionary.url)) {
-    download.file(
-      url = dictionary.url[b],
-      file.path(
-        "downloads",
-        destfile = basename(dictionary.url[b])
-      ),
-      mode = "auto"
-    )
-  }
-}
-
-for (a in 1:length(template.list)) {
-  template.loc <-
-    list.files(
-      path = paste0(
-        "//ifw7ro-file.fws.doi.net/datamgt/mbm/",
-        project.folder,
-        "/"
-      ),
-      pattern = template.list[a],
-      ignore.case = TRUE,
-      recursive = TRUE
-    )
-  
-  if (rlang::is_empty(template.loc) == TRUE) {
-    stop("Execution halted: no template found with the keyword provided")
-  }
-  
-  template.url <-
-    paste0("file://ifw7ro-file.fws.doi.net/datamgt/mbm/",
-           project.folder,
-           "/", template.loc
-    )
-  for (b in 1:length(template.url)) {
-    download.file(
-      url = template.url[b],
-      file.path(
-        "downloads",
-        destfile = basename(template.url[b])
-      ),
-      mode = "auto"
-    )
-  }
-}
+FWSAkRDRtools::download.files(
+  pattern = c(dictionary.list, template.list),
+  project = project.folder,
+  path = local.path,
+  main = TRUE,
+  incoming = TRUE,
+  recursive = TRUE
+)
 
 ```
 
 View the downloaded data dictionary(ies) and data entry template(s) in the "downloads" sub-folder of this R project. You can navigate here using the "Files" tab in the lower left pane. This should default to the project directory. If not, click "Session" in the toolbar, hover over "Set Working Directory," and click "To Project Directory." Click the "downloads" sub-folder, navigate to the blue cog wheel ("More file commands"), and select "Show Folder in New Window." A File Explorer window should open up to the "downloads" sub-folder. Verify all your data dictionaries and data entry templates are contained here.
 
-*Optional: You can skip the above steps and download everything manually from the [Migratory Bird Management Regional Data Repository](file://ifw7ro-file.fws.doi.net/datamgt/mbm/) project folder. Data dictionaries and data entry templates should be available in the "metadata" sub-folder. Make sure to save a copy of data dictionary(ies) in the "downloads/data_dictionaries" sub-folder of this R project.*
+*Optional: You can skip the above steps and download everything manually from the [Migratory Bird Management Regional Data Repository](file://ifw7ro-file.fws.doi.net/datamgt/mbm/) project folder. Data dictionaries and data entry templates should be available in the "metadata" sub-folder. Save a copy of data dictionary(ies) and data entry template(s) in an accessible location (i.e. the "downloads" sub-folder of this R project)*
 
 ### Enter scanned or hard copy data
 
-Save the data entry template(s) in a preferred location (this can be in a in the "data-raw" sub-folder of this R project). Use a unique and descriptive name - refer to [Best Practices in Naming Conventions](https://ak-region-dst.gitbook.io/alaska-region-interim-data-management-user-guide/alaska-data-management-101/file-organization-and-best-practices/best-practices-in-naming-conventions). It's okay to save this file in an Excel file format to preserve validation rules.
+Copy and save each data entry template in a preferred location for data entry (this can be in the "data-raw" sub-folder of this R project). Use a unique and descriptive name - refer to [Best Practices in Naming Conventions](https://ak-region-dst.gitbook.io/alaska-region-interim-data-management-user-guide/alaska-data-management-101/file-organization-and-best-practices/best-practices-in-naming-conventions). It's okay to save this file in an Excel file format to preserve validation rules.
 
 Enter scanned or hard copy data according to the respective data dictionary(ies). Review entered data to check for errors. The Excel Filter function (Home\>Editing\>Filter) is especially useful for viewing unique values and value ranges.
 
 Save the entered data file(s) in the "data-raw" sub-folder of this R project. Convert the file(s) to comma-separated values (CSV) format, if necessary. Make sure the correct sheet is selected when converting if more than one sheet is used (i.e., validation rules).
 
-# Workplace setup
-
-### Compile requisite files
-
-Make sure all entered data and data dictionary(ies) are saved in the sub-folders of this R project ("data-raw" and "downloads/data_dictionaries," respectively).
-
-### Install mdJSONdictio
-
-Install the mdJSONdictio R package from GitHub by running the following code chunk.
-
-```{r}
-devtools::install_github("hdvincelette/mdJSONdictio")
-
-```
-
-If you encounter an error, try running the following instead.
-
-```{r}
-options(download.file.method = "wininet")
-devtools::install_github("hdvincelette/mdJSONdictio")
-```
-
-If the installation fails again, refer to [Install mdJSONdictio R package](https://hdvincelette.github.io/mdJSONdictio/articles/03_Setup_mdJSONdictio.html#install-mdjsondictio-r-package) for troubleshooting tips.
-
 # Data quality checks
+
+Before beginning, make sure all entered data and data dictionary(ies) are saved in the sub-folders of this R project ("data-raw" and "downloads", respectively).
 
 ### Summarize: capture, resight, nest, survey
 
@@ -225,13 +175,49 @@ library("auk")
 
 ```
 
-# Tracking data transformations
+# Tracking data
 
-```{r}
-library("move")
+### Movebank import
 
-# Movebank
-# mbmlandbirds
-# AKmove2018!
+Verify the stored login credentials are correct, and add/remove credentials as needed.
+
+```{r warning=FALSE, include=FALSE, results=FALSE}
+
+# Check existing login credentials
+keyring::key_list()
+
+# Add login credentials
+move2::movebank_store_credentials(username = "mbmlandbirds",
+                                  password = "AKmove2018!",
+                                  key_name = "myOtherAccount")
+
+# Remove login credentials
+move2::movebank_remove_credentials(key_name = getOption("move2_movebank_key_name"))
+
 
 ```
+
+*Optional: If you want to import Movebank data from a secondary account, paste the associated service name listed in the key list (e.g., "myOtherAccount") and run the following code. Note the account with the service name "movebank" is the default, so you only need to run this code if you want to access a different account. Restart R or execute* `options("move2_movebank_key_name" = "movebank")` *to* *return to the default account. See* `vignette("movebank", package="move2")` *for more details.*
+
+```{r}
+
+keyring::key_list()
+
+options("move2_movebank_key_name" = "myOtherAccount")
+
+```
+
+Run the following code to import location data from one or more studies into R. Single study imports have the option of selecting a time range of location data, whereas multiple study imports include all location data. By default, the location and reference data are both imported
+
+```{r warning=FALSE, include=FALSE, results=FALSE}
+          
+import <- get.move.data(
+  location = TRUE,
+  reference = TRUE,
+  remove_movebank_outliers <- FALSE,
+  omit_derived_data <- FALSE
+)
+
+```
+
+### Transformations
