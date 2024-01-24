@@ -103,7 +103,7 @@ get.move.data <-
         utils::menu(c("Filter", "All data"),
                     title =
                       cat(paste0(
-                        "\nFilter by date or import all available data?\n\nNote if filtering multiple studies, all must have location data\nfor the selected time range.\n"
+                        "\nFilter by date or import all available data?\n"
                       )))
       
       if (time.choice == 1) {
@@ -168,18 +168,9 @@ get.move.data <-
           paste0("\n", time.message)
         ))
         
-        
-        message(cat(
-          paste0(
-            
-            "\nThe selected study(ies) has/have location data for the following time range(s):"
-          ),
-          paste0("\n", min.timestamp, " UTC – ", max.timestamp, " UTC")
-        ))
-        
         message(
           cat(
-            "\nEnter a start date for the Movebank attribute 'timestamp-start' (e.g., 2000-01-31 00:00:00):"
+            "\nEnter a start date for the Movebank attribute 'timestamp-start' (e.g., 2000-01-31 00:00:00):\n"
           )
         )
         start.time <-
