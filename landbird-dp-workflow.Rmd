@@ -211,12 +211,105 @@ Run the following code to import location data from one or more studies into R. 
 
 ```{r warning=FALSE, include=FALSE, results=FALSE}
           
+# Import Movebank location and/or reference data
 import <- get.move.data(
   location = TRUE,
   reference = TRUE,
   remove_movebank_outliers <- FALSE,
   omit_derived_data <- FALSE
 )
+
+# Unlist dataframes (if necessary)
+if(any(sapply(import, function(x)
+  any(class(x) == "list")))==TRUE) {
+  import.dfs <- rrapply::rrapply(
+    import,
+    classes = "data.frame",
+    how = "flatten",
+    options = list(namesep = "-",
+                   simplify = FALSE)
+  )
+} else {
+  import.dfs<- import
+}
+
+# Update dataField names
+import.dfs <-
+  lapply(import.dfs, function(x)
+    setNames(x,
+             sub(
+               pattern = "_", replacement = "-", names(x)
+             )))
+
+import.dfs <-
+  lapply(import.dfs, function(x)
+    setNames(x,
+             sub(
+               pattern = "argos-", replacement = "argos:", names(x)
+             )))
+ 
+
+loc.cols<- colnames(dplyr::select(Location, matches("location")))
+
+
+for(a in 1:length(loc.cols)) {
+  for (b in 1:nrow(Location)) {
+    if (sf::st_is_empty(Location[b, loc.cols[a]]) == FALSE) {
+      unnested.loc<- as.data.frame(sf::as_Spatial(Location[b, loc.cols[a]]))
+      colname.loc<- colnames(unnested.loc)
+      unnested.long<- unnested.loc[1]
+      unnested.lat<- unnested.loc[2]
+      if(!colnames(unnested.long) %in% colnames(Location)){
+        Location %>%
+          tibble::add_column(colname.loc[1] = NA,
+                             .before = paste0(loc.cols[a]))
+      }
+      if(!colnames(unnested.lat) %in% colnames(Location)){
+        
+      }
+      Location$colnames(unnested.long)[b] <- unnested.long
+      Location$colnames(unnested.lat)[b] <- unnested.lat
+    }
+  }
+}
+
+
+
+
+# Save dataframes as separate objects 
+for (i in 1:length(import2)){
+   assign(names(import2[i]),as.data.frame(import2[[i]]))
+}
+  
+
+# Get updated movebank vocabulary
+move.vocab <-
+  move2::movebank_get_vocabulary(return_type = "list", omit_deprecated = FALSE)
+
+move.vocab <- rrapply::rrapply(
+  move.vocab,
+  how = "bind",
+  options = list(
+    simplify = FALSE,
+    coldepth = 3,
+    namecols = TRUE
+  )
+) %>%
+  tidyr::pivot_wider(
+    names_from = "L2",
+    values_from = "1",
+    values_fill = NA,
+    values_fn = unique
+  ) %>%
+  tidyr::unnest(colnames(.)) %>%
+  dplyr::rename("dataField" = "L1") %>%
+  dplyr::mutate(dataField = stringr::str_replace_all(dataField, c("argos " = "argos:", " " = "-")),
+                altLabel = stringr::str_replace_all(altLabel, c("argos " = "argos:", " " = "-")))
+  
+
+colnames(test)[!colnames(test) %in% move.vocab$dataField]
+
+
 
 ```
 
