@@ -109,13 +109,204 @@ Before beginning, make sure all entered data and data dictionary(ies) are saved 
 SpeciesCode, Date, Location, Attachments (bands, tags), Morphometrics
 
 ```{r}
-#
+# Provide directory paths for the data file(s) and dictionary
+raw.data.path<- "data-raw/"
+dictionary.path<- "downloads/"
+
 ```
 
-### Validation: data file v. dictionary
+```{r}
+# Import raw data file(s)
+raw.data.files <-
+  list.files(
+    path = raw.data.path,
+    pattern = NULL,
+    full.names = FALSE,
+    recursive = FALSE
+  )
+
+raw.data.choice <- utils::select.list(
+  c(raw.data.files),
+  multiple = TRUE,
+  graphics = TRUE,
+  title = cat(paste0("\nSelect one or more data files to import."))
+)
+
+raw.data.ext <- tools::file_ext(raw.data.choice)
+import.data.name <-
+  stringr::str_replace(raw.data.choice, paste0(".", raw.data.ext), "")
+
+
+while (TRUE %in% duplicated(import.data.name)) {
+  message(cat(
+    "\n\n\nError: The following files have the same name.",
+    paste0("\n  ", raw.data.choice[dup.test])
+  ))
+  
+  raw.data.choice <- utils::select.list(
+    c(raw.data.files),
+    multiple = TRUE,
+    graphics = TRUE,
+    title = cat(paste0(
+      "\n...Reselect one or more data files to import."
+    ))
+  )
+  
+  raw.data.ext <- tools::file_ext(raw.data.choice)
+  import.data.name <-
+    stringr::str_replace(raw.data.choice, paste0(".", raw.data.ext), "")
+  
+}
+
+raw.data.list <- list()
+
+for (a in 1:length(raw.data.ext)) {
+  if (raw.data.ext[a] %in% c("xlsx", "xls")) {
+    import.file <-
+      readxl::read_excel(paste0(raw.data.path, raw.data.choice[a]))
+    raw.data.list[[a]] <- import.file
+    
+  } else if (raw.data.ext[a] %in% c("csv")) {
+    import.file <-
+      utils::read.csv(paste0(raw.data.path, raw.data.choice[a]))
+    raw.data.list[[a]] <- import.file
+    
+  }
+}
+
+names(raw.data.list) <- import.data.name
+
+
+# Import data dictionary
+dictionary.files <-
+  list.files(
+    path = dictionary.path,
+    pattern = NULL,
+    full.names = FALSE,
+    recursive = FALSE
+  )
+
+dictionary.choice <- utils::select.list(
+  c(dictionary.files),
+  multiple = FALSE,
+  graphics = TRUE,
+  title = cat(paste0("\nSelect a dictionary to import."))
+)
+
+
+dictionary.ext <- tools::file_ext(dictionary.choice)
+
+if (dictionary.ext %in% c("xlsx", "xls")) {
+  ref.dictionary <-
+    readxl::read_excel(paste0(dictionary.path, dictionary.choice))
+  
+} else if (dictionary.ext %in% c("csv")) {
+  ref.dictionary <-
+    utils::read.csv(paste0(dictionary.path, dictionary.choice))
+  
+} else if (dictionary.ext %in% c("json")) {
+  ref.dictionary <-
+    rjson::fromJSON(file = paste0(getwd(), "/", dictionary.path, dictionary.choice))
+  
+}
+
+
+test<- rjson::toJSON(blankdomain)
+blankjson[["data"]][[1]][["attributes"]][["json"]] <- blankdomain
+
+
+```
+
+### Validate: data file(s) v. dictionary
 
 ```{r}
-#
+# Validate data file(s) against the dictionary
+warning.list <- list()
+
+for (a in 1:length(raw.data.list)) {
+  datatype.rules <-
+    get0("datatype.rules", envir = asNamespace("mdJSONdictio"))
+  
+  assign("input.dict", ref.dictionary)
+  
+  assign("input.data", raw.data.list[[a]])
+  
+  if (dictionary.ext %in% c("json")) {
+    warning.list[[a]] <-
+      mdJSONdictio::validate.mdJSON(
+        x = input.dict,
+        y = input.data,
+        dictionary_num = 1,
+        entity_num = 1
+      )
+  } else {
+    warning.list[[a]] <-
+      mdJSONdictio::validate.table(x = input.dict,
+                                   y = input.data)
+  }
+}
+
+names(warning.list) <- import.data.name
+                                                        
+
+```
+
+### Reconcile: correct data files
+
+```{r}
+# display unique values..readlines / replace
+
+```
+
+### Reconcile: correct data dictionary
+
+```{r}
+
+for (a in 1:length(warning.list)) {
+  warn.table <- warning.list[[a]]
+  
+  CodeName.warn<- warn.tabe$Variable[warn.tabe$Category=="CodeName"]
+  
+  CodeName.choice <- utils::select.list(
+    c(CodeName.warn, "None"),
+    multiple = TRUE,
+    graphics = TRUE,
+    title = cat(
+      paste0(
+        "\nSome variables in the data file '",
+        import.data.name[a],
+        "' were not found in the data dictionary. Select which, if any, to add to the data dictionary"
+      )
+    )
+  )
+  
+  for(b in 1:length(CodeName.choice)){
+    dictionarylist <-
+      rjson::fromJSON(ref.dictionary[["data"]][[1]][["attributes"]][["json"]])
+    
+    dictionarylist[["dataDictionary"]][["entity"]][[1]][["attribute"]]
+  }
+  
+  for (b in 1:nrow(warn.table)) {
+  }
+
+  }
+  
+  warning.list[[a]] <- warning.list[[a]]
+}
+
+  
+```
+
+### Quality control checks: visualization
+
+```{r}
+# continuous: box plots
+# discrete: range of values (interactive table)
+# plot lat/long
+# uniqe value check - band number, flag code, colorband combo
+# BBL status
+
 ```
 
 # Merge data file with authoritative copy
@@ -219,6 +410,8 @@ import <- get.move.data(
   omit_derived_data <- FALSE
 )
 
+save(import, import.2, file = "man/import.RData")
+
 # Unlist dataframes (if necessary)
 if(any(sapply(import, function(x)
   any(class(x) == "list")))==TRUE) {
@@ -247,28 +440,40 @@ import.dfs <-
              sub(
                pattern = "argos-", replacement = "argos:", names(x)
              )))
- 
 
-loc.cols<- colnames(dplyr::select(Location, matches("location")))
+
+#!# only grabs the first items colnames
+df<- tibble::as_tibble.list(import.dfs[[1]])
+loc.cols<- colnames(dplyr::select(df, matches("location")))
+
+
+names(import.dfs[[1]][["argos:location_1"]][[1]][1])
+import.dfs[[1]][["argos:location_1"]][[1]][[1]]
+
+
+renquote <- function(l) if (is.list(l)) lapply(l, renquote) else enquote(l)
+test<- lapply(unlist(renquote(import.dfs[1])), eval)
+test2<- lapply(unlist(renquote(test)), eval)
+
 
 
 for(a in 1:length(loc.cols)) {
-  for (b in 1:nrow(Location)) {
-    if (sf::st_is_empty(Location[b, loc.cols[a]]) == FALSE) {
-      unnested.loc<- as.data.frame(sf::as_Spatial(Location[b, loc.cols[a]]))
+  for (b in 1:length(df)) {
+    if (sf::st_is_empty(df[b, loc.cols[a]]) == FALSE) {
+      unnested.loc<- as.data.frame(sf::as_Spatial(df[b, loc.cols[a]]))
       colname.loc<- colnames(unnested.loc)
       unnested.long<- unnested.loc[1]
       unnested.lat<- unnested.loc[2]
-      if(!colnames(unnested.long) %in% colnames(Location)){
-        Location %>%
+      if(!colnames(unnested.long) %in% colnames(df)){
+        df %>%
           tibble::add_column(colname.loc[1] = NA,
                              .before = paste0(loc.cols[a]))
       }
-      if(!colnames(unnested.lat) %in% colnames(Location)){
+      if(!colnames(unnested.lat) %in% colnames(df)){
         
       }
-      Location$colnames(unnested.long)[b] <- unnested.long
-      Location$colnames(unnested.lat)[b] <- unnested.lat
+      df$colnames(unnested.long)[b] <- unnested.long
+      df$colnames(unnested.lat)[b] <- unnested.lat
     }
   }
 }
@@ -277,8 +482,8 @@ for(a in 1:length(loc.cols)) {
 
 
 # Save dataframes as separate objects 
-for (i in 1:length(import2)){
-   assign(names(import2[i]),as.data.frame(import2[[i]]))
+for (i in 1:length(import.2)){
+   assign(names(import.2[i]),as.data.frame(import.2[[i]]))
 }
   
 
