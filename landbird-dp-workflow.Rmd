@@ -211,9 +211,6 @@ if (dictionary.ext %in% c("xlsx", "xls")) {
 }
 
 
-test<- rjson::toJSON(blankdomain)
-blankjson[["data"]][[1]][["attributes"]][["json"]] <- blankdomain
-
 
 ```
 
@@ -262,13 +259,35 @@ names(warning.list) <- import.data.name
 
 ```{r}
 
+blankjson <- blankjson
+blankdictionarylist <-
+  rjson::fromJSON(blankjson[["data"]][[1]][["attributes"]][["json"]])
+blankattribute <-
+  blankdictionarylist[["dataDictionary"]][["entity"]][[1]][["attribute"]]
+blankdomain <-
+  blankdictionarylist[["dataDictionary"]][["domain"]]
+
+dataType.vector <- dplyr::pull(
+  readxl::read_excel(
+    "mdJSONdictio_Dictionary_Template_v1.xlsx",
+    sheet = 3,
+    col_names = FALSE
+  ) ,
+  1
+)
+
+req.attribute.fields <-
+      c("codeName", "allowNull", "dataType", "definition", "domainId")
+
+
 for (a in 1:length(warning.list)) {
   warn.table <- warning.list[[a]]
+  warn.table$Category[warn.table$Category == "CodeName"] <- "codeName"
   
-  CodeName.warn<- warn.tabe$Variable[warn.tabe$Category=="CodeName"]
+  codeName.warn<- warn.table$Variable[warn.table$Category=="codeName"]
   
-  CodeName.choice <- utils::select.list(
-    c(CodeName.warn, "None"),
+  codeName.choice <- utils::select.list(
+    c(codeName.warn, "None"),
     multiple = TRUE,
     graphics = TRUE,
     title = cat(
@@ -279,20 +298,12 @@ for (a in 1:length(warning.list)) {
       )
     )
   )
-  
-  for(b in 1:length(CodeName.choice)){
-    dictionarylist <-
-      rjson::fromJSON(ref.dictionary[["data"]][[1]][["attributes"]][["json"]])
     
-    dictionarylist[["dataDictionary"]][["entity"]][[1]][["attribute"]]
-  }
-  
-  for (b in 1:nrow(warn.table)) {
-  }
 
-  }
+    
   
-  warning.list[[a]] <- warning.list[[a]]
+
+
 }
 
   
