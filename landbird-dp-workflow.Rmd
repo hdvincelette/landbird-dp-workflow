@@ -232,8 +232,7 @@ for (a in 1:length(raw.data.list)) {
     warning.list[[a]] <-
       validate.mdJSON(
         x = input.dict,
-        y = input.data,
-        entity_num = 1
+        y = input.data
       )
   } else {
     warning.list[[a]] <-
@@ -258,25 +257,6 @@ names(warning.list) <- import.data.name
 
 ```{r}
 
-dictionarylist <-
-  rjson::fromJSON(ref.dictionary[["data"]][[1]][["attributes"]][["json"]])
-
-# blankjson <- blankjson
-# blankdictionarylist <-
-#   rjson::fromJSON(blankjson[["data"]][[1]][["attributes"]][["json"]])
-# blankattribute <-
-#   blankdictionarylist[["dataDictionary"]][["entity"]][[1]][["attribute"]]
-# blankdomain <-
-#   blankdictionarylist[["dataDictionary"]][["domain"]]
-# 
-# dataType.vector <- dplyr::pull(
-#   readxl::read_excel(
-#     "mdJSONdictio_Dictionary_Template_v1.xlsx",
-#     sheet = 3,
-#     col_names = FALSE
-#   ) ,
-#   1
-# )
 
 req.attribute.fields <-
       c("codeName", "allowNull", "dataType", "definition", "domainId")
@@ -301,21 +281,20 @@ for (a in 1:length(warning.list)) {
     )
   )
   
-  my.dxnry<- extract.mdJSON(x=x)
-  
+  for(b in 1:length(codeName.choice)){
   new.dictionary <-
-    modify.mdJSON(x = my.dxnry,
+    modify.mdJSON(x = ref.dictionary,
                   how = "add_attribute",
-                  codeName = "WingArea")
+                  codeName = codeName.choice[a])
+  
+  }
 
   
-  test <- ref.dictionary
-  
-  test[["data"]][[1]][["attributes"]][["json"]] <-
-    rjson::toJSON(new.dictionary)
+  check.dictionary <-
+    rjson::fromJSON(new.dictionary[["data"]][[1]][["attributes"]][["json"]])
   
   
-  new.json = rjson::toJSON(x = test)
+  new.json = rjson::toJSON(x = new.dictionary)
   write(x = new.json, file = "test.dictionary.json")
 
 }
