@@ -230,10 +230,9 @@ for (a in 1:length(raw.data.list)) {
   
   if (dictionary.ext %in% c("json")) {
     warning.list[[a]] <-
-      mdJSONdictio::validate.mdJSON(
+      validate.mdJSON(
         x = input.dict,
         y = input.data,
-        dictionary_num = 1,
         entity_num = 1
       )
   } else {
@@ -259,22 +258,25 @@ names(warning.list) <- import.data.name
 
 ```{r}
 
-blankjson <- blankjson
-blankdictionarylist <-
-  rjson::fromJSON(blankjson[["data"]][[1]][["attributes"]][["json"]])
-blankattribute <-
-  blankdictionarylist[["dataDictionary"]][["entity"]][[1]][["attribute"]]
-blankdomain <-
-  blankdictionarylist[["dataDictionary"]][["domain"]]
+dictionarylist <-
+  rjson::fromJSON(ref.dictionary[["data"]][[1]][["attributes"]][["json"]])
 
-dataType.vector <- dplyr::pull(
-  readxl::read_excel(
-    "mdJSONdictio_Dictionary_Template_v1.xlsx",
-    sheet = 3,
-    col_names = FALSE
-  ) ,
-  1
-)
+# blankjson <- blankjson
+# blankdictionarylist <-
+#   rjson::fromJSON(blankjson[["data"]][[1]][["attributes"]][["json"]])
+# blankattribute <-
+#   blankdictionarylist[["dataDictionary"]][["entity"]][[1]][["attribute"]]
+# blankdomain <-
+#   blankdictionarylist[["dataDictionary"]][["domain"]]
+# 
+# dataType.vector <- dplyr::pull(
+#   readxl::read_excel(
+#     "mdJSONdictio_Dictionary_Template_v1.xlsx",
+#     sheet = 3,
+#     col_names = FALSE
+#   ) ,
+#   1
+# )
 
 req.attribute.fields <-
       c("codeName", "allowNull", "dataType", "definition", "domainId")
@@ -298,11 +300,23 @@ for (a in 1:length(warning.list)) {
       )
     )
   )
-    
-
-    
   
+  my.dxnry<- extract.mdJSON(x=x)
+  
+  new.dictionary <-
+    modify.mdJSON(x = my.dxnry,
+                  how = "add_attribute",
+                  codeName = "WingArea")
 
+  
+  test <- ref.dictionary
+  
+  test[["data"]][[1]][["attributes"]][["json"]] <-
+    rjson::toJSON(new.dictionary)
+  
+  
+  new.json = rjson::toJSON(x = test)
+  write(x = new.json, file = "test.dictionary.json")
 
 }
 
