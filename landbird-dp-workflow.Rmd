@@ -261,11 +261,12 @@ names(warning.list) <- import.data.name
 req.attribute.fields <-
       c("codeName", "allowNull", "dataType", "definition", "domainId")
 
-
 for (a in 1:length(warning.list)) {
   warn.table <- warning.list[[a]]
   warn.table$Category[warn.table$Category == "CodeName"] <- "codeName"
   
+  
+  # codeName
   codeName.warn<- warn.table$Variable[warn.table$Category=="codeName"]
   
   codeName.choice <- utils::select.list(
@@ -276,18 +277,55 @@ for (a in 1:length(warning.list)) {
       paste0(
         "\nSome variables in the data file '",
         import.data.name[a],
-        "' were not found in the data dictionary. Select which, if any, to add to the data dictionary"
+        "' were not found in the data dictionary. Select which, if any, to add to the data dictionary."
       )
     )
   )
-  
-  for(b in 1:length(codeName.choice)){
-  new.dictionary <-
-    modify.mdJSON(x = ref.dictionary,
-                  how = "add_attribute",
-                  codeName = codeName.choice[a])
+  if (!"None" %in% codeName.choice) {
+    for (b in 1:length(codeName.choice)) {
+      new.dictionary <-
+        modify.mdJSON(x = ref.dictionary,
+                      how = "add_attribute",
+                      codeName = codeName.choice[a])
+    }
   
   }
+  
+  # domainItem
+  domainItem.table<- warn.table %>% dplyr::filter(Category=="domainItem_value")
+  
+  for(b in 1:nrow(domainItem.table)){
+    domainItem.vector<- unlist(strsplit(gsub(
+      ".*: ", "", domainItem_value.table$Message[b]
+    ), ", ", perl = TRUE))
+    
+    domainItem.choice <-
+      utils::select.list(
+        c(domainItem.vector, "None"),
+        multiple = TRUE,
+        graphics = TRUE,
+        title = cat(
+          paste0(
+            "\nThe attribute '", domainItem_value.table$Variable[b] ,"' in the data file '",
+            import.data.name[a],
+            "' contains entry values not found in the data dictionary. Select which, if any, to add to the domain item list in the data dictionary."
+          )
+        )
+      )
+    
+    if (!"None" %in% domainItem.choice) {
+      for (c in 1:length(domainItem.choice)) {
+        new.dictionary <-
+          modify.mdJSON(x = ref.dictionary,
+                        how = "add_domainItem",
+                        codeName = domainItem_value.table$Variable[b],
+                        domainItem = domainItem.choice[c])
+      }
+      
+    }
+  }
+  
+  
 
   
   check.dictionary <-
