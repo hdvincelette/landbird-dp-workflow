@@ -52,6 +52,12 @@ devtools::install_github("hdvincelette/FWSAkRDRtools")
 # Install mdJSONdictio from GitHub
 devtools::install_github("hdvincelette/mdJSONdictio")
 
+# Uninstall packages (if necessary)
+remove.packages("FWSAkRDRtools")
+remove.packages("mdJSONdictio")
+.rs.restartR()
+
+
 ```
 
 If the installations fail, refer to [Install mdJSONdictio R package](https://hdvincelette.github.io/mdJSONdictio/articles/03_Setup_mdJSONdictio.html#install-mdjsondictio-r-package) for troubleshooting tips.
@@ -210,8 +216,6 @@ if (dictionary.ext %in% c("xlsx", "xls")) {
   
 }
 
-
-
 ```
 
 ### Validate: data file(s) v. dictionary
@@ -220,23 +224,29 @@ if (dictionary.ext %in% c("xlsx", "xls")) {
 # Validate data file(s) against the dictionary
 warning.list <- list()
 
-for (a in 1:length(raw.data.list)) {
-  datatype.rules <-
-    get0("datatype.rules", envir = asNamespace("mdJSONdictio"))
+rds.vector <- list.files(path = "data-required", pattern = ".rda")
+
+for (a in 1:length(rds.vector)) {
+  rds.file <- load(paste0("data-required/", rds.vector[a]))
+  assign(rds.vector[a], rds.file)
+}
+
   
-  assign("input.dict", ref.dictionary)
+for (a in 1:length(raw.data.list)) {
+  
+  assign("input.dxnry", ref.dictionary)
   
   assign("input.data", raw.data.list[[a]])
   
   if (dictionary.ext %in% c("json")) {
     warning.list[[a]] <-
-      validate.mdJSON(
-        x = input.dict,
+      mdJSONdictio::validate.mdJSON(
+        x = input.dxnry,
         y = input.data
       )
   } else {
     warning.list[[a]] <-
-      mdJSONdictio::validate.table(x = input.dict,
+      mdJSONdictio::validate.table(x = input.dxnry,
                                    y = input.data)
   }
 }
@@ -270,50 +280,51 @@ for (a in 1:length(warning.list)) {
   codeName.warn<- warn.table$Variable[warn.table$Category=="codeName"]
   
   codeName.choice <- utils::select.list(
-    c(codeName.warn, "None"),
+    c(codeName.warn, "NONE"),
     multiple = TRUE,
     graphics = TRUE,
     title = cat(
       paste0(
         "\nSome variables in the data file '",
         import.data.name[a],
-        "' were not found in the data dictionary. Select which, if any, to add to the data dictionary."
+        "' were not found in the data dictionary.\nSelect which, if any, to add to the data dictionary.\n"
       )
     )
   )
-  if (!"None" %in% codeName.choice) {
+  if (!"NONE" %in% codeName.choice) {
     for (b in 1:length(codeName.choice)) {
       new.dictionary <-
         modify.mdJSON(x = ref.dictionary,
                       how = "add_attribute",
-                      codeName = codeName.choice[a])
+                      codeName = codeName.choice[b])
     }
   
   }
   
-  # domainItem
-  domainItem.table<- warn.table %>% dplyr::filter(Category=="domainItem_value")
+  # domainItem_value
+  domainItem_value.table <-
+    warn.table %>% dplyr::filter(Category == "domainItem_value")
   
-  for(b in 1:nrow(domainItem.table)){
+  for(b in 1:nrow(domainItem_value.table)){
     domainItem.vector<- unlist(strsplit(gsub(
       ".*: ", "", domainItem_value.table$Message[b]
     ), ", ", perl = TRUE))
     
     domainItem.choice <-
       utils::select.list(
-        c(domainItem.vector, "None"),
+        c(domainItem.vector, "NONE"),
         multiple = TRUE,
         graphics = TRUE,
         title = cat(
           paste0(
             "\nThe attribute '", domainItem_value.table$Variable[b] ,"' in the data file '",
             import.data.name[a],
-            "' contains entry values not found in the data dictionary. Select which, if any, to add to the domain item list in the data dictionary."
+            "' contains entry values not found in the data dictionary.\nSelect which, if any, to add to the domain item list in the data dictionary.\n"
           )
         )
       )
     
-    if (!"None" %in% domainItem.choice) {
+    if (!"NONE" %in% domainItem.choice) {
       for (c in 1:length(domainItem.choice)) {
         new.dictionary <-
           modify.mdJSON(x = ref.dictionary,
@@ -321,6 +332,56 @@ for (a in 1:length(warning.list)) {
                         codeName = domainItem_value.table$Variable[b],
                         domainItem = domainItem.choice[c])
       }
+      
+    }
+  }
+  
+  # dataType
+  
+  dataType.table <-
+    warn.table %>% dplyr::filter(Category == "dataType")
+  
+  for (b in 1:nrow(dataType.table)) {
+    
+    detected.dataType <-
+      gsub("[\\(\\)]",
+           "",
+           regmatches(
+             dataType.table$Message[b],
+             gregexpr("\\(.*?\\)", dataType.table$Message[b])
+           )[[1]])[1]
+    dxnry.dataType <-
+      gsub("[\\(\\)]",
+           "",
+           regmatches(
+             dataType.table$Message[b],
+             gregexpr("\\(.*?\\)", dataType.table$Message[b])
+           )[[1]])[2]
+    
+    dataType.choice <-
+      utils::select.list(
+        c("yes","no"),
+        multiple = FALSE,
+        graphics = FALSE,
+        title = cat(
+          paste0(
+            "\nThe attribute '",
+            dataType.table$Variable[b] ,
+            "' in the data file '",
+            import.data.name[a],
+            "' has entry values with a different dataType (",detected.dataType,") than indicated in the dictionary (",dxnry.dataType,").\nWould you like to update the dataType in the dictionary?\n"
+          )
+        )
+      )
+    
+    if ("yes" %in% dataType.choice) {
+        new.dictionary <-
+          modify.mdJSON(
+            x = ref.dictionary,
+            how = "update_attribute",
+            codeName = dataType.table$Variable[b],
+            dataType = detected.dataType
+          )
       
     }
   }
@@ -333,7 +394,7 @@ for (a in 1:length(warning.list)) {
   
   
   new.json = rjson::toJSON(x = new.dictionary)
-  write(x = new.json, file = "test.dictionary.json")
+  write(x = new.json, file = "test/test.dictionary.json")
 
 }
 
