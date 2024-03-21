@@ -293,12 +293,56 @@ for (a in 1:length(warning.list)) {
   )
   if (!"NONE" %in% codeName.choice) {
     for (b in 1:length(codeName.choice)) {
+      
+      if(dictionary.ext %in% c("json")){
       new.dictionary <-
-        modify.mdJSON(x = ref.dictionary,
-                      how = "add_attribute",
-                      codeName = codeName.choice[b])
+        modify.mdJSON(
+          x = ref.dictionary,
+          how = "add_attribute",
+          codeName = codeName.choice[b],
+                    allowNull = NULL,
+          dataType = NULL,
+          definition = NULL,
+          units = NULL,
+          unitsResolution = NULL,
+          isCaseSensitive = NULL,
+          missingValue = NULL,
+          minValue = NULL,
+          maxValue = NULL,
+          fieldWidth = NULL,
+          domainId = NULL,
+          domainName = NULL,
+          domainDescription = NULL,
+          domainItem_value = NULL,
+          domainItem_name = NULL,
+          domainItem_definition = NULL,
+          quiet = FALSE)
+      } else {
+        new.dictionary <-
+          modify.table(
+            x = ref.dictionary,
+            how = "add_attribute",
+            codeName = codeName.choice[b],
+            allowNull = NULL,
+            dataType = NULL,
+            definition = NULL,
+            units = NULL,
+            unitsResolution = NULL,
+            isCaseSensitive = NULL,
+            missingValue = NULL,
+            minValue = NULL,
+            maxValue = NULL,
+            fieldWidth = NULL,
+            domainId = NULL,
+            domainName = NULL,
+            domainDescription = NULL,
+            domainItem_value = NULL,
+            domainItem_name = NULL,
+            domainItem_definition = NULL,
+            quiet = FALSE
+          )
+      }
     }
-  
   }
   
   # domainItem_value
@@ -327,10 +371,16 @@ for (a in 1:length(warning.list)) {
     if (!"NONE" %in% domainItem.choice) {
       for (c in 1:length(domainItem.choice)) {
         new.dictionary <-
-          modify.mdJSON(x = ref.dictionary,
-                        how = "add_domainItem",
-                        codeName = domainItem_value.table$Variable[b],
-                        domainItem = domainItem.choice[c])
+          modify.mdJSON(
+            x = ref.dictionary,
+            how = "add_domainItem",
+            domainId = NULL,
+            domainName = domainItem_value.table$Variable[b],
+            domainItem_value = domainItem.choice[c],
+            domainItem_name = NULL,
+            domainItem_definition = NULL,
+            quiet = FALSE
+          )
       }
       
     }
@@ -380,15 +430,23 @@ for (a in 1:length(warning.list)) {
             x = ref.dictionary,
             how = "update_attribute",
             codeName = dataType.table$Variable[b],
-            dataType = detected.dataType
+            allowNull = NULL,
+            dataType = detected.dataType,
+            definition = NULL,
+            units = NULL,
+            unitsResolution = NULL,
+            isCaseSensitive = NULL,
+            missingValue = NULL,
+            minValue = NULL,
+            maxValue = NULL,
+            fieldWidth = NULL,
+            domainId = NULL,
+            quiet = FALSE
           )
       
     }
   }
-  
-  
 
-  
   check.dictionary <-
     rjson::fromJSON(new.dictionary[["data"]][[1]][["attributes"]][["json"]])
   
