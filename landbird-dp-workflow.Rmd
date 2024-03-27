@@ -50,7 +50,7 @@ options(download.file.method = "wininet")
 devtools::install_github("hdvincelette/FWSAkRDRtools")
 
 # Install mdJSONdictio from GitHub
-devtools::install_github("hdvincelette/mdJSONdictio")
+devtools::install_github("hdvincelette/mdJSONdictio", ref = 'v0.2.0')
 
 # Uninstall packages (if necessary)
 remove.packages("FWSAkRDRtools")
