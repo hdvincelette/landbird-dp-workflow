@@ -32,7 +32,7 @@ This document is meant to be interactive, with text prompts and "code chunks" wh
 
 # Workspace setup
 
-### Install FWSAkRDRtools R package
+### Install R packages
 
 Run the following installation code.
 
@@ -224,14 +224,7 @@ if (dictionary.ext %in% c("xlsx", "xls")) {
 # Validate data file(s) against the dictionary
 warning.list <- list()
 
-rds.vector <- list.files(path = "data-required", pattern = ".rda")
 
-for (a in 1:length(rds.vector)) {
-  rds.file <- load(paste0("data-required/", rds.vector[a]))
-  assign(rds.vector[a], rds.file)
-}
-
-  
 for (a in 1:length(raw.data.list)) {
   
   assign("input.dxnry", ref.dictionary)
@@ -266,7 +259,6 @@ names(warning.list) <- import.data.name
 ### Reconcile: correct data dictionary
 
 ```{r}
-
 
 req.attribute.fields <-
       c("codeName", "allowNull", "dataType", "definition", "domainId")
@@ -319,7 +311,7 @@ for (a in 1:length(warning.list)) {
           quiet = FALSE)
       } else {
         new.dictionary <-
-          modify.table(
+          mdJSONdictio::modify.table(
             x = ref.dictionary,
             how = "add_attribute",
             codeName = codeName.choice[b],
@@ -389,7 +381,7 @@ for (a in 1:length(warning.list)) {
   # dataType
   
   dataType.table <-
-    warn.table %>% dplyr::filter(Category == "dataType")
+    warn.table %>% dplyr::filter(Category == "dataType_RDatatype")
   
   for (b in 1:nrow(dataType.table)) {
     
