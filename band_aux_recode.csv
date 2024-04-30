@@ -1,0 +1,63 @@
+﻿my_col,my_col_pattern,my_code,BBL_col,BBL_code
+LocationID,"Area,City",Eielson,Location,EIEL
+LocationID,"Area,City",Delta Junction,Location,DELTA
+LocationID,"Area,City",Eareckson,Location,EARECK
+LocationID,"Area,City",Beluga,Location,BELUGA
+LocationID,"Area,City",King Salmon,Location,KING
+LocationID,"Area,City",Nome,Location,NOME
+LocationID,"Area,City",Shemya,Location,EARECK
+LocationID,"Area,City",Anchorage,Location,ANC
+LocationID,"Area,City",Chicken,Location,CHICKEN
+LocationID,"Area,City",Fort Yukon,Location,FORTYUK
+CaptureMethod,,MN ,How Captured,Mist net
+CaptureMethod,,WT ,How Captured,Walk-in trap
+CaptureMethod,,HA ,How Captured,Hand capture
+CaptureMethod,,BN ,How Captured,Bow net
+CaptureMethod,,CN ,How Captured,Cannon net
+CaptureMethod,,WN ,How Captured,Whoosh net
+CaptureMethod,,NG ,How Captured,Net guns
+,"In,Out",,Marker Code,
+,"In,Out",,Banded Leg,
+,"In,Out",,Side of Bird,L
+,"In,Out",,Side of Bird,L
+,"In,Out",,Side of Bird,R
+,"In,Out",,Side of Bird,R
+,"In,Out",,Placed on Leg,LA
+,"In,Out",,Placed on Leg,LB
+,"In,Out",,Placed on Leg,LA
+,"In,Out",,Placed on Leg,LB
+,"In,Out",X,Marker Type,0
+,"In,Out",Geo,Marker Type,90C
+,"In,Out",Flag,Marker Type,69
+,"In,Out",Bk,Marker Type,01A
+,"In,Out",Br,Marker Type,01A
+,"In,Out",Db,Marker Type,01A
+,"In,Out",Dg,Marker Type,01A
+,"In,Out",Gy,Marker Type,01A
+,"In,Out",Hp,Marker Type,01A
+,"In,Out",Lb,Marker Type,01A
+,"In,Out",Mg,Marker Type,01A
+,"In,Out",Mv,Marker Type,01A
+,"In,Out",Or,Marker Type,01A
+,"In,Out",Pp,Marker Type,01A
+,"In,Out",Rd,Marker Type,01A
+,"In,Out",Wh,Marker Type,01A
+,"In,Out",Yl,Marker Type,01A
+,"In,Out",Bk,Marker color,Black
+,"In,Out",Br,Marker color,Brown
+,"In,Out",Db,Marker color,Dark Blue
+,"In,Out",Dg,Marker color,Dark Green
+,"In,Out",Gy,Marker color,Gray
+,"In,Out",Hp,Marker color,Hot Pink
+,"In,Out",Lb,Marker color,Light Blue
+,"In,Out",Mg,Marker color,Magenta
+,"In,Out",Mv,Marker color,Mauve
+,"In,Out",Or,Marker color,Orange
+,"In,Out",Pp,Marker color,Purple
+,"In,Out",Rd,Marker color,Red
+,"In,Out",Wh,Marker color,White
+,"In,Out",Yl,Marker color,Yellow
+TagType1,,GPS,Marker Type,80H
+TagType1,,Geo,Marker Type,90H
+TagType2,,GPS,Marker Type,80H
+TagType2,,Geo,Marker Type,90H

@@ -50,7 +50,7 @@ options(download.file.method = "wininet")
 devtools::install_github("hdvincelette/FWSAkRDRtools")
 
 # Install mdJSONdictio from GitHub
-devtools::install_github("hdvincelette/mdJSONdictio", ref = "v0.2.0")
+devtools::install_github("hdvincelette/mdJSONdictio", ref="master")
 
 # Uninstall packages (if necessary)
 remove.packages("FWSAkRDRtools")
@@ -284,54 +284,45 @@ for (a in 1:length(warning.list)) {
     )
   )
   if (!"NONE" %in% codeName.choice) {
+    new.dictionary<- ref.dictionary
     for (b in 1:length(codeName.choice)) {
       
       if(dictionary.ext %in% c("json")){
       new.dictionary <-
         modify.mdJSON(
-          x = ref.dictionary,
+          x = new.dictionary,
           how = "add_attribute",
-          codeName = codeName.choice[b],
-                    allowNull = NULL,
-          dataType = NULL,
-          definition = NULL,
-          units = NULL,
-          unitsResolution = NULL,
-          isCaseSensitive = NULL,
-          missingValue = NULL,
-          minValue = NULL,
-          maxValue = NULL,
-          fieldWidth = NULL,
-          domainId = NULL,
-          domainName = NULL,
-          domainDescription = NULL,
-          domainItem_value = NULL,
-          domainItem_name = NULL,
-          domainItem_definition = NULL,
+          attribute_codeName = codeName.choice[b],
+          attribute_allowNull = NULL,
+          attribute_dataType = NULL,
+          attribute_definition = NULL,
+          attribute_units = NULL,
+          attribute_unitsResolution = NULL,
+          attribute_isCaseSensitive = NULL,
+          attribute_missingValue = NULL,
+          attribute_minValue = NULL,
+          attribute_maxValue = NULL,
+          attribute_fieldWidth = NULL,
+          domainItem = NULL,
           quiet = FALSE)
       } else {
         new.dictionary <-
           mdJSONdictio::modify.table(
-            x = ref.dictionary,
-            how = "add_attribute",
-            codeName = codeName.choice[b],
-            allowNull = NULL,
-            dataType = NULL,
-            definition = NULL,
-            units = NULL,
-            unitsResolution = NULL,
-            isCaseSensitive = NULL,
-            missingValue = NULL,
-            minValue = NULL,
-            maxValue = NULL,
-            fieldWidth = NULL,
-            domainId = NULL,
-            domainName = NULL,
-            domainDescription = NULL,
-            domainItem_value = NULL,
-            domainItem_name = NULL,
-            domainItem_definition = NULL,
-            quiet = FALSE
+          x = ref.dictionary,
+          how = "add_attribute",
+          attribute_codeName = codeName.choice[b],
+          attribute_allowNull = NULL,
+          attribute_dataType = NULL,
+          attribute_definition = NULL,
+          attribute_units = NULL,
+          attribute_unitsResolution = NULL,
+          attribute_isCaseSensitive = NULL,
+          attribute_missingValue = NULL,
+          attribute_minValue = NULL,
+          attribute_maxValue = NULL,
+          attribute_fieldWidth = NULL,
+          domainItem = NULL,
+          quiet = FALSE
           )
       }
     }
@@ -366,8 +357,7 @@ for (a in 1:length(warning.list)) {
           modify.mdJSON(
             x = ref.dictionary,
             how = "add_domainItem",
-            domainId = NULL,
-            domainName = domainItem_value.table$Variable[b],
+            domain_codeName = domainItem_value.table$Variable[b],
             domainItem_value = domainItem.choice[c],
             domainItem_name = NULL,
             domainItem_definition = NULL,
@@ -421,18 +411,19 @@ for (a in 1:length(warning.list)) {
           modify.mdJSON(
             x = ref.dictionary,
             how = "update_attribute",
-            codeName = dataType.table$Variable[b],
-            allowNull = NULL,
-            dataType = detected.dataType,
-            definition = NULL,
-            units = NULL,
-            unitsResolution = NULL,
-            isCaseSensitive = NULL,
-            missingValue = NULL,
-            minValue = NULL,
-            maxValue = NULL,
-            fieldWidth = NULL,
-            domainId = NULL,
+            attribute_codeName = dataType.table$Variable[b],
+            attribute_allowNull = NULL,
+            attribute_dataType = detected.dataType,
+            attribute_definition = NULL,
+            attribute_units = NULL,
+            attribute_unitsResolution = NULL,
+            attribute_isCaseSensitive = NULL,
+            attribute_missingValue = NULL,
+            attribute_minValue = NULL,
+            attribute_maxValue = NULL,
+            attribute_fieldWidth = NULL,
+            domain_codeName = NULL,
+            new.attribute_codeName = NULL,
             quiet = FALSE
           )
       
@@ -459,6 +450,31 @@ for (a in 1:length(warning.list)) {
 # plot lat/long
 # uniqe value check - band number, flag code, colorband combo
 # BBL status
+# Recaptures – In columns have values
+# BandNumberOut + BBLDisposition = 1 once
+# Duplicate rows
+
+```
+
+```{r}
+# Add uuids
+for (a in 1:length(raw.data.list)) {
+  data <-  raw.data.list[[a]]
+  
+  if ("OccurenceID" %in% colnames(data) == FALSE) {
+    data <- cbind(OccurenceID = NA, data)
+  }
+  
+  for (b in 1:nrow(data)) {
+    if (is.na(data$OccurenceID[b]) == TRUE ||
+        data$OccurenceID[b] == "") {
+      data$OccurenceID[b] = uuid::UUIDgenerate(use.time = FALSE)
+    }
+  }
+  
+  raw.data.list[[a]] <- data
+  
+}
 
 ```
 
@@ -487,21 +503,621 @@ uuids, versioning
 # Archive in the Regional Data Repository
 
 ```{r}
-#
+project = "mbmlb_004_Eielson"
+path = "C:/Users/hvincelette/OneDrive - DOI/Documents/Data_management/landbirds_project_maintenance/Archived_Projects/Eielson"
+
 ```
+
+```{r}
+#
+commit <-
+  FWSAkRDRtools::commit.files(project = project,
+               local.folder = path,
+               recursive = TRUE)
+
+
+```
+
+# Publish to Science Base
 
 # Capture data transformations
 
 ### Biological samples inventory
 
 ```{r}
-#
+# update.bioinventory
 ```
 
-### Banders portal
+### Bander portal
 
 ```{r}
-#
+# Provide directory paths for the data file(s)
+raw.data.path<- "data-raw/"
+```
+
+```{r}
+# Import raw data file(s)
+raw.data.files <-
+  list.files(
+    path = raw.data.path,
+    pattern = NULL,
+    full.names = FALSE,
+    recursive = FALSE
+  )
+
+raw.data.choice <- utils::select.list(
+  c(raw.data.files),
+  multiple = TRUE,
+  graphics = TRUE,
+  title = cat(paste0("\nSelect one or more data files to import."))
+)
+
+raw.data.ext <- tools::file_ext(raw.data.choice)
+import.data.name <-
+  stringr::str_replace(raw.data.choice, paste0(".", raw.data.ext), "")
+
+
+while (TRUE %in% duplicated(import.data.name)) {
+  message(cat(
+    "\n\n\nError: The following files have the same name.",
+    paste0("\n  ", raw.data.choice[dup.test])
+  ))
+  
+  raw.data.choice <- utils::select.list(
+    c(raw.data.files),
+    multiple = TRUE,
+    graphics = TRUE,
+    title = cat(paste0(
+      "\n...Reselect one or more data files to import."
+    ))
+  )
+  
+  raw.data.ext <- tools::file_ext(raw.data.choice)
+  import.data.name <-
+    stringr::str_replace(raw.data.choice, paste0(".", raw.data.ext), "")
+  
+}
+
+raw.data.list <- list()
+
+for (a in 1:length(raw.data.ext)) {
+  if (raw.data.ext[a] %in% c("xlsx", "xls")) {
+    import.file <-
+      readxl::read_excel(paste0(raw.data.path, raw.data.choice[a]), na = "")
+    raw.data.list[[a]] <- import.file
+    
+  } else if (raw.data.ext[a] %in% c("csv")) {
+    import.file <-
+      utils::read.csv(paste0(raw.data.path, raw.data.choice[a]), na.strings = "")
+    raw.data.list[[a]] <- import.file
+    
+  }
+}
+
+names(raw.data.list) <- import.data.name
+
+
+```
+
+```{r}
+
+cap_data <- plyr::ldply(raw.data.list)
+
+# Remove NA columns
+missing_values<- NA
+
+cap_data <- cap_data %>%
+  dplyr::mutate_if(is.character,
+                   list(~ dplyr::na_if(., missing_values))) %>%
+  dplyr::mutate_if(is.character,
+                   list(~ dplyr::na_if(., "")),
+                   is.character,
+                   list(~ dplyr::na_if(., "NULL"))) %>%
+  dplyr::select(where(~ !all(is.na(.x))))
+
+# Recode
+
+## Locations
+loc.cols <- c("City", "Area")
+loc.cols <- loc.cols[loc.cols %in% colnames(cap_data)]
+
+cap_data <- cap_data %>%
+  dplyr::mutate_at(
+    loc.cols,
+    ~ dplyr::recode(
+      .,
+      "Eielson" = "EIEL",
+      "Delta Junction" = "DELTA",
+      "Eareckson" = "EARECK",
+      "Beluga" = "BELUGA",
+      "King Salmon" = "KING",
+      "Nome" = "NOME",
+      "Shemya" = "EARECK",
+      "Anchorage" = "ANC",
+      "Chicken" = "CHICKEN",
+      "Fort Yukon" = "FORTYUK"
+    )
+  ) %>%
+  tidyr::unite(
+    LocationID,
+    all_of(loc.cols),
+    sep = "",
+    remove = TRUE,
+    na.rm = TRUE
+  )
+
+## Capture method
+cap_data <- cap_data %>%
+  dplyr::mutate_at(
+    "CaptureMethod",
+    ~ dplyr::recode(
+      .,
+      "MN" = "Mist net",
+      "WT" = "Walk-in trap",
+      "HA" = "Hand capture",
+      "BN" = "Bow net",
+      "CN" = "Cannon net",
+      "WN" = "Whoosh net",
+      "NG" = "Net guns"
+    )
+  )
+
+## Bander/Scribe ID
+Master_Contacts <- read_csv("~/Data_management/landbirds_project_maintenance/Reformatted_data/Master_Contacts.csv")
+
+cap_data <- cap_data %>%
+  dplyr::mutate_at(
+    c("BanderID", "ScribeID"),
+    ~ plyr::mapvalues(
+      .,
+      from = Master_Contacts$FWSCode_FMLast,
+      to = Master_Contacts$FWSCode_FML,
+      warn_missing = FALSE
+    )
+  ) %>%
+  dplyr::mutate_at(
+    c("BanderID", "ScribeID"),
+    ~ plyr::mapvalues(
+      .,
+      from = Master_Contacts$FWSCode_FLast,
+      to = Master_Contacts$FWSCode_FL,
+      warn_missing = FALSE
+    )
+  )
+
+setdiff(
+  c(cap_data$BanderID, cap_data$ScribeID),
+  c(Master_Contacts$FWSCode_FL, Master_Contacts$FWSCode_FML)
+)
+                  
+
+## Leg attachments
+### For each leg attachment column, create new column with paste0("_color"), copy over partial match colors, replace values with codes, recode colors, recod markers
+
+leg_cols <-   c(
+  "ULIn",
+  "LLIn",
+  "URIn",
+  "LRIn",
+  "ULOut",
+  "LLOut",
+  "UROut",
+  "LROut"
+)
+
+# na.cols<- colnames(cap_data)[sapply(cap_data, function(x)all(is.na(x)))]
+# leg_cols <- leg_cols[leg_cols %in% colnames(cap_data) & !leg_cols %in% na.cols]
+
+leg_cols <- leg_cols[leg_cols %in% colnames(cap_data)]
+
+
+# test <- cap_data %>%
+#   dplyr::filter_at(leg_cols, dplyr::any_vars(stringr::str_detect(., stringr::regex("-", ignore_case =
+#                                                                                      TRUE))))
+
+my_colors <-
+  c("Bk",
+    "Br",
+    "Db",
+    "Dg",
+    "Lg",
+    "Gy",
+    "Hp",
+    "Lb",
+    "Mg",
+    "Mv",
+    "Or",
+    "Pp",
+    "Rd",
+    "Wh",
+    "Yl"
+    )
+
+BBL_colors <-
+  c(
+    "Black",
+    "Brown",
+    "Dark Blue",
+    "Dark Green",
+    "Light Green",
+    "Gray",
+    "Hot Pink",
+    "Light Blue",
+    "Magenta",
+    "Mauve",
+    "Orange",
+    "Purple",
+    "Red",
+    "White",
+    "Yellow"
+  )
+
+cap_data <-  cap_data %>%
+  dplyr::mutate_if(is.logical, as.factor) %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate_at(
+    c(leg_cols, "FlagColorIn", "FlagColorOut"),
+    ~ stringi::stri_replace_all_regex(.,
+                                      my_colors,
+                                      BBL_colors,
+                                      vectorize_all = FALSE)
+  ) %>%
+  dplyr::mutate_at(leg_cols,
+                   ~ stringi::stri_replace_all_regex(.,
+                                                     "-",
+                                                     "/",
+                                                     vectorize_all = FALSE)) %>%
+  dplyr::mutate(
+    across(.cols = leg_cols,
+           .names = "{paste0(color_cols[!grepl('Flag', color_cols)])}")
+  ) %>%
+  dplyr::mutate_at(
+    leg_cols,
+    ~ stringi::stri_replace_all_regex(.,
+                                      BBL_colors,
+                                      "01A",
+                                      vectorize_all = FALSE)
+  ) %>%
+  dplyr::mutate_at(leg_cols,
+                   ~ stringi::stri_replace_all_regex(.,
+                                                     c("X", "Geo", "Flag"),
+                                                     c("00", "90C", "69"),
+                                                     vectorize_all = FALSE)) %>%
+  dplyr::mutate_at(
+    color_cols,
+    ~ ifelse(
+      grepl("/", .),
+      stringi::stri_replace_all_regex(.,
+                                      c("X", "Geo", "Flag"),
+                                      "", vectorize_all = FALSE),
+      stringi::stri_replace_all_regex(.,
+                                      c("X", "Geo", "Flag"),
+                                      NA, vectorize_all = FALSE)
+    )
+  ) %>%
+  dplyr::mutate_at(color_cols,
+                   ~ ifelse(
+                     grepl("/$", .),
+                     stringi::stri_replace_all_regex(.,
+                                                     "/",
+                                                     "", vectorize_all = FALSE),
+                     .
+                   ))
+
+ 
+ # QC checks
+bander_portal_species_measurements <-
+  bander_portal_species_measurements %>%
+  dplyr::mutate_if(is.numeric, ~ dplyr::na_if(., 0)) %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate_at("bandSize", ~ ifelse(grepl(", ", .), as.list(strsplit(., ", ")), as.list(.)))
+    
+
+bandsize_col<- "BandSize"
+mass_col<- "Mass_g"
+wingchord_col<- "Wing_mm"
+taillength_col<- "Tail_mm"
+sex_col<- "FieldSex"
+female_code<- "F"
+male_code<- "M"
+unknown_code<- "U"
+
+ 
+for (a in c("HHHH", unique(cap_data$SpeciesCode))) {
+  ## Species measurements
+  species.num <-
+    which(bander_portal_species_measurements$alphaCode == a)
+  if (length(species.num) == 0) {
+    warning(paste0("SpeciesCode '", a, "' is invalid."))
+    next()
+  } else {
+    sp_mydata <- cap_data %>%
+      dplyr::filter(SpeciesCode == a)
+    
+    sp_BBLdata <- bander_portal_species_measurements %>%
+      dplyr::filter(alphaCode == a)
+    
+    ### Band size
+    if (length(setdiff(unique(na.omit(sp_mydata[[bandsize_col]])), unlist(na.omit(
+      sp_BBLdata$bandSize
+    ))))
+    != 0) {
+      warning(
+        paste0(
+          "One or more ",
+          sp_BBLdata$commonName,
+          " has a band size inconsistant with BBL recommendations."
+        )
+      )
+    }
+    
+    ### Maximum mass
+    if (is.na(sp_BBLdata$femaleMass_max_g) == FALSE &
+        is.na(sp_BBLdata$maleMass_max_g) == FALSE) {
+      if (max(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] == female_code])) > sp_BBLdata$femaleMass_max_g) {
+        warning(
+          paste0(
+            "One or more female ",
+            sp_BBLdata$commonName,
+            " have a higher mass than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (max(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] == male_code])) > sp_BBLdata$maleMass_max_g) {
+        warning(
+          paste0(
+            "One or more male ",
+            sp_BBLdata$commonName,
+            " have a higher mass than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (max(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) >
+          max(sp_BBLdata$femaleMass_max_g,
+              sp_BBLdata$maleMass_max_g)) {
+        warning(
+          paste0(
+            "One or more ",
+            sp_BBLdata$commonName,
+            " (unknown sex) have a higher mass than expected for the species."
+          )
+        )
+        
+      }
+    }
+    
+    ### Minimum mass
+    if (is.na(sp_BBLdata$femaleMass_min_g) == FALSE &
+        is.na(sp_BBLdata$maleMass_min_g) == FALSE) {
+      if (min(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] == female_code])) < sp_BBLdata$femaleMass_min_g) {
+        warning(
+          paste0(
+            "One or more female ",
+            sp_BBLdata$commonName,
+            " have a lower mass than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (min(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] == male_code])) < sp_BBLdata$maleMass_min_g) {
+        warning(
+          paste0(
+            "One or more male ",
+            sp_BBLdata$commonName,
+            " have a lower mass than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (min(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) <
+          min(sp_BBLdata$femaleMass_min_g,
+              sp_BBLdata$maleMass_min_g)) {
+        warning(
+          paste0(
+            "One or more ",
+            sp_BBLdata$commonName,
+            " (unknown sex) have a lower mass than expected for the species."
+          )
+        )
+        
+      }
+    }
+    
+    ### Maximum wing chord
+    if (is.na(sp_BBLdata$femaleWingChord_max_mm) == FALSE &
+        is.na(sp_BBLdata$maleWingChord_max_mm) == FALSE) {
+      if (max(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] == female_code])) > sp_BBLdata$femaleWingChord_max_mm) {
+        warning(
+          paste0(
+            "One or more female ",
+            sp_BBLdata$commonName,
+            " have a longer wing chord than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (max(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] == male_code])) > sp_BBLdata$maleWingChord_max_mm) {
+        warning(
+          paste0(
+            "One or more male ",
+            sp_BBLdata$commonName,
+            " have a longer wing chord than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (max(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) >
+          max(sp_BBLdata$femaleWingChord_max_mm,
+              sp_BBLdata$maleWingChord_max_mm)) {
+        warning(
+          paste0(
+            "One or more ",
+            sp_BBLdata$commonName,
+            " (unknown sex) have a longer wing chord than expected for the species."
+          )
+        )
+        
+      }
+    }
+    
+    ### Minimum wing chord
+    if (is.na(sp_BBLdata$femaleWingChord_min_mm) == FALSE &
+        is.na(sp_BBLdata$maleWingChord_min_mm) == FALSE) {
+      if (min(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] == female_code])) < sp_BBLdata$femaleWingChord_min_mm) {
+        warning(
+          paste0(
+            "One or more female ",
+            sp_BBLdata$commonName,
+            " have a shorter wing chord than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (min(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] == male_code])) < sp_BBLdata$maleWingChord_min_mm) {
+        warning(
+          paste0(
+            "One or more male ",
+            sp_BBLdata$commonName,
+            " have a shorter wing chord than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (min(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) <
+          min(sp_BBLdata$femaleWingChord_min_mm,
+              sp_BBLdata$maleWingChord_min_mm)) {
+        warning(
+          paste0(
+            "One or more ",
+            sp_BBLdata$commonName,
+            " (unknown sex) have a shorter wing chord than expected for the species."
+          )
+        )
+        
+      }
+    }
+    
+    ### Maximum tail length
+    if (is.na(sp_BBLdata$femaleTailLength_max_mm) == FALSE &
+        is.na(sp_BBLdata$maleTailLength_max_mm) == FALSE) {
+      if (max(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] == female_code])) > sp_BBLdata$femaleTailLength_max_mm) {
+        warning(
+          paste0(
+            "One or more female ",
+            sp_BBLdata$commonName,
+            " have a longer tail than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (max(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] == male_code])) > sp_BBLdata$maleTailLength_max_mm) {
+        warning(
+          paste0(
+            "One or more male ",
+            sp_BBLdata$commonName,
+            " have a longer tail than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (max(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) >
+          max(sp_BBLdata$femaleTailLength_max_mm,
+              sp_BBLdata$maleTailLength_max_mm)) {
+        warning(
+          paste0(
+            "One or more ",
+            sp_BBLdata$commonName,
+            " (unknown sex) have a longer tail than expected for the species."
+          )
+        )
+        
+      }
+    }
+    
+    ### Minimum tail length
+    if (is.na(sp_BBLdata$femaleTailLength_min_mm) == FALSE &
+        is.na(sp_BBLdata$maleTailLength_min_mm) == FALSE) {
+      if (min(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] == female_code])) < sp_BBLdata$femaleTailLength_min_mm) {
+        warning(
+          paste0(
+            "One or more female ",
+            sp_BBLdata$commonName,
+            " have a shorter tail than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (min(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] == male_code])) < sp_BBLdata$maleTailLength_min_mm) {
+        warning(
+          paste0(
+            "One or more male ",
+            sp_BBLdata$commonName,
+            " have a shorter tail than expected for the species."
+          )
+        )
+        
+      }
+      
+      if (min(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) <
+          min(sp_BBLdata$femaleTailLength_min_mm,
+              sp_BBLdata$maleTailLength_min_mm)) {
+        warning(
+          paste0(
+            "One or more ",
+            sp_BBLdata$commonName,
+            " (unknown sex) have a shorter tail than expected for the species."
+          )
+        )
+        
+      }
+    }
+    
+    
+    
+    
+    
+  }
+}
+   
+   
+
+## lookup tables
+
+
+# Add missing columns
+cap_data[setdiff(na.omit(band_aux_cols$my_col), colnames(cap_data))] <- as.character(NA)
+ 
+ 
+ colors <- bander_portal_lookups %>%
+  dplyr::filter(field == "Color") %>%
+  dplyr::pull(description)
+ 
+ 
+ ## Partition by disposition
+ 
+cap_data <- split(cap_data, cap_data$BBLDisposition)
+
+cap_data<- lapply(cap_data, function(x) {
+  x %>%
+    dplyr::mutate_if(is.character, ~ dplyr::na_if(., ''))
+})
+ 
+
+
+
 ```
 
 # Survey data transformations
@@ -509,6 +1125,7 @@ uuids, versioning
 ### ebird
 
 ```{r}
+# survey.to.ebird
 library("auk")
 
 # ebird
