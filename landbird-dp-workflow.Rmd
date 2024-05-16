@@ -71,11 +71,12 @@ Open the [Migratory Bird Management Regional Data Repository](file://ifw7ro-file
 Paste the names of the project folder, data dictionary(ies), and data entry template(s).
 
 ```{r include=FALSE}
+setwd("~/GitHub/landbird-dp-workflow")
 
 project.folder <- "mbmlb_003_Red_Knot_Breeding"
 dictionary.list <- c("dictionary")
 template.list <- c("template")
-local.path <- "C:/Users/hvincelette/OneDrive - DOI/Documents/GitHub/landbird-dp-workflow/downloads"
+local.path <- "downloads/"
 
 ```
 
@@ -92,9 +93,11 @@ FWSAkRDRtools::download.files(
   recursive = TRUE
 )
 
+utils::browseURL(local.path)
+
 ```
 
-View the downloaded data dictionary(ies) and data entry template(s) in the "downloads" sub-folder of this R project. You can navigate here using the "Files" tab in the lower left pane. This should default to the project directory. If not, click "Session" in the toolbar, hover over "Set Working Directory," and click "To Project Directory." Click the "downloads" sub-folder, navigate to the blue cog wheel ("More file commands"), and select "Show Folder in New Window." A File Explorer window should open up to the "downloads" sub-folder. Verify all your data dictionaries and data entry templates are contained here.
+View and verify the downloaded data dictionary(ies) and data entry template(s) (the default location is the "downloads" sub-folder of this R project).
 
 *Optional: You can skip the above steps and download everything manually from the [Migratory Bird Management Regional Data Repository](file://ifw7ro-file.fws.doi.net/datamgt/mbm/) project folder. Data dictionaries and data entry templates should be available in the "metadata" sub-folder. Save a copy of data dictionary(ies) and data entry template(s) in an accessible location (i.e. the "downloads" sub-folder of this R project)*
 
@@ -116,8 +119,8 @@ SpeciesCode, Date, Location, Attachments (bands, tags), Morphometrics
 
 ```{r}
 # Provide directory paths for the data file(s) and dictionary
-raw.data.path<- "data-raw/"
-dictionary.path<- "downloads/"
+raw.data.path <- "data-raw/"
+dictionary.path <- "downloads/"
 
 ```
 
@@ -224,19 +227,15 @@ if (dictionary.ext %in% c("xlsx", "xls")) {
 # Validate data file(s) against the dictionary
 warning.list <- list()
 
-
 for (a in 1:length(raw.data.list)) {
-  
   assign("input.dxnry", ref.dictionary)
   
   assign("input.data", raw.data.list[[a]])
   
   if (dictionary.ext %in% c("json")) {
     warning.list[[a]] <-
-      mdJSONdictio::validate.mdJSON(
-        x = input.dxnry,
-        y = input.data
-      )
+      mdJSONdictio::validate.mdJSON(x = input.dxnry,
+                                    y = input.data)
   } else {
     warning.list[[a]] <-
       mdJSONdictio::validate.table(x = input.dxnry,
@@ -245,7 +244,6 @@ for (a in 1:length(raw.data.list)) {
 }
 
 names(warning.list) <- import.data.name
-                                                        
 
 ```
 
@@ -269,7 +267,8 @@ for (a in 1:length(warning.list)) {
   
   
   # codeName
-  codeName.warn<- warn.table$Variable[warn.table$Category=="codeName"]
+  codeName.warn <-
+    warn.table$Variable[warn.table$Category == "codeName"]
   
   codeName.choice <- utils::select.list(
     c(codeName.warn, "NONE"),
@@ -528,11 +527,15 @@ commit <-
 # update.bioinventory
 ```
 
-### Bander portal
+### Bander Portal
 
 ```{r}
-# Provide directory paths for the data file(s)
-raw.data.path<- "data-raw/"
+# Provide a directory path for data file(s) to import
+raw.data.path <- "data-raw/"
+
+# Provide a directory path to write processed files
+processed.data.path <- "data-processed/bander_portal/"
+
 ```
 
 ```{r}
@@ -600,22 +603,111 @@ names(raw.data.list) <- import.data.name
 ```
 
 ```{r}
+missing_values<- c(NA)
+```
+
+```{r}
 
 cap_data <- plyr::ldply(raw.data.list)
 
-# Remove NA columns
-missing_values<- NA
 
+# Reference tables
+Master_Contacts <-
+  read.csv(
+    "~/Data_management/landbirds_project_maintenance/Reformatted_data/Master_Contacts.csv",
+    na.strings = ""
+  )
+
+ref_data <-
+  lapply(list.files(path = "reference/bander_portal/", full.names = TRUE),
+         readxl::read_excel)
+
+names(ref_data) <-
+  gsub(
+    list.files(path = "reference/bander_portal/"),
+    pattern = ".xlsx$",
+    replacement = ""
+  )
+
+list2env(ref_data, globalenv())
+
+
+# Remove NA columns
 cap_data <- cap_data %>%
-  dplyr::mutate_if(is.character,
-                   list(~ dplyr::na_if(., missing_values))) %>%
-  dplyr::mutate_if(is.character,
-                   list(~ dplyr::na_if(., "")),
-                   is.character,
-                   list(~ dplyr::na_if(., "NULL"))) %>%
-  dplyr::select(where(~ !all(is.na(.x))))
+  dplyr::mutate_if(is.character,  ~ dplyr::na_if(., "")) %>%
+  dplyr::mutate_if(is.character,  ~ dplyr::na_if(., "NULL")) %>%
+  dplyr::mutate_if(is.character,  ~ dplyr::na_if(., missing_values))
+
+# Add missing columns
+miss_cols<- setdiff(na.omit(capture_cols$my_col), colnames(cap_data))
+
+cap_data[miss_cols[!grepl("colorband",miss_cols)]] <-
+  as.character(NA)
+
 
 # Recode
+
+## How Obtained
+recap.info <- cap_data %>%
+  dplyr::filter(BBLDisposition == "R") %>%
+  dplyr::select(SpeciesCode,
+                BBLDisposition,
+                BBLCondition) %>%
+  dplyr::distinct()
+
+BBL_ref <-
+  bander_portal_lookups %>%
+  dplyr::filter(field == "How Obtained" &
+                  status != "Discontinued") %>%
+  dplyr::pull(code) %>%
+  noquote() %>%
+  unlist()
+
+typical.num<- which(BBL_ref=="66")
+  
+for(a in 1:nrow(recap.info)) {
+  condition_desc <- bander_portal_lookups %>%
+    dplyr::filter(field == "Bird/Band Condition" &
+                    code == recap.info$BBLCondition[a]) %>%
+    dplyr::pull(description) %>%
+    unlist()
+  
+  obtained.choice <- 0
+  while (obtained.choice == 0) {
+    obtained.choice <-
+      utils::menu(c(
+          bander_portal_lookups %>%
+            dplyr::filter(field == "How Obtained" &
+                            status != "Discontinued") %>%
+            dplyr::pull(description)
+      ),
+      title = cat(
+        paste0(
+          "\nThe bird/band condition of one or more recaptured ",
+          recap.info$SpeciesCode[a] ,
+          " was '",
+          condition_desc,
+          "'.\nHow were these birds obtained?\nSelect ",typical.num," for typical recaptures (i.e., bird/band condition 'ALIVE - RELEASED/LEFT ON BIRD')\n"
+        )
+      ))
+  }
+  
+  cap_data <- cap_data %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate_at(
+      "HowObtained",
+      ~ ifelse(
+        BBLDisposition == "R" &
+          SpeciesCode == recap.info$SpeciesCode[a] &
+          BBLCondition == recap.info$BBLCondition[a],
+        cap_data$HowObtained[a] <- BBL_ref[obtained.choice],
+        
+        .
+      )
+    )
+}
+
+  
 
 ## Locations
 loc.cols <- c("City", "Area")
@@ -646,6 +738,65 @@ cap_data <- cap_data %>%
     na.rm = TRUE
   )
 
+BBL_locations <- c(
+  "EIEL",
+  "DELTA",
+  "EARECK",
+  "BELUGA",
+  "KING",
+  "NOME",
+  "EARECK",
+  "ANC",
+  "JBER",
+  "OTTER",
+  "CHICKEN",
+  "FORTYUK"
+)
+
+loc.num <- which(!cap_data$LocationID %in%
+                   BBL_locations)
+
+for(a in loc.num) {
+  loc.choice <-
+    utils::menu(c(BBL_locations, "Enter a new location"),
+                title = cat(
+                  paste0(
+                    "\n'",
+                    cap_data$LocationID[a],
+                    "' is not a listed BBL location ID.\nChoose an existing or new ID.\n"
+                  )
+                ))
+  
+  if (loc.choice == length(BBL_locations) + 1) {
+    message(cat(
+      paste0(
+        "\nProvide a new location ID.\nThis will need to be added as a banding location in Bander Potal."
+      )
+    ))
+    
+    new_loc <-
+      noquote(as.character(readline(prompt =)))
+    
+    
+  } else {
+    new_loc <- BBL_locations[loc.choice]
+  }
+  
+  if (new_loc != "") {
+    if (is.na(cap_data$LocationID[a])) {
+      cap_data <-  cap_data %>%
+        dplyr::mutate_at("LocationID",
+                         ~ replace(.,
+                                   is.na(.), new_loc))
+    } else {
+      cap_data <-  cap_data %>%
+        dplyr::mutate_at("LocationID",
+                         ~ replace(.,
+                                   . == cap_data$LocationID[a], new_loc))
+    }
+  }
+}
+
 ## Capture method
 cap_data <- cap_data %>%
   dplyr::mutate_at(
@@ -663,7 +814,6 @@ cap_data <- cap_data %>%
   )
 
 ## Bander/Scribe ID
-Master_Contacts <- read_csv("~/Data_management/landbirds_project_maintenance/Reformatted_data/Master_Contacts.csv")
 
 cap_data <- cap_data %>%
   dplyr::mutate_at(
@@ -685,14 +835,49 @@ cap_data <- cap_data %>%
     )
   )
 
-setdiff(
-  c(cap_data$BanderID, cap_data$ScribeID),
-  c(Master_Contacts$FWSCode_FL, Master_Contacts$FWSCode_FML)
-)
-                  
+## Sex
+cap_data <- cap_data %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate_at("FieldSex",
+                   ~ ifelse(
+                     BBLDisposition == "R",
+                     dplyr::recode(.,
+                                   "M" = "6",
+                                   "F" = "7",
+                                   "U" = "0"),
+                     dplyr::recode(.,
+                                   "M" = "4",
+                                   "F" = "5",
+                                   "U" = "0")
+                   ))
+
+
+## Molt
+cap_data <- cap_data %>%
+  dplyr::mutate_at(
+    "BodyMolt",
+    ~ dplyr::recode(
+      .,
+      "0" = "N",
+      "1" = "Y",
+      "2" = "Y",
+      "3" = "Y",
+      "4" = "Y"
+    )
+  ) %>%
+  dplyr::mutate_at(
+    "FlightFeatherMolt",
+    ~ dplyr::recode(
+      .,
+      "N" = "N",
+      "S" = "Y",
+      "A" = "Y",
+      "J" = "Y"
+    )
+  )
+
 
 ## Leg attachments
-### For each leg attachment column, create new column with paste0("_color"), copy over partial match colors, replace values with codes, recode colors, recod markers
 
 leg_cols <-   c(
   "ULIn",
@@ -705,10 +890,9 @@ leg_cols <-   c(
   "LROut"
 )
 
-# na.cols<- colnames(cap_data)[sapply(cap_data, function(x)all(is.na(x)))]
-# leg_cols <- leg_cols[leg_cols %in% colnames(cap_data) & !leg_cols %in% na.cols]
-
 leg_cols <- leg_cols[leg_cols %in% colnames(cap_data)]
+
+color_cols<- paste0(leg_cols,"_colorband")
 
 
 # test <- cap_data %>%
@@ -767,10 +951,8 @@ cap_data <-  cap_data %>%
                                                      "-",
                                                      "/",
                                                      vectorize_all = FALSE)) %>%
-  dplyr::mutate(
-    across(.cols = leg_cols,
-           .names = "{paste0(color_cols[!grepl('Flag', color_cols)])}")
-  ) %>%
+  dplyr::mutate(across(.cols = all_of(leg_cols),
+                       .names = "{paste0(color_cols[!grepl('Flag', color_cols)])}")) %>%
   dplyr::mutate_at(
     leg_cols,
     ~ stringi::stri_replace_all_regex(.,
@@ -780,8 +962,8 @@ cap_data <-  cap_data %>%
   ) %>%
   dplyr::mutate_at(leg_cols,
                    ~ stringi::stri_replace_all_regex(.,
-                                                     c("X", "Geo", "Flag"),
-                                                     c("00", "90C", "69"),
+                                                     c("X", "Flag"),
+                                                     c("00", "69"),
                                                      vectorize_all = FALSE)) %>%
   dplyr::mutate_at(
     color_cols,
@@ -802,43 +984,256 @@ cap_data <-  cap_data %>%
                                                      "/",
                                                      "", vectorize_all = FALSE),
                      .
-                   ))
+     
+              ))
 
+
+### Flag code colors by species - new/retained/replaced
+flag_info <- cap_data %>%
+  dplyr::filter(dplyr::if_any(c(leg_cols),
+                              ~ stringr::str_detect(., "69")))  %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate(
+    FlagCodeChange = ifelse(FlagCodeIn != FlagCodeOut, 1, 0),
+    FlagIn = ifelse(is.na(FlagCodeIn) == FALSE, 1, 0),
+    FlagOut = ifelse(is.na(FlagCodeOut) == FALSE, 1, 0)
+  ) %>%
+  dplyr::select(any_of(c(
+    "SpeciesCode", "FlagIn", "FlagOut", "FlagCodeChange"
+  ))) %>%
+  dplyr::distinct() %>%
+  dplyr::mutate_all(as.character) %>%
+  dplyr::mutate_at("FlagCodeChange", ~ replace(., is.na(.), 0))
+
+BBL_ref <- bander_portal_lookups$code[bander_portal_lookups$field ==
+                                        "Marker color"]
+BBL_ref<- BBL_ref[!grepl("/", BBL_ref)]
+
+cap_data[, "FlagCodeIn_color"] <- NA
+cap_data[, "FlagCodeOut_color"] <- NA
+
+for (b in 1:nrow(flag_info)) {
+  flag_status <-
+    ifelse(flag_info$FlagIn[b] == 0,
+           "received a new",
+           "were recaptured with a")
+  
+  flag_status <-
+    ifelse(flag_info$FlagCodeChange[b] == 0,
+           flag_status,
+           "received a replacement")
+  
+  flag_status.2 <-
+    ifelse(flag_info$FlagCodeChange[b] == 0,
+           "",
+           "original ")
+  
+  
+  flag.choice <- 0
+  while (flag.choice == 0) {
+    flag.choice <-
+      utils::menu(c(BBL_ref),
+                  title = cat(
+                    paste0(
+                      "\nOne or more ",
+                      flag_info$SpeciesCode[b] ,
+                      " ",
+                      flag_status,
+                      " flag.\nWhat is the ",
+                      flag_status.2 ,
+                      "flag code color?\n"
+                    )
+                  ))
+  }
+  
+  if (flag_info$FlagIn[b] == 0) {
+    #### new
+    cap_data$FlagCodeOut_color[cap_data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                 is.na(cap_data$FlagCodeIn) &
+                                 !is.na(cap_data$FlagCodeOut)] <-
+      BBL_ref[flag.choice]
+  } else {
+    if (flag_info$FlagCodeChange[b] == 1) {
+      flag.choice.2 <- 0
+      while (flag.choice.2 == 0) {
+        flag.choice.2 <-
+          utils::menu(c(BBL_ref),
+                      title = cat(paste0(
+                        "\nWhat is the new flag code color?\n"
+                      )))
+      }
+      
+      #### replaced
+      cap_data$FlagCodeIn_color[cap_data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                  !is.na(cap_data$FlagCodeIn) &
+                                  cap_data$FlagCodeIn != cap_data$FlagCodeOut &
+                                  !is.na(cap_data$FlagCodeOut)] <-
+        BBL_ref[flag.choice]
+      
+      cap_data$FlagCodeOut_color[cap_data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                   !is.na(cap_data$FlagCodeIn) &
+                                   cap_data$FlagCodeIn != cap_data$FlagCodeOut &
+                                   !is.na(cap_data$FlagCodeOut)] <-
+        BBL_ref[flag.choice.2]
+      
+    } else {
+      #### retained
+      cap_data$FlagCodeIn_color[cap_data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                  !is.na(cap_data$FlagCodeIn) &
+                                  cap_data$FlagCodeIn == cap_data$FlagCodeOut] <-
+        BBL_ref[flag.choice]
+      
+      cap_data$FlagCodeOut_color[cap_data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                   !is.na(cap_data$FlagCodeIn) &
+                                   cap_data$FlagCodeIn == cap_data$FlagCodeOut] <-
+        BBL_ref[flag.choice]
+    }
+    
+  }
+}
+
+
+## Tags
+tag_types <- c("Geo", "Radio", "GPS", "PTT")
+tag_info <- cap_data %>%
+  dplyr::filter_at(c("TagType1", "TagType2"),
+                   dplyr::any_vars(stringr::str_detect(
+                     ., stringr::regex(paste(tag_types, collapse = '|'), ignore_case =
+                                         TRUE)
+                   ))) %>%
+  tidyr::pivot_longer(cols = starts_with("TagType"),
+                      names_to = "TagType.col",
+                      values_to = "TagType") %>%
+  tidyr::pivot_longer(
+    cols = starts_with("TagStatus"),
+    names_to = "TagStatus.col",
+    values_to = "TagStatus"
+  ) %>%
+  dplyr::filter(readr::parse_number(TagStatus.col) == readr::parse_number(TagType.col)) %>%
+  dplyr::filter(!is.na(TagType)) %>%
+  dplyr::select(SpeciesCode,
+                TagType,
+                TagStatus) %>%
+  dplyr::distinct()
+
+for(a in 1:nrow(tag_info)) {
+  BBL_tags <-
+    unlist(strsplit(capture_recode$BBL_code[capture_recode$my_code == tag_info$TagType[a]], ","))
+  
+  BBL_ref <- bander_portal_lookups %>%
+  dplyr::filter(field == "Marker Type",
+                code %in% BBL_tags) %>%
+  dplyr::pull(description) %>%
+  stringr::str_extract_all("(?<=\\().+?(?=\\))") %>%
+  unlist()
+  
+  tag.choice <- 0
+  while (tag.choice == 0) {
+    tag.choice <-
+      utils::menu(c(BBL_ref),
+                  title = cat(
+                    paste0(
+                      "\nA ",
+                      tolower(tag_info$TagType[a]),
+                      " tag was ",
+                      tolower(tag_info$TagStatus[a]),
+                      " on one or more ",
+                      tag_info$SpeciesCode[a],
+                      ".\nHow was this marker attached?\n"
+                    )
+                  ))
+  }
+  
+  cap_data <- cap_data %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate_at(
+      c(leg_cols, "TagType1"),
+      ~ ifelse(
+        !is.na(TagType1) &
+        SpeciesCode == tag_info$SpeciesCode[a] &
+          TagStatus1 == tag_info$TagStatus[a],
+        stringi::stri_replace_all_regex(.,
+                                        tag_info$TagType[a],
+                                        BBL_tags[tag.choice],
+                                        vectorize_all = FALSE),
+        
+        .
+      )
+    ) %>%
+    dplyr::mutate_at(
+      c(leg_cols, "TagType2"),
+      ~ ifelse(
+        !is.na(TagType2) &
+        SpeciesCode == tag_info$SpeciesCode[a] &
+          TagStatus2 == tag_info$TagStatus[a],
+        stringi::stri_replace_all_regex(.,
+                                        tag_info$TagType[a],
+                                        BBL_tags[tag.choice],
+                                        vectorize_all = FALSE),
+        .
+      )
+    )
+}
+
+
+
+```
+
+```{r}
  
- # QC checks
+# QC checks
+
+## Species measurements
 bander_portal_species_measurements <-
   bander_portal_species_measurements %>%
   dplyr::mutate_if(is.numeric, ~ dplyr::na_if(., 0)) %>%
   dplyr::rowwise() %>%
   dplyr::mutate_at("bandSize", ~ ifelse(grepl(", ", .), as.list(strsplit(., ", ")), as.list(.)))
-    
 
-bandsize_col<- "BandSize"
-mass_col<- "Mass_g"
-wingchord_col<- "Wing_mm"
-taillength_col<- "Tail_mm"
-sex_col<- "FieldSex"
-female_code<- "F"
-male_code<- "M"
-unknown_code<- "U"
 
- 
-for (a in c("HHHH", unique(cap_data$SpeciesCode))) {
-  ## Species measurements
+mydata_col <- c("Mass_g", "Wing_mm", "Tail_mm")
+BBL_col <-
+  c(
+    "femaleMass_min_g",
+    "femaleMass_max_g",
+    "maleMass_min_g",
+    "maleMass_max_g",
+    "femaleWingChord_min_mm",
+    "femaleWingChord_max_mm",
+    "maleWingChord_min_mm",
+    "maleWingChord_max_mm",
+    "femaleTailLength_min_mm",
+    "femaleTailLength_max_mm",
+    "maleTailLength_min_mm",
+    "maleTailLength_max_mm"
+  )
+
+for (x in unique(cap_data$SpeciesCode)) {
   species.num <-
-    which(bander_portal_species_measurements$alphaCode == a)
+    which(bander_portal_species_measurements$alphaCode == x)
   if (length(species.num) == 0) {
-    warning(paste0("SpeciesCode '", a, "' is invalid."))
-    next()
+    warning(paste0("SpeciesCode '", x, "' is invalid."))
   } else {
     sp_mydata <- cap_data %>%
-      dplyr::filter(SpeciesCode == a)
+      dplyr::filter(SpeciesCode == x) %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate_at("FieldSex",
+                       ~ dplyr::recode(
+                         .,
+                         "4" = "M",
+                         "5" = "F",
+                         "6" = "M",
+                         "7" = "F" ,
+                         "0" = "U"
+                       ))
     
     sp_BBLdata <- bander_portal_species_measurements %>%
-      dplyr::filter(alphaCode == a)
+      dplyr::filter(alphaCode == x)
     
     ### Band size
-    if (length(setdiff(unique(na.omit(sp_mydata[[bandsize_col]])), unlist(na.omit(
+    if (length(setdiff(unique(na.omit(
+      sp_mydata$BandSize
+    )), unlist(na.omit(
       sp_BBLdata$bandSize
     ))))
     != 0) {
@@ -846,277 +1241,995 @@ for (a in c("HHHH", unique(cap_data$SpeciesCode))) {
         paste0(
           "One or more ",
           sp_BBLdata$commonName,
-          " has a band size inconsistant with BBL recommendations."
+          " has a band size inconsistent with BBL recommendations."
         )
       )
     }
     
-    ### Maximum mass
-    if (is.na(sp_BBLdata$femaleMass_max_g) == FALSE &
-        is.na(sp_BBLdata$maleMass_max_g) == FALSE) {
-      if (max(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] == female_code])) > sp_BBLdata$femaleMass_max_g) {
-        warning(
-          paste0(
-            "One or more female ",
-            sp_BBLdata$commonName,
-            " have a higher mass than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (max(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] == male_code])) > sp_BBLdata$maleMass_max_g) {
-        warning(
-          paste0(
-            "One or more male ",
-            sp_BBLdata$commonName,
-            " have a higher mass than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (max(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) >
-          max(sp_BBLdata$femaleMass_max_g,
-              sp_BBLdata$maleMass_max_g)) {
-        warning(
-          paste0(
-            "One or more ",
-            sp_BBLdata$commonName,
-            " (unknown sex) have a higher mass than expected for the species."
-          )
-        )
-        
-      }
-    }
-    
-    ### Minimum mass
-    if (is.na(sp_BBLdata$femaleMass_min_g) == FALSE &
-        is.na(sp_BBLdata$maleMass_min_g) == FALSE) {
-      if (min(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] == female_code])) < sp_BBLdata$femaleMass_min_g) {
-        warning(
-          paste0(
-            "One or more female ",
-            sp_BBLdata$commonName,
-            " have a lower mass than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (min(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] == male_code])) < sp_BBLdata$maleMass_min_g) {
-        warning(
-          paste0(
-            "One or more male ",
-            sp_BBLdata$commonName,
-            " have a lower mass than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (min(na.omit(sp_mydata[[mass_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) <
-          min(sp_BBLdata$femaleMass_min_g,
-              sp_BBLdata$maleMass_min_g)) {
-        warning(
-          paste0(
-            "One or more ",
-            sp_BBLdata$commonName,
-            " (unknown sex) have a lower mass than expected for the species."
-          )
-        )
-        
+    ### Mass/Wing chord/Tail
+    for (a in c("Mass", "Wing", "Tail")) {
+      for (b in  c("F", "M", "U")) {
+        for (c in c("min", "max")) {
+          mydata_col.match <- mydata_col[grep(a, mydata_col)]
+          
+          if (b == "U") {
+            BBL_col.match <-
+              BBL_col[grepl(a, BBL_col) & grepl(c, BBL_col)]
+            sex_code <- c("U", NA)
+            sex <- "unknown sex"
+            
+          } else {
+            BBL_col.match <-
+              BBL_col[grepl(a, BBL_col) &
+                        grepl(paste0("^", b), BBL_col, ignore.case = TRUE) &
+                        grepl(c, BBL_col)]
+            sex_code <-  b
+            sex <-
+              grep(
+                paste0("^", b),
+                c("female", "male"),
+                ignore.case = TRUE,
+                value = TRUE
+              )
+            
+          }
+          fun <- match.fun(c)
+          sign <- c("<", ">")[grep(c, c("min", "max"))]
+          comparative <-
+            c("smaller", "greater")[grep(c, c("min", "max"))]
+          measurement <-
+            c("mass", "wing chord", "tail")[grep(a, c("Mass", "Wing", "Tail"))]
+          
+          
+          if (is.na(sum(sp_BBLdata[which(colnames(sp_BBLdata) %in% BBL_col.match)])) == FALSE) {
+            if (length(na.omit(sp_mydata[[mydata_col.match]][sp_mydata$FieldSex %in% sex_code])) !=
+                0) {
+              if (get(sign)(fun(sp_BBLdata[which(colnames(sp_BBLdata) %in% BBL_col.match)]), fun(na.omit(sp_mydata[[mydata_col.match]][sp_mydata$FieldSex %in% sex_code]))) ==
+                  FALSE)
+              {
+                {
+                  warning(
+                    paste0(
+                      "One or more ",
+                      sp_BBLdata$commonName,
+                      " (",
+                      sex,
+                      ") have a ",
+                      comparative,
+                      " ",
+                      measurement,
+                      " than expected for the species (",
+                      c,
+                      ": ",
+                      fun(sp_BBLdata[which(colnames(sp_BBLdata) %in% BBL_col.match)]),
+                      " ",
+                      sub('.*\\_', '', BBL_col.match[1]),
+                      ")"
+                    )
+                  )
+                }
+              }
+            }
+          }
+        }
       }
     }
-    
-    ### Maximum wing chord
-    if (is.na(sp_BBLdata$femaleWingChord_max_mm) == FALSE &
-        is.na(sp_BBLdata$maleWingChord_max_mm) == FALSE) {
-      if (max(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] == female_code])) > sp_BBLdata$femaleWingChord_max_mm) {
-        warning(
-          paste0(
-            "One or more female ",
-            sp_BBLdata$commonName,
-            " have a longer wing chord than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (max(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] == male_code])) > sp_BBLdata$maleWingChord_max_mm) {
-        warning(
-          paste0(
-            "One or more male ",
-            sp_BBLdata$commonName,
-            " have a longer wing chord than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (max(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) >
-          max(sp_BBLdata$femaleWingChord_max_mm,
-              sp_BBLdata$maleWingChord_max_mm)) {
-        warning(
-          paste0(
-            "One or more ",
-            sp_BBLdata$commonName,
-            " (unknown sex) have a longer wing chord than expected for the species."
-          )
-        )
-        
-      }
-    }
-    
-    ### Minimum wing chord
-    if (is.na(sp_BBLdata$femaleWingChord_min_mm) == FALSE &
-        is.na(sp_BBLdata$maleWingChord_min_mm) == FALSE) {
-      if (min(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] == female_code])) < sp_BBLdata$femaleWingChord_min_mm) {
-        warning(
-          paste0(
-            "One or more female ",
-            sp_BBLdata$commonName,
-            " have a shorter wing chord than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (min(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] == male_code])) < sp_BBLdata$maleWingChord_min_mm) {
-        warning(
-          paste0(
-            "One or more male ",
-            sp_BBLdata$commonName,
-            " have a shorter wing chord than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (min(na.omit(sp_mydata[[wingchord_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) <
-          min(sp_BBLdata$femaleWingChord_min_mm,
-              sp_BBLdata$maleWingChord_min_mm)) {
-        warning(
-          paste0(
-            "One or more ",
-            sp_BBLdata$commonName,
-            " (unknown sex) have a shorter wing chord than expected for the species."
-          )
-        )
-        
-      }
-    }
-    
-    ### Maximum tail length
-    if (is.na(sp_BBLdata$femaleTailLength_max_mm) == FALSE &
-        is.na(sp_BBLdata$maleTailLength_max_mm) == FALSE) {
-      if (max(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] == female_code])) > sp_BBLdata$femaleTailLength_max_mm) {
-        warning(
-          paste0(
-            "One or more female ",
-            sp_BBLdata$commonName,
-            " have a longer tail than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (max(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] == male_code])) > sp_BBLdata$maleTailLength_max_mm) {
-        warning(
-          paste0(
-            "One or more male ",
-            sp_BBLdata$commonName,
-            " have a longer tail than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (max(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) >
-          max(sp_BBLdata$femaleTailLength_max_mm,
-              sp_BBLdata$maleTailLength_max_mm)) {
-        warning(
-          paste0(
-            "One or more ",
-            sp_BBLdata$commonName,
-            " (unknown sex) have a longer tail than expected for the species."
-          )
-        )
-        
-      }
-    }
-    
-    ### Minimum tail length
-    if (is.na(sp_BBLdata$femaleTailLength_min_mm) == FALSE &
-        is.na(sp_BBLdata$maleTailLength_min_mm) == FALSE) {
-      if (min(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] == female_code])) < sp_BBLdata$femaleTailLength_min_mm) {
-        warning(
-          paste0(
-            "One or more female ",
-            sp_BBLdata$commonName,
-            " have a shorter tail than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (min(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] == male_code])) < sp_BBLdata$maleTailLength_min_mm) {
-        warning(
-          paste0(
-            "One or more male ",
-            sp_BBLdata$commonName,
-            " have a shorter tail than expected for the species."
-          )
-        )
-        
-      }
-      
-      if (min(na.omit(sp_mydata[[taillength_col]][sp_mydata[[sex_col]] %in% c(NA, unknown_code)])) <
-          min(sp_BBLdata$femaleTailLength_min_mm,
-              sp_BBLdata$maleTailLength_min_mm)) {
-        warning(
-          paste0(
-            "One or more ",
-            sp_BBLdata$commonName,
-            " (unknown sex) have a shorter tail than expected for the species."
-          )
-        )
-        
-      }
-    }
-    
-    
-    
-    
-    
   }
 }
-   
-   
+
 
 ## lookup tables
 
+lookups <- c("Age",
+             "Sex",
+             "How Aged",
+             "How Sexed",
+             "Marker Type",
+             "Marker color")
 
-# Add missing columns
-cap_data[setdiff(na.omit(band_aux_cols$my_col), colnames(cap_data))] <- as.character(NA)
- 
- 
- colors <- bander_portal_lookups %>%
-  dplyr::filter(field == "Color") %>%
-  dplyr::pull(description)
- 
- 
- ## Partition by disposition
- 
-cap_data <- split(cap_data, cap_data$BBLDisposition)
+for (a in lookups) {
+  b <- which(capture_cols$BBL_col[capture_cols$BBL_template=="band_aux"] == a)
+  for (c in b) {
+    invalid.num <-
+      which(!na.omit(cap_data[[capture_cols$my_col[c]]]) %in% bander_portal_lookups$code[bander_portal_lookups$field == a])
+    
+    invalid.index <-
+      setdiff(1:nrow(cap_data), which(is.na(cap_data[[capture_cols$my_col[c]]])))[invalid.num]
+    
+    entry.skip <- c()
+    
+    if (length(invalid.index) != 0) {
+      for (d in invalid.index) {
+        if (d %in% entry.skip) {
+          next
+        } else{
+          entry.choice <-
+            utils::menu(c("replace these entries",
+                          "do nothing"),
+                        title = cat(
+                          paste0(
+                            "\n'",
+                            cap_data[[capture_cols$my_col[c]]][d],
+                            "' (",
+                            capture_cols$my_col[c],
+                            ") is not listed as a BBL ",
+                            a,
+                            "\nHow would you like to proceed?"
+                          )
+                        ))
+          
+          if (entry.choice == 1) {
+            replace.choice <-
+              utils::menu(c(
+                paste0(
+                  bander_portal_lookups$code[bander_portal_lookups$field == a],
+                  " - ",
+                  bander_portal_lookups$description[bander_portal_lookups$field == a]
+                )
+              ),
+              title = cat(paste0(
+                "\nChoose a replacement value."
+              )))
+            
+            if (replace.choice != 0) {
+              entry.skip <- c(entry.skip,
+                              which(cap_data[[capture_cols$my_col[c]]] == cap_data[[capture_cols$my_col[c]]][d]))
+              
+              cap_data[[capture_cols$my_col[c]]] <-
+                replace(cap_data[[capture_cols$my_col[c]]],
+                        cap_data[[capture_cols$my_col[c]]] %in% cap_data[[capture_cols$my_col[c]]][d],
+                        bander_portal_lookups$code[bander_portal_lookups$field == a][replace.choice])
+            }
+            
+          }
+        }
+      }
+    }
+  }
+}
 
-cap_data<- lapply(cap_data, function(x) {
+## Bird status
+
+status.num <- which(!nchar(cap_data$BBLStatus) %in% 3)
+
+if(length(status.num)!=0) {
+  warning(
+    paste0("The following bird status codes appear invalid.\n"),
+    paste0(cap_data$BBLStatus[status.num], sep = "\n")
+  )
+}
+
+status.num <-
+  unique(c(
+    which(
+      !substring(cap_data$BBLStatus[nchar(cap_data$BBLStatus) == 3], 1, 1) %in% bander_portal_lookups$code[bander_portal_lookups$field == "Bird Status"]
+    ),
+    which(
+      !substring(cap_data$BBLStatus[nchar(cap_data$BBLStatus) == 3], 2, 3) %in%
+        bander_portal_lookups$code[bander_portal_lookups$field == "Bird Status Extra Info"]
+      
+    )
+  ))
+
+if (length(status.num) != 0) {
+  warning(
+    paste0("The following bird status codes appear invalid.\n"),
+    paste0(cap_data$BBLStatus[status.num], sep = "\n")
+  )
+}
+
+status_info <- cap_data %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate_at("TagType1", ~ ifelse(TagStatus1 %in% c("Removed", "Lost"), TagType1 <-
+                                          NA
+                                        , .)) %>%
+  dplyr::mutate_at("TagType2", ~ ifelse(TagStatus2  %in% c("Removed", "Lost"), TagType2 <-
+                                          NA
+                                        , .)) %>%
+  dplyr::select("BandNumberOut",
+                "SpeciesCode",
+                "BBLStatus",
+                leg_cols[grepl("Out", leg_cols)],
+                "TagType1",
+                "TagType2",
+                "Blood") %>%
+  dplyr::distinct() %>%
+  dplyr::filter(nchar(BBLStatus) == 3) %>%
+  dplyr::mutate(BBLStatus = substring(BBLStatus, 2, 3))
+
+### 19 - blood & aux marker(s)
+code_info <- status_info %>%
+  dplyr::rowwise() %>%
+  dplyr::filter(Blood == "Y") %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                       "TagType1",
+                       "TagType2")), dplyr::any_vars(!. %in% c("00", NA)))
+
+
+if(length(which(code_info$BBLStatus != "19")) != 0) {
+  warning(
+    paste0(
+      "One or more bird status entries for the following band numbers appear invalid.\nThese individuals had blood sample(s) taken and were released with auxiliary marker(s).\n"),
+      paste0(
+        paste0(code_info$BandNumberOut[which(code_info$BBLStatus != "19")], " (", code_info$SpeciesCode[which(code_info$BBLStatus != "19")], ")"),
+        sep =
+          "\n"
+      )
+  )
+}
+
+### 25 - two or more aux markers
+code_info <- status_info %>%
+  dplyr::rowwise() %>%
+  dplyr::filter(Blood %in% c("N", NA)) %>%
+  dplyr::mutate(NumMarkers = sum(!dplyr::c_across(c(
+    leg_cols[grepl("Out", leg_cols)],
+    "TagType1",
+    "TagType2"
+  ))  %in% c("00", NA))) %>%
+  dplyr::filter(NumMarkers >= 2)
+
+
+if(length(which(code_info$BBLStatus != "25")) != 0) {
+  warning(
+    paste0(
+      "One or more bird status entries for the following band numbers appear invalid.\nThese individuals did NOT have blood sample(s) taken and were released with two or more auxiliary markers.\n"
+    ),
+    paste0(
+      paste0(code_info$BandNumberOut[which(code_info$BBLStatus != "25")], " (", code_info$SpeciesCode[which(code_info$BBLStatus != "25")], ")"),
+      sep =
+        "\n"
+    )
+  )
+}
+
+
+### 00 - only federal metal leg band
+code_info <- status_info %>%
+  dplyr::rowwise() %>%
+  dplyr::filter(Blood %in% c("N", NA)) %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                       "TagType1",
+                       "TagType2")), dplyr::all_vars(. %in% c("00", NA)))
+
+if(length(which(code_info$BBLStatus != "00")) != 0) {
+  warning(
+    paste0(
+      "One or more bird status entries for the following band numbers appear invalid.\nThese individuals did NOT have blood sample(s) taken and were released with only a federal metal leg band.\n"),
+      paste0(
+        paste0(code_info$BandNumberOut[which(code_info$BBLStatus != "00")], " (", code_info$SpeciesCode[which(code_info$BBLStatus != "00")], ")"),
+        sep =
+          "\n"
+      )
+    )
+}
+
+### 01 - only colored leg bands
+code_info <- status_info %>%
+  dplyr::rowwise() %>%
+  dplyr::filter(Blood %in% c("N", NA)) %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                       "TagType1",
+                       "TagType2")), dplyr::all_vars(. %in% c("01A","00", NA))) %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                       "TagType1",
+                       "TagType2")), dplyr::any_vars(. %in% c("01A")))
+
+if(length(which(code_info$BBLStatus != "01")) != 0) {
+  warning(
+    paste0(
+      "One or more bird status entries for the following band numbers appear invalid.\nThese individuals did NOT have blood sample(s) taken and were released with only colored leg bands.\n"),
+      paste0(
+        paste0(code_info$BandNumberOut[which(code_info$BBLStatus != "01")], " (", code_info$SpeciesCode[which(code_info$BBLStatus != "01")], ")"),
+        sep =
+          "\n"
+      )
+    )
+}
+
+### 69 - only leg flag
+code_info <- status_info %>%
+  dplyr::rowwise() %>%
+  dplyr::filter(Blood %in% c("N", NA)) %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                       "TagType1",
+                       "TagType2")), dplyr::all_vars(. %in% c("69","00", NA))) %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                       "TagType1",
+                       "TagType2")), dplyr::any_vars(. %in% c("69")))
+
+if(length(which(code_info$BBLStatus != "69")) != 0) {
+  warning(
+    paste0(
+      "One or more bird status entries for the following band numbers appear invalid.\nThese individuals did NOT have blood sample(s) taken and were released with only a leg flag.\n"),
+      paste0(
+        paste0(code_info$BandNumberOut[which(code_info$BBLStatus != "69")], " (", code_info$SpeciesCode[which(code_info$BBLStatus != "69")], ")"),
+        sep =
+          "\n"
+      )
+  )
+}
+
+### 80 - only GPS
+code_info <- status_info %>%
+  dplyr::rowwise() %>%
+  dplyr::filter(Blood %in% c("N", NA)) %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                          "TagType1",
+                          "TagType2")), dplyr::all_vars(. %in% c("00", NA,
+                                                          bander_portal_lookups$code[grepl("^80", bander_portal_lookups$code) &
+                                                                                       bander_portal_lookups$field == "Marker Type"]))) %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                          "TagType1",
+                          "TagType2")), dplyr::any_vars(. %in% c(bander_portal_lookups$code[grepl("^80", bander_portal_lookups$code) &
+                                                                                       bander_portal_lookups$field == "Marker Type"])))
+
+
+if(length(which(code_info$BBLStatus != "80")) != 0) {
+  warning(
+    paste0(
+      "One or more bird status entries for the following band numbers appear invalid.\nThese individuals did NOT have blood sample(s) taken and were released with a satellite/cell/GPS transmitter.\n"),
+      paste0(
+        paste0(code_info$BandNumberOut[which(code_info$BBLStatus != "80")], " (", code_info$SpeciesCode[which(code_info$BBLStatus != "80")], ")"),
+        sep =
+          "\n"
+      )
+  )
+}
+
+### 81 - only radio
+code_info <- status_info %>%
+  dplyr::rowwise() %>%
+  dplyr::filter(Blood %in% c("N", NA)) %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                          "TagType1",
+                          "TagType2")), dplyr::all_vars(. %in% c("00", NA,
+                                                          bander_portal_lookups$code[grepl("^81", bander_portal_lookups$code) &
+                                                                                       bander_portal_lookups$field == "Marker Type"]))) %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                          "TagType1",
+                          "TagType2")), dplyr::any_vars(. %in% c(bander_portal_lookups$code[grepl("^81", bander_portal_lookups$code) &
+                                                                                       bander_portal_lookups$field == "Marker Type"])))
+
+if(length(which(code_info$BBLStatus != "81")) != 0) {
+  warning(
+    paste0(
+      "One or more bird status entries for the following band numbers appear invalid.\nThese individuals did NOT have blood sample(s) taken and were released with a radio transmitter.\n"),
+      paste0(
+        paste0(code_info$BandNumberOut[which(code_info$BBLStatus != "81")], " (", code_info$SpeciesCode[which(code_info$BBLStatus != "81")], ")"),
+        sep =
+          "\n"
+    )
+  )
+}
+ 
+
+
+### 90 - only geo
+code_info <- status_info %>%
+  dplyr::rowwise() %>%
+  dplyr::filter(Blood %in% c("N", NA)) %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                          "TagType1",
+                          "TagType2")), dplyr::all_vars(. %in% c("00", NA,
+                                                          bander_portal_lookups$code[grepl("^90", bander_portal_lookups$code) &
+                                                                                       bander_portal_lookups$field == "Marker Type"]))) %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                          "TagType1",
+                          "TagType2")), dplyr::any_vars(. %in% c(bander_portal_lookups$code[grepl("^90", bander_portal_lookups$code) &
+                                                                                       bander_portal_lookups$field == "Marker Type"])))
+
+
+if(length(which(code_info$BBLStatus != "90")) != 0) {
+  warning(
+    paste0(
+      "One or more bird status entries for the following band numbers appear invalid.\nThese individuals did NOT have blood sample(s) taken and were released with a data logger.\n"),
+      paste0(
+        paste0(code_info$BandNumberOut[which(code_info$BBLStatus != "90")], " (", code_info$SpeciesCode[which(code_info$BBLStatus != "90")], ")"),
+        sep =
+          "\n"
+    )
+  )
+}
+
+### 18 - only blood
+code_info <- status_info %>%
+  dplyr::rowwise() %>%
+  dplyr::filter(Blood == "Y") %>%
+  dplyr::filter_at(dplyr::vars(c(leg_cols[grepl("Out", leg_cols)],
+                          "TagType1",
+                          "TagType2")), dplyr::all_vars(. %in% c("00", NA)))
+
+if(length(which(code_info$BBLStatus != "18")) != 0) {
+  warning(
+    paste0(
+      "One or more bird status entries for the following band numbers appear invalid.\nThese individuals had blood sample(s) taken and were NOT released with auxiliary markers.\n"),
+      paste0(
+        paste0(code_info$BandNumberOut[which(code_info$BBLStatus != "18")], " (", code_info$SpeciesCode[which(code_info$BBLStatus != "18")], ")"),
+        sep =
+          "\n"
+    )
+  )
+}
+
+
+## Other
+
+### Band number
+for(a in c("In", "Out")) {
+  invalid_code.num <-
+    which(!c(nchar(na.omit(
+      gsub("-", "", cap_data[[paste0("BandNumber", a)]])
+    ))) %in% c(8, 9))
+  
+  dir <-
+    c("incoming", "outgoing")[grep(a, c("BandNumberIn", "BandNumberOut"))]
+  
+  if (length(invalid_code.num) != 0) {
+    warning(
+      paste0(
+        "The following ",
+        dir,
+        " band numbers appear invalid. BBL issued federal metal bands should have 8 or 9 digits.\n"
+      ),
+      paste0(na.omit(cap_data[[paste0("BandNumber", a)]])[invalid_code.num], sep = "\n")
+    )
+  }
+}
+
+invalid_bands <- cap_data %>%
+  dplyr::group_by(BandNumberOut, BBLDisposition) %>%
+  dplyr::filter(BBLDisposition == "1",
+                dplyr::n() > 1)
+
+for(a in unique(invalid_bands$BandNumberOut)) {
+  unique(invalid_bands$SpeciesCode[invalid_bands$BandNumberOut == a])
+  warning(
+    paste0(
+      "Band number ",
+      a,
+      " is duplicated for the following species/flag codes.\n"
+    ),
+    paste0(
+      paste0(
+        invalid_bands$SpeciesCode[invalid_bands$BandNumberOut == a],
+        " (",
+        invalid_bands$FlagCodeOut[invalid_bands$BandNumberOut == a],
+        ")"
+      ),
+      sep = "\n"
+    )
+  )
+}
+
+### Date
+date_format<- "%m/%d/%Y"
+  
+if(NA %in% cap_data$Day |
+   NA %in% cap_data$Month |
+   NA %in% cap_data$Year) {
+  if ("Date" %in% colnames(cap_data)) {
+    if (!NA %in% suppressWarnings(chron::chron(cap_data$Date, format = gsub("%", "",date_format)))) {
+      
+      date.choice <-
+        utils::menu(c("please do", "absolutely not"),
+                    title = cat(
+                      paste0(
+                        "\nThe variables Day, Month, and/or Year are incomplete. Would you like to parse this information from Date?\n"
+                      )
+                    ))
+    
+      if(date.choice==1) {
+        cap_data <-
+          cap_data %>%
+          dplyr::mutate(
+            Date = as.Date(Date, date_format),
+            Day = lubridate::day(Date),
+            Month = lubridate::month(Date),
+            Year = lubridate::year(Date)
+          )
+      }
+    } else {
+      warning("The variables Day, Month, and/or Year are incomplete.")
+    }
+  } else {
+    warning("The variables Day, Month, and/or Year are incomplete.")
+  }
+}
+
+### Time
+time.num <-
+  which(is.na(lubridate::hm(cap_data$CaptureTime_2400, quiet = TRUE)) |
+          grepl("[A-Za-z]", cap_data$CaptureTime_2400) == TRUE)
+
+if(length(time.num)!=0){
+  Warning(cat(
+    paste0(
+      "One or more time entries (CaptureTime_2400) are invalid. Time must be formatted as 24:00"
+    )
+  ))
+}
+
+
+### Bander ID/Scribe ID
+for (a in c("BanderID", "ScribeID")) {
+  invalid_code.num <- which(nchar(cap_data[[a]]) > 3)
+  
+  for (b in invalid_code.num) {
+    message(cat(
+      paste0(
+        "'",
+        cap_data[[a]][b],
+        "' (",
+        a,
+        ") appears invalid.\nProvide a replacement value. Press Enter to retain the current value."
+      )
+    ))
+    
+    new_code <-
+      noquote(as.character(readline(prompt =)))
+    
+    if (new_code != "") {
+      cap_data <-  cap_data %>%
+        dplyr::mutate_at(c("BanderID", "ScribeID"),
+                         ~ replace(.,
+                                   . == cap_data[[a]][b], new_code))
+    }
+  }
+}
+
+
+```
+
+```{r}
+
+# Partition by disposition
+cap_data_aux <-
+  cap_data %>% dplyr::filter(
+    dplyr::if_any(leg_cols, ~ !. %in% c(NA, "00"))
+  ) 
+
+cap_data_no_aux <-
+  cap_data %>% dplyr::filter(
+      dplyr::if_all(leg_cols, ~ . %in% c(NA, "00"))
+  )
+
+cap_data_aux <- split(cap_data_aux, cap_data_aux$BBLDisposition)
+cap_data_no_aux <- split(cap_data_no_aux, cap_data_no_aux$BBLDisposition)
+
+## Merge 1 & 5 dispositions
+cap_data_no_aux$'1' <-
+  tibble::as_tibble(data.table::rbindlist(cap_data_no_aux[c('1', '5')]))
+cap_data_no_aux <- suppressWarnings(within(cap_data_no_aux, rm('5')))
+cap_data_aux$'1' <-
+  tibble::as_tibble(data.table::rbindlist(cap_data_aux[c('1', '5')]))
+cap_data_aux <- suppressWarnings(within(cap_data_aux, rm('5')))
+
+## Correct variable classes
+cap_data_aux <- lapply(cap_data_aux, function(x) {
   x %>%
     dplyr::mutate_if(is.character, ~ dplyr::na_if(., ''))
 })
- 
+cap_data_no_aux <- lapply(cap_data_no_aux, function(x) {
+  x %>%
+    dplyr::mutate_if(is.character, ~ dplyr::na_if(., ''))
+})
 
 
+# Complete templates
+## Create empty dataframes
+template_filenames <-
+  list.files("templates/bander_portal",
+             pattern = ".xlsx",
+             full.names = TRUE)
+template_colnames <-
+  lapply(template_filenames, function(x)
+    suppressWarnings(colnames(readxl::read_excel(x))))
+names(template_colnames) <- basename(template_filenames)
+
+
+band_no_aux_col <-
+  unlist(template_colnames[names(template_colnames)
+                    [grepl("band", names(template_colnames), ignore.case = TRUE) &
+                     grepl("no", names(template_colnames), ignore.case = TRUE)]])
+band_no_aux <-
+  data.frame(matrix(
+    ncol = length(band_no_aux_col),
+    nrow = nrow(cap_data_no_aux$'1'),
+    dimnames = list(NULL, band_no_aux_col)
+  ),
+  check.names = FALSE)
+
+recap_no_aux_col <-
+  unlist(template_colnames[names(template_colnames)
+                    [grepl("recap", names(template_colnames), ignore.case = TRUE) &
+                     grepl("no", names(template_colnames), ignore.case = TRUE)]])
+recap_no_aux <-
+  data.frame(matrix(
+    ncol = length(recap_no_aux_col),
+    nrow = nrow(cap_data_no_aux$'R'),
+    dimnames = list(NULL, recap_no_aux_col)
+  ),
+  check.names = FALSE)
+
+band_aux_col <-
+  unlist(template_colnames[names(template_colnames)
+                    [grepl("band", names(template_colnames), ignore.case = TRUE) &
+                     grepl("aux", names(template_colnames), ignore.case = TRUE)]])
+band_aux <-
+  data.frame(matrix(
+    ncol = length(band_aux_col),
+    nrow = nrow(cap_data_aux$'1'),
+    dimnames = list(NULL, band_aux_col)
+  ),
+  check.names = FALSE)
+
+recap_aux_col <-
+  unlist(template_colnames[names(template_colnames)
+                    [grepl("recap", names(template_colnames), ignore.case = TRUE) &
+                     grepl("aux", names(template_colnames), ignore.case = TRUE)]])
+recap_aux <-
+  data.frame(matrix(
+    ncol = length(recap_aux_col),
+    nrow = nrow(cap_data_aux$'R'),
+    dimnames = list(NULL, recap_aux_col)
+  ),
+  check.names = FALSE)
+
+band_no_aux_ref<- capture_cols %>% dplyr::filter(BBL_template=="band_no_aux")
+recap_no_aux_ref<- capture_cols %>% dplyr::filter(BBL_template=="recap_no_aux")
+band_aux_ref<- capture_cols %>% dplyr::filter(BBL_template=="band_aux")
+recap_aux_ref<- capture_cols %>% dplyr::filter(BBL_template=="recap_aux")
+
+
+
+## Fill banding - no aux
+auto.match.num <-
+  which(band_no_aux_ref$BBL_col %in% colnames(band_no_aux) &
+          !is.na(band_no_aux_ref$my_col))
+
+
+for (a in na.omit(auto.match.num)) {
+  band_no_aux[[band_no_aux_ref$BBL_col[a]]] <-
+    cap_data_no_aux$'1'[[band_no_aux_ref$my_col[a]]]
+}
+
+band_no_aux[["Replaced Band Number"]] <-
+  unlist(cap_data_no_aux$'1'["BandNumberIn"])
+
+banded_legs <- c()
+banded_legs <-
+  c(banded_legs, sapply(1:nrow(cap_data_no_aux$'1'), function(x)
+    substring(colnames(cap_data_no_aux$'1'[leg_cols])[cap_data_no_aux$'1'[x, leg_cols] %in% "00"][1], 2, 2)))
+
+band_no_aux[["Banded Leg"]]<- banded_legs
+
+## Fill recaptures - no aux
+auto.match.num <-
+  which(recap_no_aux_ref$BBL_col %in% colnames(recap_no_aux) &
+          !is.na(recap_no_aux_ref$my_col))
+
+
+for (a in na.omit(auto.match.num)) {
+  recap_no_aux[[recap_no_aux_ref$BBL_col[a]]] <-
+    cap_data_no_aux$'R'[[recap_no_aux_ref$my_col[a]]]
+}
+
+banded_legs <- c()
+banded_legs <-
+  c(banded_legs, sapply(1:nrow(cap_data_no_aux$'R'), function(x)
+    substring(colnames(cap_data_no_aux$'R'[leg_cols])[cap_data_no_aux$'R'[x, leg_cols] %in% "00"][1], 2, 2)))
+
+recap_no_aux[["Banded Leg"]]<- banded_legs
+
+
+## Fill banding - aux
+auto.match.num <-
+  which(band_aux_ref$BBL_col %in% colnames(band_aux) &
+          !is.na(band_aux_ref$my_col))
+
+manual.match.num <-
+  which(!band_aux_ref$BBL_col %in% colnames(band_aux))
+
+
+for (a in na.omit(auto.match.num)) {
+  band_aux[[band_aux_ref$BBL_col[a]]] <-
+    cap_data_aux$'1'[[band_aux_ref$my_col[a]]]
+}
+
+
+for (a in 1:nrow(cap_data_aux$'1')) {
+  n <- 0
+  marker_string <- c()
+  for (b in c(leg_cols[grepl("Out",leg_cols)])) {
+    if (!is.na(cap_data_aux$'1'[a, b])) {
+      for (c in unlist(strsplit(paste0(cap_data_aux$'1'[a, b]), "/"))) {
+        n <- n + 1
+         marker_cols <-
+            colnames(band_aux)[grepl(n, colnames(band_aux))]
+        
+        band_aux[[marker_cols[1]]][a] <-
+          c
+        
+        code_col <-
+          "FlagCodeOut"[sapply("69", function(x)
+            grepl(x, c))]
+        if (length(code_col) != 0) {
+          band_aux[[marker_cols[2]]][a] <-
+            cap_data_aux$'1'[[code_col]][a]
+        }
+        
+        color_col <-
+          c("FlagColorOut",
+            paste0(b, "_colorband"))[sapply(c("69", "01A"), function(x)
+              grepl(x, c))]
+        if (length(color_col) != 0) {
+          band_aux[[marker_cols[3]]][a] <-
+            cap_data_aux$'1'[[color_col]][a]
+        }
+        
+        code_color_col <-
+          "FlagCodeOut_color"[sapply("69", function(x)
+            grepl(x, c))]
+        if (length(code_color_col) != 0) {
+          band_aux[[marker_cols[4]]][a] <-
+            cap_data_aux$'1'[[code_color_col]][a]
+        }
+        
+        band_aux[[marker_cols[5]]][a] <-
+          c("L", "R")[sapply(c(".{1}L", ".{1}R"), function(x)
+            grepl(x, b))]
+        
+        band_aux[[marker_cols[6]]][a] <-
+          paste0("L", c("B", "A")[sapply(c("^L", "^U"), function(x)
+            grepl(x, b))])
+        
+        if (cap_data_aux$'1'[a, b] == "00") {
+          band_aux[["Banded Leg"]][a] <-
+            c("L", "R")[sapply(c(".{1}L", ".{1}R"), function(x)
+              grepl(x, b))]
+        }
+      }
+    }
+    
+  }
+  
+  for (b in c("TagType1", "TagType2")) {
+    if (!is.na(cap_data_aux$'1'[a, b])) {
+      n <- n + 1
+      
+      status <-
+        cap_data_aux$'1'[a, paste0("TagStatus", c("1", "2")[sapply(c("1", "2"), function(x)
+          grepl(x, b))])]
+      
+      if (!TRUE %in% sapply(leg_cols, function(x)
+        grepl(cap_data_aux$'1'[a, b], cap_data_aux$'1'[a, x])) &
+        status != "Removed") {
+  
+        band_aux[[colnames(band_aux)[grepl(n, colnames(band_aux))][1]]][a] <-
+          unlist(cap_data_aux$'1'[a, b])
+        
+      }
+    }
+  }
+  
+  end.num <-
+    c(27, 33, 39, 45, 51, 57)[sapply(c(1, 2, 3, 4, 5, 6), function(x)
+      grepl(x, n))]
+  
+  marker_string <-
+    tidyr::replace_na(unlist(band_aux[a, 22:end.num]), "")
+  
+  for (b in
+       names(marker_string)[grepl("Side", names(marker_string))]) {
+    marker_string <-
+      append(marker_string, c("", ""), after = which(names(marker_string) == b))
+  }
+  
+  band_aux[['All Marker Info At Release']][a] <-
+    paste0(paste0(marker_string, collapse = "|"), "|")
+}
+
+band_aux[["Replaced Band Number"]]<-  unlist(cap_data_aux$'1'["BandNumberIn"])
+
+
+## Fill recaptures - aux
+auto.match.num <-
+  which(recap_aux_ref$BBL_col %in% colnames(recap_aux) &
+          !is.na(recap_aux_ref$my_col))
+
+for (a in na.omit(auto.match.num)) {
+  recap_aux[[recap_aux_ref$BBL_col[a]]] <-
+    cap_data_aux$'R'[[recap_aux_ref$my_col[a]]]
+}
+
+for (a in 1:nrow(cap_data_aux$'R')) {
+  in.num <- 0
+  out.num <- 0
+  for (b in c(leg_cols)) {
+    if (!is.na(cap_data_aux$'R'[a, b])) {
+      for (c in unlist(strsplit(paste0(cap_data_aux$'R'[a, b]), "/"))) {
+        if (grepl("In", b)) {
+          in.num <- in.num + 1
+          n <- in.num
+          marker_cols <-
+            colnames(recap_aux)[grepl(n, colnames(recap_aux)) &
+                                  grepl("capture", colnames(recap_aux))]
+          
+        } else if (grepl("Out", b)) {
+          out.num <- out.num + 1
+          n <- out.num
+          marker_cols <-
+            colnames(recap_aux)[grepl(n, colnames(recap_aux)) &
+                                  grepl("release", colnames(recap_aux))]
+        }
+        
+        recap_aux[[marker_cols[1]]][a] <-
+          c
+        
+        dir <-  c("In", "Out")[sapply(c("In", "Out"), function(x)
+          grepl(x, b))]
+        
+        code_col <-
+          paste0("FlagCode", dir)[sapply(c("69"), function(x)
+            grepl(x, c))]
+        if (length(code_col) != 0) {
+          recap_aux[[marker_cols[2]]][a] <-
+            cap_data_aux$'R'[[code_col]][a]
+        }
+        
+        color_col <-
+          c(paste0("FlagColor", dir),
+            paste0(b, "_colorband"))[sapply(c("69", "01A"), function(x)
+              grepl(x, c))]
+        if (length(color_col) != 0) {
+          recap_aux[[marker_cols[3]]][a] <-
+            cap_data_aux$'R'[[color_col]][a]
+        }
+        
+        code_color_col <-
+          paste0("FlagCode", dir, "_color")[sapply(c("69"), function(x)
+            grepl(x, c))]
+        if (length(code_color_col) != 0) {
+          recap_aux[[marker_cols[4]]][a] <-
+            cap_data_aux$'R'[[code_color_col]][a]
+        }
+        
+        recap_aux[[marker_cols[5]]][a] <-
+          c("L", "R")[sapply(c(".{1}L", ".{1}R"), function(x)
+            grepl(x, b))]
+        
+        recap_aux[[marker_cols[6]]][a] <-
+          paste0("L", c("B", "A")[sapply(c("^L", "^U"), function(x)
+            grepl(x, b))])
+        
+        if (cap_data_aux$'R'[a, b] == "00") {
+          recap_aux[["Banded Leg"]][a] <-
+            c("L", "R")[sapply(c(".{1}L", ".{1}R"), function(x)
+              grepl(x, b))]
+        }
+        
+      }
+    }
+  }
+  
+  for (b in c("TagType1", "TagType2")) {
+    if (!is.na(cap_data_aux$'R'[a, b]) &
+        !TRUE %in% sapply(leg_cols, function(x)
+          grepl(cap_data_aux$'R'[a, b], cap_data_aux$'R'[a, x]))) {
+      status <-
+        cap_data_aux$'R'[a, paste0("TagStatus", c("1", "2")[sapply(c("1", "2"), function(x)
+          grepl(x, b))])]
+      
+      dir <-
+        list("Out", "In",
+          c("In", "Out"),
+          c("In", "Out"))[c("Deployed",
+                            "Removed",
+                            "Replaced",
+                            "Retained") %in% status]
+      
+      for (c in unlist(dir)) {
+        direction  <-
+          c("capture", "release")[sapply(c("In", "Out"), function(x)
+            grepl(x, c))]
+        
+        if (grepl("In", c)) {
+          in.num <- in.num + 1
+          n <- in.num
+        } else if (grepl("Out", c)) {
+          out.num <- out.num + 1
+          n <- out.num
+        }
+        
+        recap_aux[[colnames(recap_aux)[grepl(n, colnames(recap_aux)) &
+                                         grepl(direction, colnames(recap_aux))][1]]][a] <-
+          unlist(cap_data_aux$'R'[a, b])
+        
+      }
+    }
+  }
+  
+  
+  capture.end.num <-
+    c(29, 35, 41, 47, 53, 59)[sapply(c(1, 2, 3, 4, 5, 6), function(x)
+      grepl(x, in.num))]
+  
+  marker_string <-
+    tidyr::replace_na(unlist(recap_aux[a, 24:capture.end.num]), "")
+  
+  for (b in
+       names(marker_string)[grepl("Side", names(marker_string))]) {
+    marker_string <-
+      append(marker_string, c("", ""), after = which(names(marker_string) == b))
+  }
+  
+  recap_aux[['All Marker Info At Capture']][a] <-
+    paste0(paste0(marker_string, collapse = "|"), "|")
+  
+  
+  release.end.num <-
+    c(65, 71, 77, 83, 89, 95)[sapply(c(1, 2, 3, 4, 5, 6), function(x)
+      grepl(x, in.num))]
+  
+  marker_string <-
+    tidyr::replace_na(unlist(recap_aux[a, 60:release.end.num]), "")
+  
+  for (b in
+       names(marker_string)[grepl("Side", names(marker_string))]) {
+    marker_string <-
+      append(marker_string, c("", ""), after = which(names(marker_string) == b))
+  }
+  
+  recap_aux[['All Marker Info At Release']][a] <-
+    paste0(paste0(marker_string, collapse = "|"), "|")
+  
+}
+
+```
+
+```{r}
+# write processed files
+
+message(cat(
+  paste0(
+    "The following data files have been processed and are ready for Bander Portal.\nProvide a prefix for the newly written files.\n"
+  ),
+  paste0(import.data.name, sep = "\n")
+))
+
+prefix <-
+  gsub(" ", "_", noquote(as.character(readline(prompt =))))
+
+if (!TRUE %in% sapply(c("_", ".", "-"), function(x)
+  endsWith(prefix, x))) {
+ prefix<- paste0(prefix,"_")
+}
+
+for(a in c("band_no_aux", "recap_no_aux", "band_aux", "recap_aux")) {
+  if (nrow(get(a)) != 0) {
+    
+    openxlsx::write.xlsx(get(a), paste0(
+      processed.data.path,
+      prefix,
+      a,
+      "_",
+      format(Sys.time(), '%Y%m%d-%H%M%S'),
+      ".xlsx"
+    ))
+    
+  }
+}
+
+message(cat(
+  paste0(
+    "The files were sucessfully written to '" ,
+    processed.data.path,
+    "'"
+  )
+))
+
+utils::browseURL(processed.data.path)
 
 ```
 
@@ -1164,7 +2277,7 @@ move2::movebank_remove_credentials(key_name = getOption("move2_movebank_key_name
 
 keyring::key_list()
 
-options("move2_movebank_key_name" = "myOtherAccount")
+options("move2_movebank_key_name" = "movebank")
 
 ```
 
@@ -1173,14 +2286,14 @@ Run the following code to import location data from one or more studies into R. 
 ```{r warning=FALSE, include=FALSE, results=FALSE}
           
 # Import Movebank location and/or reference data
-import <- get.move.data(
+df.loc <- get.move.data(
   location = TRUE,
-  reference = TRUE,
+  reference = FALSE,
   remove_movebank_outliers <- FALSE,
   omit_derived_data <- FALSE
 )
 
-save(import, import.2, file = "man/import.RData")
+Movebank_attribute_dictionary <- read_excel("reference/movebank/Movebank_attribute_dictionary.xlsx")
 
 # Unlist dataframes (if necessary)
 if(any(sapply(import, function(x)
@@ -1192,68 +2305,180 @@ if(any(sapply(import, function(x)
     options = list(namesep = "-",
                    simplify = FALSE)
   )
-} else {
-  import.dfs<- import
+} else if (inherits(import, "data.frame") == TRUE) {
+  import.dfs <- list(import)
+  
+} else{
+  import.dfs <- import
 }
 
-# Update dataField names
-import.dfs <-
-  lapply(import.dfs, function(x)
-    setNames(x,
-             sub(
-               pattern = "_", replacement = "-", names(x)
-             )))
-
-import.dfs <-
-  lapply(import.dfs, function(x)
-    setNames(x,
-             sub(
-               pattern = "argos-", replacement = "argos:", names(x)
-             )))
+# Add missing columns
+req_cols<- c("animal-ring-id")
+  
+import.dfs <- import.dfs %>%
+  purrr::map(.f = ~ .x %>%
+               dplyr::mutate(!!!setNames(
+                 rep(NA, length(setdiff(
+                   req_cols, colnames(import.dfs)
+                 ))), setdiff(req_cols, colnames(import.dfs))
+)))
 
 
-#!# only grabs the first items colnames
-df<- tibble::as_tibble.list(import.dfs[[1]])
-loc.cols<- colnames(dplyr::select(df, matches("location")))
-
-
-names(import.dfs[[1]][["argos:location_1"]][[1]][1])
-import.dfs[[1]][["argos:location_1"]][[1]][[1]]
-
-
-renquote <- function(l) if (is.list(l)) lapply(l, renquote) else enquote(l)
-test<- lapply(unlist(renquote(import.dfs[1])), eval)
-test2<- lapply(unlist(renquote(test)), eval)
-
-
-
-for(a in 1:length(loc.cols)) {
-  for (b in 1:length(df)) {
-    if (sf::st_is_empty(df[b, loc.cols[a]]) == FALSE) {
-      unnested.loc<- as.data.frame(sf::as_Spatial(df[b, loc.cols[a]]))
-      colname.loc<- colnames(unnested.loc)
-      unnested.long<- unnested.loc[1]
-      unnested.lat<- unnested.loc[2]
-      if(!colnames(unnested.long) %in% colnames(df)){
-        df %>%
-          tibble::add_column(colname.loc[1] = NA,
-                             .before = paste0(loc.cols[a]))
-      }
-      if(!colnames(unnested.lat) %in% colnames(df)){
-        
-      }
-      df$colnames(unnested.long)[b] <- unnested.long
-      df$colnames(unnested.lat)[b] <- unnested.lat
+# Extract coordinates
+for(x in 1:length(import.dfs)) {
+  loc.cols <-
+    colnames(dplyr::select(import.dfs[[x]], matches("location")))
+  for (a in loc.cols) {
+    if ("sfc_POINT" %in% class(import.dfs[[x]][[a]])) {
+      names <- names(unlist(import.dfs[[x]][[a]][1]))
+      names <- sapply(names, function(x)
+        sub(pattern = "^argos_", replacement = "argos:", x), USE.NAMES = FALSE)
+      suppressWarnings(
+        import.dfs[[x]] <-  import.dfs[[x]] %>%
+          tibble::add_column(
+            !!names[1] := sf::st_coordinates(import.dfs[[x]][[a]])[, 1],!!names[2] := sf::st_coordinates(import.dfs[[x]][[a]])[, 2],
+            .before = paste0(a)
+          ) %>%
+          dplyr::select(!a)
+      )
+      
     }
   }
 }
 
+# Update field names
+import.dfs <- import.dfs %>%
+  purrr::map(.f = ~ setNames(.x, gsub(
+    pattern = "_", replacement = "-", names(.x)
+  ))) %>%
+  purrr::map(.f = ~ setNames(.x, sub(
+    pattern = "^argos-", replacement = "argos:", names(.x)
+  ))) %>%
+  purrr::map(.f = ~ data.table::setnames(
+    .x,
+    old = c(
+      "individual-id",
+      "nick-name",
+      "weight",
+      "individual-comments",
+      "individual-number-of-deployments"
+    ),
+    new = c(
+      "animal-id",
+      "nickname",
+      "tag-mass",
+      "animal-comments",
+      "animal-number-of-deployments"
+    )
+  ,skip_absent=TRUE)) 
+# %>%
+  # purrr::map(~ .x %>% dplyr::select(-tidyselect::any_of(
+  #   c(
+  #     "deployment-local-identifier",
+  #     "animal-marker-id",
+  #     "individual-local-identifier",
+  #     "tag-local-identifier"
+  #   )
+  # )))
+
+all_colnames <- import.dfs %>%
+  purrr::map_df( ~ names(.x) %>%
+                   tibble::enframe(name = NULL)) %>% dplyr::pull(value)
+
+
+new_colnames <-
+  sapply(all_colnames[!all_colnames %in% Movebank_attribute_dictionary$dataField], function(x) {
+    grep(paste0("-", x),
+         Movebank_attribute_dictionary$dataField,
+         value = TRUE)
+  }) %>% purrr::compact(.)
+
+
+
+if(length(new_colnames)!=0) {
+  import.dfs <- import.dfs %>%
+    purrr::map(.f = ~ data.table::setnames(
+      .x,
+      old = names(new_colnames),
+      new = unlist(new_colnames),
+      skip_absent = TRUE
+    ))
+}
+  
+
+# Link missing band numbers
+# na_ring <- import.dfs$`reference-data` %>%
+#   dplyr::filter(is.na(`animal-ring-id`))
+# 
+# ref_file <- "RUBL_Banding"
+# 
+# marker_col <- "GeoID"
+# 
+# ring_col <- "BandNumber"
+# 
+# species_code<- "RUBL"
+# 
+# species_col<- "Species"
+# 
+# year_col<- "Year"
+# 
+# study_name <-
+#   grep("Rusty Blackbird", unique(na_ring$`study-name`), value = TRUE)
+# 
+# study_year <-
+#   unique(format(
+#     as.Date(na_ring$`deploy-on-timestamp`[na_ring$`study-name` == study_name], format =
+#               "%Y-%m-%d"),
+#     "%Y"
+#   ))
+# 
+# 
+# indiv_identifiers<- na_ring[, c("deploy-on-timestamp", "individual-local-identifier")][na_ring$`study-name` == study_name]
+# 
+# ring_vector <-
+#   sapply(as.vector(indiv_identifiers$`individual-local-identifier`), function(x) {
+#     get(ref_file) %>%
+#       dplyr::filter(!!as.symbol(species_col) == species_code) %>%
+#       dplyr::slice(grep(x, get(ref_file)[[marker_col]])) %>%
+#       .[c(year_col, ring_col)]
+#   }, simplify = FALSE)
+# 
+# 
+# for (a in seq_along(ring_vector)) {
+#   na_ring$`animal-ring-id` <-
+#     ifelse(
+#       !TRUE %in% is.na(ring_vector[[a]][[ring_col]]) &
+#         is.na(na_ring$`animal-ring-id`) &
+#         na_ring$`study-name` == study_name &
+#         format(
+#            as.Date(na_ring$`deploy-on-timestamp`, format =
+#                      "%Y-%m-%d"),
+#            "%Y"
+#          ) %in% ring_vector[[a]][[year_col]] &
+#         na_ring$`individual-local-identifier` == names(ring_vector[a])
+#       
+#       ,
+#       ring_vector[[a]][[ring_col]],
+#       na_ring$`animal-ring-id`
+#     )
+# }
+
+test <- import.dfs[[1]] %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate_at("animal-ring-id",
+                   ~ ifelse(is.na("animal-ring-id"),
+                            na_ring$"animal-ring-id"[match(na_ring$"animal-id"), "animal-id")],
+                            .)
 
 
 
 # Save dataframes as separate objects 
-for (i in 1:length(import.2)){
-   assign(names(import.2[i]),as.data.frame(import.2[[i]]))
+for (i in seq_along(import.dfs)) {
+  write.csv(import.dfs[[i]],
+            paste0(names(import.dfs[i]), ".csv"),
+            na = "",
+            row.names = FALSE, quote = FALSE)
+  assign(names(import.dfs[i]),as.data.frame(import.dfs[[i]]))
 }
   
 
