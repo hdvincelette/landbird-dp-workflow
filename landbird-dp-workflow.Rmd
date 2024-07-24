@@ -124,7 +124,7 @@ SpeciesCode, Date, Location, Attachments (bands, tags), Morphometrics
 
 ```{r}
 # Provide directory paths for the data file(s) and dictionary
-raw.data.path <- "data-processed/to_archive/"
+raw.data.path <- "data-raw/"
 dictionary.path <- "downloads/"
 
 # Provide the relevant information (if applicable)
@@ -444,8 +444,8 @@ for (a in 1:length(raw.data.list)) {
     invalid_colnames <- colnames(input.data)[!colnames(input.data) %in% unlist(sapply(rjson::fromJSON(input.dxnry[["data"]][[1]][["attributes"]][["json"]])[["dataDictionary"]][["entity"]][[1]][["attribute"]], "[", "codeName"))]
     
   } else {
-    dxnry_colnames <- colnames(input.dxnry)
-    invalid_colnames <- colnames(input.data)[!colnames(input.data) %in% input.dxnry]
+    dxnry_colnames <- unique(input.dxnry$codeName)
+    invalid_colnames <- colnames(input.data)[!colnames(input.data) %in% dxnry_colnames]
     
   }
   
@@ -760,14 +760,14 @@ for (a in 1:length(warning.list)) {
   
   if (nrow(codeName.warn) != 0) {
     codeName.choice <- utils::select.list(
-      c(codeName.warn),
+      c(codeName.warn$Variable),
       multiple = TRUE,
       graphics = TRUE,
       title = cat(
         paste0(
           "\nSome variables in the data file '",
           import.data.name[a],
-          "' were not found in the data dictionary.\nSelect which, if any, to add to the data dictionary.\nClick 'Cancel' to proceed without corrections.\n"
+          "' were not found in the data dictionary.\nSelect which, if any, to add to the data dictionary.\n"
         )
       )
     )
@@ -780,9 +780,6 @@ for (a in 1:length(warning.list)) {
               x = ref.dictionary,
               how = "add_attribute",
               attribute_codeName = codeName.choice[b],
-              attribute_allowNull = NULL,
-              attribute_dataType = NULL,
-              attribute_definition = NULL,
               attribute_units = NULL,
               attribute_unitsResolution = NULL,
               attribute_isCaseSensitive = NULL,
@@ -790,7 +787,6 @@ for (a in 1:length(warning.list)) {
               attribute_minValue = NULL,
               attribute_maxValue = NULL,
               attribute_fieldWidth = NULL,
-              domainItem = NULL,
               quiet = FALSE
             )
         } else {
@@ -799,9 +795,6 @@ for (a in 1:length(warning.list)) {
               x = ref.dictionary,
               how = "add_attribute",
               attribute_codeName = codeName.choice[b],
-              attribute_allowNull = NULL,
-              attribute_dataType = NULL,
-              attribute_definition = NULL,
               attribute_units = NULL,
               attribute_unitsResolution = NULL,
               attribute_isCaseSensitive = NULL,
@@ -809,7 +802,6 @@ for (a in 1:length(warning.list)) {
               attribute_minValue = NULL,
               attribute_maxValue = NULL,
               attribute_fieldWidth = NULL,
-              domainItem = NULL,
               quiet = FALSE
             )
         }
@@ -868,8 +860,8 @@ for (a in 1:length(warning.list)) {
                 x = ref.dictionary,
                 how = "add_domainItem",
                 domain_codeName = domainItem_value.table$Variable[b],
-                domainItem_value = domainItem.choice[c],
                 domainItem_name = domainItem.choice[c],
+                domainItem_value = domainItem.choice[c],
                 quiet = FALSE
               )
           }
@@ -1571,7 +1563,19 @@ write.csv(
 
 dxnry.name <- gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE)
 
-suffix<- "Banding"
+message(cat(
+  paste0(
+    "Provide a name for the tabular dictionary.\nThe current name is '",
+    dxnry.name ,
+    "'.\nThe mdjson record name is '",
+    input.dxnry[["data"]][[1]][["meta"]][["title"]],
+    "'."
+  )
+))
+
+dxnry.name<- noquote(as.character(readline(prompt = )))
+
+dxnry.name<- strsplit(gsub("[[:punct:]]$", "", dxnry.name), " +")[[1]]
 
 table.dxnry <- mdJSONdictio::build.table(input.dxnry)
 
@@ -1580,8 +1584,6 @@ write.csv(
   paste0(
     processed.data.path,
     dxnry.name,
-    "_",
-    suffix,
     "_",
     format(
       as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
