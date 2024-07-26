@@ -424,11 +424,9 @@ other.data.list <- other.data.list %>%
 
 # Validate data file(s) against the dictionary
 warning.list <- list()
-mdJSON_id.list<- list()
+assign("input.dxnry", ref.dictionary)
 
 for (a in 1:length(raw.data.list)) {
-  assign("input.dxnry", ref.dictionary)
-  
   assign("input.data", raw.data.list[[a]])
   
   # Check colnames
@@ -437,7 +435,8 @@ for (a in 1:length(raw.data.list)) {
                                                 record.type = "dictionaries",
                                                 multiple = FALSE)
     
-    mdJSON_id.list[[a]] <- input.dxnry[["data"]][[1]][["id"]]
+    record.num <-  which(sapply(ref.dictionary[["data"]], "[", "id") == input.dxnry[["data"]][[1]][["id"]])
+    
     
     dxnry_colnames <- unlist(sapply(rjson::fromJSON(input.dxnry[["data"]][[1]][["attributes"]][["json"]])[["dataDictionary"]][["entity"]][[1]][["attribute"]], "[", "codeName"))
     
@@ -525,7 +524,6 @@ names(warning.list) <- import.data.name
 ```{r}
 
 for (a in 1:length(raw.data.list)) {
-  # assign("input.dxnry", ref.dictionary)
   
   assign("input.data", raw.data.list[[a]])
   
@@ -658,10 +656,24 @@ for (a in 1:length(raw.data.list)) {
                                                   graphics = FALSE,
                                                   title = cat(paste0("\nSelect a domain item.")))
                     if (domainItem.num != 0) {
+                      if (class(input.data[[domainItem_value.table$Variable[b]]]) != class(domainItems[domainItem.num]) &
+                          class(input.data[[domainItem_value.table$Variable[b]]]) == "integer") {
+                        if (is.na(as.numeric(domainItems[domainItem.num])) ==
+                            FALSE) {
+                          new.value <- as.numeric(domainItems[domainItem.num])
+                        } else {
+                          input.data <- input.data %>%
+                            dplyr::mutate_at(domainItem_value.table$Variable[b], ~
+                                               as.character(.))
+                          
+                          new.value<- domainItems[domainItem.num]
+                        }
+                      }
+                      
                       input.data <- input.data %>%
                         dplyr::mutate_at(
                           domainItem_value.table$Variable[b],
-                          ~ dplyr::case_when(.x == domainItem.choice[c] ~ domainItems[domainItem.num], TRUE ~ .x)
+                          ~ dplyr::case_when(.x == domainItem.choice[c] ~ new.value, TRUE ~ .x)
                         )
                       
                       reprompt <- FALSE
@@ -745,8 +757,6 @@ for (a in 1:length(raw.data.list)) {
 
 ```{r}
 
-#!!!#
-
 req.attribute.fields <-
       c("codeName", "allowNull", "dataType", "definition", "domainId")
 
@@ -775,9 +785,9 @@ for (a in 1:length(warning.list)) {
     if (length(codeName.choice)!=0) {
       for (b in 1:length(codeName.choice)) {
         if (dictionary.ext %in% c("json")) {
-          ref.dictionary <-
+          input.dxnry <-
             mdJSONdictio::modify.mdJSON(
-              x = ref.dictionary,
+              x = input.dxnry,
               how = "add_attribute",
               attribute_codeName = codeName.choice[b],
               attribute_units = NULL,
@@ -790,9 +800,9 @@ for (a in 1:length(warning.list)) {
               quiet = FALSE
             )
         } else {
-          ref.dictionary <-
+          input.dxnry <-
             mdJSONdictio::modify.table(
-              x = ref.dictionary,
+              x = input.dxnry,
               how = "add_attribute",
               attribute_codeName = codeName.choice[b],
               attribute_units = NULL,
@@ -846,18 +856,19 @@ for (a in 1:length(warning.list)) {
         for (c in 1:length(domainItem.choice)) {
           
           if (dictionary.ext %in% c("json")) {
-            ref.dictionary <-
+            input.dxnry <-
               mdJSONdictio::modify.mdJSON(
-                x = ref.dictionary,
+                x = input.dxnry,
                 how = "add_domainItem",
                 domain_codeName = domainItem_value.table$Variable[b],
+                domainItem_name = domainItem.choice[c],
                 domainItem_value = domainItem.choice[c],
                 quiet = FALSE
               )
           } else {
-            ref.dictionary <-
+            input.dxnry <-
               mdJSONdictio::modify.table(
-                x = ref.dictionary,
+                x = input.dxnry,
                 how = "add_domainItem",
                 domain_codeName = domainItem_value.table$Variable[b],
                 domainItem_name = domainItem.choice[c],
@@ -914,9 +925,9 @@ for (a in 1:length(warning.list)) {
         )
       
       if ("yes" %in% dataType.choice) {
-        ref.dictionary <-
+        input.dxnry <-
           mdJSONdictio::modify.mdJSON(
-            x = ref.dictionary,
+            x = input.dxnry,
             how = "update_attribute",
             attribute_codeName = dataType.table$Variable[b],
             attribute_allowNull = NULL,
@@ -1561,39 +1572,121 @@ write.csv(
 
 ```{r}
 
-dxnry.name <- gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE)
-
-message(cat(
-  paste0(
-    "Provide a name for the tabular dictionary.\nThe current name is '",
-    dxnry.name ,
-    "'.\nThe mdjson record name is '",
-    input.dxnry[["data"]][[1]][["meta"]][["title"]],
-    "'."
+if(dictionary.ext %in% c("json")) {
+  export.choice <- utils::select.list(
+    c("tabular dictionary", "mdjson dictionary", "mdEditor file"),
+    multiple = TRUE,
+    graphics = TRUE,
+    title = cat(paste0(
+      "\nWhich format(s) would you like to export?"
+    ))
   )
-))
+  
+   dxnry.name <- gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE)
+  
+   if ("tabular dictionary" %in% export.choice) {
+     message(cat(
+       paste0(
+         "Provide a name for the tabular dictionary.\nThe current name is '",
+         dxnry.name ,
+         "'.\nThe mdjson record name is '",
+         input.dxnry[["data"]][[1]][["meta"]][["title"]],
+         "'."
+       )
+     ))
+     
+     dxnry.name <- noquote(as.character(readline(prompt =)))
+     
+     dxnry.name <- strsplit(gsub("[[:punct:]]$", "", dxnry.name), " +")[[1]]
+     
+     table.dxnry <- mdJSONdictio::build.table(input.dxnry)
+     
+     
+     write.csv(
+       table.dxnry,
+       paste0(
+         processed.data.path,
+         dxnry.name,
+         "_",
+         format(
+           as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
+           '%Y%m%d-%H%M%S'
+         ),
+         ".csv"
+       ),
+       na = "",
+       row.names = FALSE
+     )
+     
+   }
+   
+   if ("mdjson dictionary" %in% export.choice) {
+     message(cat(
+       paste0(
+         "Provide a name for the mdjson dictionary.\nThe current name is '",
+         dxnry.name ,
+         "'.\nThe mdjson record name is '",
+         input.dxnry[["data"]][[1]][["meta"]][["title"]],
+         "'."
+       )
+     ))
+     
+     dxnry.name <- noquote(as.character(readline(prompt =)))
+     
+     dxnry.name <- strsplit(gsub("[[:punct:]]$", "", dxnry.name), " +")[[1]]
+     
+    
+     oldsubject <-
+       paste0('\"',
+              'subject',
+              '\":\"',
+              gsub(".*\"subject\":\"(\\w+)\"*", "\\1", oldsubject),
+              '\"')
+     
+     newsubject <-
+       paste0('\"', 'subject', '\":[\"', 'tabularDataset', '\"]')
+     
+     gsub(".*\"subject\":\"(\\w+)\"*", "\\1", oldsubject)
+     
+     gsub('^(.\"subject\":{1})(.*)$', '\\1[\\2', oldsubject)
+     
+      gsub('(?<=\\\\"subject\":)(?=\\\\")', "[", oldsubject)
+     
+     newstring <- gsub('\"subject\":.*$\"', "[", input.dxnry[["data"]][[1]][["attributes"]][["json"]])
 
-dxnry.name<- noquote(as.character(readline(prompt = )))
 
-dxnry.name<- strsplit(gsub("[[:punct:]]$", "", dxnry.name), " +")[[1]]
+    input.dxnry[["data"]][[1]][["attributes"]][["json"]] <-
+      newstring
 
-table.dxnry <- mdJSONdictio::build.table(input.dxnry)
-
-write.csv(
-  table.dxnry,
-  paste0(
-    processed.data.path,
-    dxnry.name,
-    "_",
-    format(
-      as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
-      '%Y%m%d-%H%M%S'
-    ),
-    ".csv"
-  ),
-  na = "",
-  row.names = FALSE
-)
+     
+     
+     
+     test<- rjson::toJSON(x = input.dxnry)
+  
+    
+     
+     write(
+       x = test,
+       file = paste0(
+         processed.data.path,
+         dxnry.name,
+         "_",
+         format(
+           as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
+           '%Y%m%d-%H%M%S'
+         ),
+         ".json"
+       )
+     )
+     
+   }
+   
+   if ("mdEditor file" %in% export.choir) {
+     ref.dictionary[["data"]][[record.num]] <- input.dxnry
+   }
+   
+   
+}
 
 ```
 
@@ -1738,7 +1831,6 @@ list2env(ref_data, globalenv())
 #### Select data to transform
 
 ```{r}
-other.data.list <- list()
 
 filter.option <- utils::select.list(
   c("by species", "by date range"),
@@ -3432,6 +3524,206 @@ library("auk")
 # fwslandbirds
 # API key: e2m7tt6sfo4n
 
+
+```
+
+# Rename photos
+
+```{r}
+photo.file.path <- "C:/Users/hvincelette/OneDrive - DOI/Documents/Fieldwork_wrap/2024/Eielson/photos/ALMS_points/"
+
+ref.file.path<- "C:/Users/hvincelette/OneDrive - DOI/Documents/Fieldwork_wrap/2024/Eielson/data/"
+
+date.col<- "Date"
+date.format <- "%m/%d/%Y"
+time.col<- "StartTime"
+time.format<- "%H:%M"
+obs.col<- "ObserverID"
+ref.col<- "UnitID"
+prefix<- "EIEL"
+missing.photo<- c("83")
+
+variation <- c("N", "E", "S", "W")
+
+```
+
+```{r}
+# Import ref data file(s)
+ref.data.files <-
+  list.files(
+    path = ref.file.path,
+    pattern = NULL,
+    full.names = FALSE,
+    recursive = FALSE
+  )
+
+ref.data.choice <- utils::select.list(
+  c(ref.data.files),
+  multiple = FALSE,
+  graphics = TRUE,
+  title = cat(paste0("\nSelect a data file to import."))
+)
+
+ref.data.ext <- tools::file_ext(ref.data.choice)
+
+if (ref.data.ext %in% c("xlsx", "xls")) {
+  ref.file <-
+    readxl::read_excel(paste0(ref.file.path, ref.data.choice), na = "")
+  
+  ref.file <- ref.file %>%
+    dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)) %>%
+    dplyr::mutate({{time.col}} := format(.data[[time.col]], format = time.format))
+  
+} else if (ref.data.ext %in% c("csv")) {
+  ref.file <-
+    utils::read.csv(paste0(ref.file.path, ref.data.choice), na.strings = "")
+  
+}
+
+```
+
+```{r}
+
+ref.file <- ref.file %>%
+  dplyr::mutate({{date.col}} := lubridate::as_date(.data[[date.col]], format = date.format)) %>%
+  dplyr::mutate({{time.col}} := lubridate::as_datetime(.data[[time.col]], format = time.format)) %>%
+  dplyr::mutate("temp:Year" := format(.data[[date.col]], "%Y"))
+
+year.options <-
+  ref.file %>%
+  dplyr::select("temp:Year") %>%
+  dplyr::filter("temp:Year" != "") %>%
+  na.omit() %>%
+  purrr::pluck("temp:Year") %>%
+  unique() %>%
+  sort()
+
+year.choice <- utils::select.list(
+  year.options,
+  graphics = FALSE,
+  multiple = FALSE,
+  title = cat(
+    paste0("\nSelect a year.\nEnter 0 to proceed with all years.\n")
+  )
+)
+ 
+if(year.choice !=""){
+   ref.file <- ref.file %>% dplyr::filter(`temp:Year` == year.choice)
+}
+
+obs.choice <- utils::select.list(
+  c(unique(na.omit(ref.file[[obs.col]]))),
+  multiple = FALSE,
+  graphics = FALSE,
+  title = cat(
+    paste0(
+      "\nSelect an observer.\nNote, photos taken by each observer must be processed individually due to the possibility of concurrent timestamps.\n"
+    )
+  )
+)
+
+if (length(obs.choice) != 0) {
+  ref.file <- ref.file %>% dplyr::filter(.[[obs.col]] %in% obs.choice)
+}
+
+```
+
+```{r}
+
+ref.file <- ref.file %>%
+  dplyr::select(c({{date.col}}, {{time.col}}, {{ref.col}})) %>%
+  dplyr::distinct() %>%
+  dplyr::arrange(.[[date.col]], .[[time.col]]) 
+
+ref.order <- ref.file %>%
+  purrr::pluck(ref.col) %>%
+  sub(paste0(prefix, "_"), "", .) %>%
+  subset(!(. %in% missing.photo)) %>%
+  rep(., each=length(variation))
+
+variation.vector <- rep(variation, length(fs::dir_ls(path = photo.file.path, type = "file")) / 4)
+
+date.taken <- fs::dir_ls(path = photo.file.path, type = "file") %>%
+  exifr::read_exif(tags =
+                     c("DateTimeOriginal")) %>%
+  dplyr::arrange(DateTimeOriginal) %>%
+  dplyr::mutate_at("SourceFile", basename) %>%
+  dplyr::mutate(Ext= tools::file_ext(SourceFile)) %>%
+  dplyr::mutate_at(
+    "DateTimeOriginal",
+    ~ lubridate::as_date(., format = "%Y:%m:%d %H:%M:%S") %>% format(., "%Y%m%d")
+  )
+
+
+if (length(ref.order) != nrow(date.taken)) {
+  temp <- ref.file %>%
+    dplyr::group_by(.[[date.col]]) %>%
+    dplyr::summarize(RefTotal = dplyr::n())
+  
+  message(
+    "Images and reference points are not of equal length.\nCheck missing data are accurately reported before continuing.\n"
+    
+  )
+  
+  message(huxtable::print_screen(
+    huxtable::hux(
+      date.taken %>%
+        dplyr::group_by(DateTimeOriginal) %>%
+        dplyr::summarize(PhotoTotal = dplyr::n() / length(variation)) %>%
+        dplyr::mutate(ReferenceTotal = temp$RefTotal)
+    ),
+    colnames = FALSE
+  ))
+  
+}
+
+if (any(is.na(date.taken$DateTimeOriginal)) == TRUE) {
+  browseURL(photo.file.path)
+  
+  for (a in which(is.na(date.taken$DateTimeOriginal))) {
+    pass <- 0
+    while (pass == 0) {
+      message(cat(
+        paste0(
+          "\nThe image ",
+          date.taken$SourceFile[a],
+          " is missing a capture date.\nProvide a date formatted as %Y%m%d (e.g., 20240630).\n"
+        )
+      ))
+      
+      new.date <- as.character(readline(prompt = ""))
+      
+      if (nchar(new.date) != 8 |
+          new.date == "" |
+          is.na(suppressWarnings(as.numeric(new.date)))) {
+        message("Incorrect date format.\n")
+      } else {
+        date.taken$DateTimeOriginal[date.taken$SourceFile == date.taken$SourceFile[a]] <- new.date
+        pass <- 1
+      }
+    }
+  }
+}
+
+date.taken <- date.taken %>%
+  dplyr::mutate(
+    "FileName" = paste0(
+      prefix,
+      "_",
+      ref.order,
+      "_",
+      variation.vector,
+      "_",
+      date.taken$"DateTimeOriginal",
+      ".",
+      date.taken$"Ext"
+    )
+  )
+
+file.rename(
+  paste0(photo.file.path, date.taken$SourceFile),
+  paste0(photo.file.path, date.taken$FileName)
+)
 
 ```
 
