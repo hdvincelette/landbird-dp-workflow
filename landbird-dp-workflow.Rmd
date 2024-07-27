@@ -949,13 +949,6 @@ for (a in 1:length(warning.list)) {
     }
   }
 
-  # check.dictionary <-
-  #   rjson::fromJSON(new.dictionary[["data"]][[1]][["attributes"]][["json"]])
-  # 
-  # 
-  # new.json = rjson::toJSON(x = new.dictionary)
-  # write(x = new.json, file = "test/test.dictionary.json")
-
 }
 
   
@@ -973,42 +966,20 @@ for (x in 1:length(raw.data.list)) {
   assign("input.data", raw.data.list[[x]])
   
   ## Duplicate rows
+
+  
+  # All capture data
   
   ## Unique values
   ### BBLDisposition = 1 & BandNumberOut
   ### Flag code & BandNumberOut
   ### Colorband combo & BandNumberOut
-  
-  # All capture data
+
   ## Species v AOU codes
   
   ## Status codes
-  # Add missing columns
-  miss_cols <- setdiff(c(na.omit(capture_cols$my_col[!grepl("color", capture_cols$my_col)]), "TagType1", "TagType2", "TagStatus1", "TagStatus2"), colnames(input.data))
-  
-  input.data[miss_cols] <-
-    as.character(NA)
-
-
-  my_colors <- c(
-    "Bk",
-    "Br",
-    "Db",
-    "Lb",
-    "Mb",
-    "Dg",
-    "Lg",
-    "Gy",
-    "Hp",
-    "Mg",
-    "Mv",
-    "Or",
-    "Pp",
-    "Rd",
-    "Wh",
-    "Yl"
-  )
-  
+ 
+  ## "Out" leg_cols contains an X
   leg_cols <-   c("ULIn",
                   "LLIn",
                   "URIn",
@@ -1020,181 +991,6 @@ for (x in 1:length(raw.data.list)) {
   
   leg_cols <- leg_cols[leg_cols %in% colnames(input.data)]
   
-  status_info <- input.data %>%
-    dplyr::rowwise() %>%
-    dplyr::mutate_at("TagType1", ~ ifelse(TagStatus1  %in% c("Removed", "Lost"), TagType1 <-
-                                            NA
-                                          , .)) %>%
-    dplyr::mutate_at("TagType2", ~ ifelse(TagStatus2  %in% c("Removed", "Lost"), TagType2 <-
-                                            NA
-                                          , .)) %>%
-    dplyr::select(tidyselect::any_of(c(
-      "OccurenceID",
-      "BandNumberOut",
-      "SpeciesCode",
-      "BBLStatus",
-      leg_cols[grepl("Out", leg_cols)],
-      "TagType1",
-      "TagType2",
-      "Blood",
-      "BBLStatus"
-    ))) %>%
-    dplyr::mutate_at(dplyr::vars(c(
-      leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2", "BBLStatus"
-    )), ~ as.character(.) %>% dplyr::na_if(., "")) %>%
-    dplyr::mutate_at(
-      leg_cols[grepl("Out", leg_cols)],
-      ~ stringi::stri_replace_all_fixed(., my_colors, "01A", vectorize_all = FALSE)
-    ) %>%
-    dplyr::mutate(NumMarkers = sum(!unique(dplyr::c_across(
-      c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2")
-    ))  %in% c("X", NA))) %>%
-    dplyr::mutate_at(
-      "BBLStatus",
-      ~ dplyr::case_when(
-        NumMarkers >= 2 &
-          Blood != "Y" ~ "325",
-        NumMarkers >= 1 &
-          Blood == "Y" ~ "319",
-        NumMarkers == 0 &
-          Blood == "Y" ~ "318",
-        NumMarkers == 0 &
-          Blood != "Y" ~ "300",
-        NumMarkers == 1 &
-          dplyr::if_any(c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2"), ~
-                          . == "69") &
-          Blood != "Y" ~ "369",
-        NumMarkers == 1 &
-          dplyr::if_any(c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2"), ~
-                          grepl("^81", .)) &
-          Blood != "Y" ~ "381",
-        NumMarkers == 1 &
-          dplyr::if_any(c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2"), ~
-                          grepl("^80", .)) &
-          Blood != "Y" ~ "380",
-        NumMarkers == 1 &
-          dplyr::if_any(c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2"), ~
-                          grepl("^90", .)) &
-          Blood != "Y" ~ "390",
-        NumMarkers == 1 &
-          dplyr::if_any(c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2"), ~
-                          grepl("^01", .)) &
-          Blood != "Y" ~ "301",
-        TRUE ~ BBLStatus
-      )
-    ) %>%
-    dplyr::rename(`temp:BBLStatus` = BBLStatus)
-  
-  input.data <- input.data %>%
-    dplyr::mutate(across(where(is.character), ~ dplyr::na_if(.x, ""))) %>% 
-    dplyr::left_join(
-      .,
-      status_info[, c("OccurenceID", "temp:BBLStatus")],
-      by = c("OccurenceID" = "OccurenceID"),
-      keep = FALSE,
-      relationship = "one-to-one"
-    ) %>%
-    dplyr::mutate_at("BBLStatus", ~ as.character(.)) %>%
-    dplyr::mutate_at("BBLStatus",
-                     ~ dplyr::case_when(is.na(.) ~ `temp:BBLStatus`, TRUE ~ BBLStatus))
-  
-  invalid.index <- which(input.data$BBLStatus != input.data$`temp:BBLStatus`)
-  
-  
-  if (length(invalid.index) != 0) {
-    for (a in invalid.index) {
-      message(cat(
-        paste0(
-          "The status for the following individual appears invalid.\nSpecies: ",
-          input.data$SpeciesCode[a],
-          "\nBand number: ",
-          input.data$BandNumberOut[a],
-          "\nStatus (reported): ",
-          input.data$BBLStatus[a],
-          " [",
-          bander_portal_lookups$description[grepl(stringr::str_sub(input.data$BBLStatus[a], 1, 1),
-                                                  bander_portal_lookups$code) == TRUE &
-                                              bander_portal_lookups$field == "Bird Status"],
-          " ",
-          bander_portal_lookups$description[grepl(stringr::str_sub(input.data$BBLStatus[a], 2, 3),
-                                                  bander_portal_lookups$code) == TRUE &
-                                              bander_portal_lookups$field == "Bird Status Extra Info"],
-          "]",
-          "\nStatus (detected): ",
-          input.data$`temp:BBLStatus`[a],
-          " [",
-          bander_portal_lookups$description[grepl(
-            stringr::str_sub(input.data$`temp:BBLStatus`[a], 1, 1),
-            bander_portal_lookups$code
-          ) == TRUE &
-            bander_portal_lookups$field == "Bird Status"],
-          " ",
-          bander_portal_lookups$description[grepl(
-            stringr::str_sub(input.data$`temp:BBLStatus`[a], 2, 3),
-            bander_portal_lookups$code
-          ) == TRUE &
-            bander_portal_lookups$field == "Bird Status Extra Info"],
-          "]",
-          "\nBlood: ",
-          input.data$Blood[a],
-          "\nULOut: ",
-          input.data$ULOut[a],
-          "\nLLOut: ",
-          input.data$LLOut[a],
-          "\nUROut: ",
-          input.data$UROut[a],
-          "\nLROut: ",
-          input.data$LROut[a],
-          "\nTagStatus1: ",
-          input.data$TagStatus1[a],
-          "\nTagStatus2: ",
-          input.data$TagStatus2[a]
-        )
-      ))
-      
-      status.choice <- utils::menu(
-        choice = c("update as detected", "manually edit", "leave as is"),
-        graphics = FALSE,
-        title = cat("\nHow would you like to proceed?")
-      )
-      
-      if (status.choice == 1) {
-        input.data$BBLStatus[a] <- input.data$`temp:BBLStatus`[a]
-        
-        
-      }
-      if (status.choice == 2) {
-        message(
-          "\nIMPROTANT: you must click 'syncronise' (arrow loop icon) and then 'Done' to enact changes."
-        )
-        
-        invalid.entries <- input.data %>%
-          dplyr::ungroup() %>%
-          dplyr::filter(dplyr::row_number() == a)
-        
-        invalid.entries.edit <-
-          DataEditR::data_edit(
-            invalid.entries,
-            col_readonly = colnames(invalid.entries)[!colnames(invalid.entries) %in% "BBLStatus"],
-            viewer = "pane"
-          ) %>%
-          dplyr::mutate_at("BBLStatus", as.character)
-        
-        input.data[match(invalid.entries.edit$OccurenceID,
-                         input.data$OccurenceID), "BBLStatus"] <-
-          invalid.entries.edit$BBLStatus
-      }
-      
-    }
-  }
-  
-  
-  input.data <-
-    input.data %>%
-    dplyr::select(-tidyselect::starts_with("temp:"))
-  
-  
-  ## "Out" leg_cols contains an X
   which(rowSums(is.na(input.data[, leg_cols[grepl("Out", leg_cols)]])) == 4)
   
   # Recapture data
@@ -1396,166 +1192,463 @@ raw.data.list <- raw.data.list %>%
 
 ```
 
-### Merge data file with authoritative copy
+### Fill bird status info (capture data)
 
 ```{r}
-# Provide directory path for the authoritative data file
-download.path <- "downloads/"
-```
 
-```{r}
-# Import authoritative data file
-downloaded.files <-
-  list.files(
-    path = download.path,
-    pattern = NULL,
-    full.names = FALSE,
-    recursive = FALSE
+ref_data <-
+  lapply(list.files(path = "reference/bander_portal/", full.names = TRUE),
+         readxl::read_excel)
+
+names(ref_data) <-
+  gsub(
+    list.files(path = "reference/bander_portal/"),
+    pattern = ".xlsx$",
+    replacement = ""
   )
 
-download.choice <- utils::select.list(
-  c(downloaded.files),
-  multiple = FALSE,
-  graphics = TRUE,
-  title = cat(paste0("\nSelect a file to import."))
-)
+list2env(ref_data, globalenv())
 
-download.ext <- tools::file_ext(download.choice)
-auth.data.name <-
-  stringr::str_replace(download.choice, paste0(".", download.ext), "")
-
-if (download.ext %in% c("xlsx", "xls")) {
-  import.file <-
-    readxl::read_excel(paste0(download.path, download.choice))
+for (x in 1:length(raw.data.list)) {
+  assign("input.data", raw.data.list[[x]])
   
-  import.file <- import.file %>%
-    dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)) %>%
-    dplyr::mutate({{time.col}} := format(.data[[time.col]], format = time.format))
+  # Add missing columns
+  miss_cols <- setdiff(
+    c(
+      na.omit(capture_cols$my_col[!grepl("color", capture_cols$my_col)]),
+      "TagType1",
+      "TagType2",
+      "TagStatus1",
+      "TagStatus2"
+    ),
+    colnames(input.data)
+  )
+  
+  input.data[miss_cols] <-
+    as.character(NA)
   
   
-  auth.data <- import.file
+  my_colors <- c(
+    "Bk",
+    "Br",
+    "Db",
+    "Lb",
+    "Mb",
+    "Dg",
+    "Lg",
+    "Gy",
+    "Hp",
+    "Mg",
+    "Mv",
+    "Or",
+    "Pp",
+    "Rd",
+    "Wh",
+    "Yl"
+  )
   
-} else if (download.ext %in% c("csv")) {
-  import.file <-
-    utils::read.csv(paste0(download.path, download.choice))
-  auth.data <- import.file
+  leg_cols <-   c("ULIn",
+                  "LLIn",
+                  "URIn",
+                  "LRIn",
+                  "ULOut",
+                  "LLOut",
+                  "UROut",
+                  "LROut")
   
-}
-
-# Rejoin filtered data
-raw.data.list <-
-  split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
-  purrr::map(dplyr::bind_rows)
-
-#!# Evaluate changes
-# summary(arsenal::comparedf(dplyr::mutate(input.data,across(where(is.character), ~ dplyr::na_if(.x, ""))), dplyr::mutate(orig.data,across(where(is.character), ~ dplyr::na_if(.x, "")))))
-
-# Select files to merge
-raw.data.choice <- utils::select.list(
-  c(names(raw.data.list)),
-  multiple = TRUE,
-  graphics = TRUE,
-  title = cat(paste0("\nSelect one or more data files to merge."))
-)
-
-raw.data.list<- raw.data.list %>% purrr::keep(names(raw.data.list) %in% raw.data.choice)
-
-add.data <- dplyr::bind_rows(raw.data.list)
-
-# Create new columns
-new.cols <- add.data %>%
-  dplyr::mutate_if(is.character, ~ dplyr::na_if(., c(""))) %>%
-  purrr::discard(., ~ all(is.na(.))) %>%
-  colnames(.)[!colnames(.) %in% colnames(auth.data)] %>%
-  colnames()
-
-if(length(new.cols)!=0) {
-  col.choice <- utils::select.list(
-    c(new.cols),
-    multiple = TRUE,
-    graphics = TRUE,
-    title = cat(
-      paste0(
-        "\nOne or more columns do not exist in the authoritative data file.\nSelect which if any to add\nNote, unselected columns will not be archived."
+  leg_cols <- leg_cols[leg_cols %in% colnames(input.data)]
+  
+  status_info <- input.data %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate_at("TagType1", ~ ifelse(TagStatus1  %in% c("Removed", "Lost"), TagType1 <-
+                                            NA
+                                          , .)) %>%
+    dplyr::mutate_at("TagType2", ~ ifelse(TagStatus2  %in% c("Removed", "Lost"), TagType2 <-
+                                            NA
+                                          , .)) %>%
+    dplyr::select(tidyselect::any_of(
+      c(
+        "OccurenceID",
+        "BandNumberOut",
+        "SpeciesCode",
+        "BBLStatus",
+        leg_cols[grepl("Out", leg_cols)],
+        "TagType1",
+        "TagType2",
+        "Blood",
+        "BBLStatus"
       )
-    )
-  )
-  if (length(col.choice) != 0) {
-    for (a in col.choice) {
-      loc.choice <- utils::menu(c(colnames(auth.data)), title = cat(
+    )) %>%
+    dplyr::mutate_at(dplyr::vars(c(
+      leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2", "BBLStatus"
+    )), ~ as.character(.) %>% dplyr::na_if(., "")) %>%
+    dplyr::mutate_at(
+      leg_cols[grepl("Out", leg_cols)],
+      ~ stringi::stri_replace_all_fixed(., my_colors, "01A", vectorize_all = FALSE)
+    ) %>%
+    dplyr::mutate(NumMarkers = sum(!unique(dplyr::c_across(
+      c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2")
+    ))  %in% c("X", NA))) %>%
+    dplyr::mutate_at(
+      "BBLStatus",
+      ~ dplyr::case_when(
+        NumMarkers >= 2 &
+          Blood != "Y" ~ "325",
+        NumMarkers >= 1 &
+          Blood == "Y" ~ "319",
+        NumMarkers == 0 &
+          Blood == "Y" ~ "318",
+        NumMarkers == 0 &
+          Blood != "Y" ~ "300",
+        NumMarkers == 1 &
+          dplyr::if_any(c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2"), ~
+                          . == "69") &
+          Blood != "Y" ~ "369",
+        NumMarkers == 1 &
+          dplyr::if_any(c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2"), ~
+                          grepl("^81", .)) &
+          Blood != "Y" ~ "381",
+        NumMarkers == 1 &
+          dplyr::if_any(c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2"), ~
+                          grepl("^80", .)) &
+          Blood != "Y" ~ "380",
+        NumMarkers == 1 &
+          dplyr::if_any(c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2"), ~
+                          grepl("^90", .)) &
+          Blood != "Y" ~ "390",
+        NumMarkers == 1 &
+          dplyr::if_any(c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2"), ~
+                          grepl("^01", .)) &
+          Blood != "Y" ~ "301",
+        TRUE ~ BBLStatus
+      )
+    ) %>%
+    dplyr::rename(`temp:BBLStatus` = BBLStatus)
+  
+  input.data <- input.data %>%
+    dplyr::mutate(across(where(is.character), ~ dplyr::na_if(.x, ""))) %>%
+    dplyr::left_join(
+      .,
+      status_info[, c("OccurenceID", "temp:BBLStatus")],
+      by = c("OccurenceID" = "OccurenceID"),
+      keep = FALSE,
+      relationship = "one-to-one"
+    ) %>%
+    dplyr::mutate_at("BBLStatus", ~ as.character(.)) %>%
+    dplyr::mutate_at("BBLStatus",
+                     ~ dplyr::case_when(is.na(.) ~ `temp:BBLStatus`, TRUE ~ BBLStatus))
+  
+  invalid.index <- which(input.data$BBLStatus != input.data$`temp:BBLStatus`)
+  
+  
+  if (length(invalid.index) != 0) {
+    for (a in invalid.index) {
+      message(cat(
         paste0(
-          "\nInsert '",
-          col.choice,
-          "' before which existing column?\nEnter 0 to add after the last column."
+          "The status for the following individual appears invalid.\nSpecies: ",
+          input.data$SpeciesCode[a],
+          "\nBand number: ",
+          input.data$BandNumberOut[a],
+          "\nStatus (reported): ",
+          input.data$BBLStatus[a],
+          " [",
+          bander_portal_lookups$description[grepl(stringr::str_sub(input.data$BBLStatus[a], 1, 1),
+                                                  bander_portal_lookups$code) == TRUE &
+                                              bander_portal_lookups$field == "Bird Status"],
+          " ",
+          bander_portal_lookups$description[grepl(stringr::str_sub(input.data$BBLStatus[a], 2, 3),
+                                                  bander_portal_lookups$code) == TRUE &
+                                              bander_portal_lookups$field == "Bird Status Extra Info"],
+          "]",
+          "\nStatus (detected): ",
+          input.data$`temp:BBLStatus`[a],
+          " [",
+          bander_portal_lookups$description[grepl(
+            stringr::str_sub(input.data$`temp:BBLStatus`[a], 1, 1),
+            bander_portal_lookups$code
+          ) == TRUE &
+            bander_portal_lookups$field == "Bird Status"],
+          " ",
+          bander_portal_lookups$description[grepl(
+            stringr::str_sub(input.data$`temp:BBLStatus`[a], 2, 3),
+            bander_portal_lookups$code
+          ) == TRUE &
+            bander_portal_lookups$field == "Bird Status Extra Info"],
+          "]",
+          "\nBlood: ",
+          input.data$Blood[a],
+          "\nULOut: ",
+          input.data$ULOut[a],
+          "\nLLOut: ",
+          input.data$LLOut[a],
+          "\nUROut: ",
+          input.data$UROut[a],
+          "\nLROut: ",
+          input.data$LROut[a],
+          "\nTagStatus1: ",
+          input.data$TagStatus1[a],
+          "\nTagStatus2: ",
+          input.data$TagStatus2[a]
         )
       ))
-      if (loc.choice != 0) {
-        before <- colnames(auth.data)[loc.choice]
-      } else {
-        before <- NULL
+      
+      status.choice <- utils::menu(
+        choice = c("update as detected", "manually edit", "leave as is"),
+        graphics = FALSE,
+        title = cat("\nHow would you like to proceed?")
+      )
+      
+      if (status.choice == 1) {
+        input.data$BBLStatus[a] <- input.data$`temp:BBLStatus`[a]
+        
+        
       }
-      auth.data <- auth.data %>% tibble::add_column(!!col.choice := NA, .before = before)
+      if (status.choice == 2) {
+        message(
+          "\nIMPROTANT: you must click 'syncronise' (arrow loop icon) and then 'Done' to enact changes."
+        )
+        
+        invalid.entries <- input.data %>%
+          dplyr::ungroup() %>%
+          dplyr::filter(dplyr::row_number() == a)
+        
+        invalid.entries.edit <-
+          DataEditR::data_edit(
+            invalid.entries,
+            col_readonly = colnames(invalid.entries)[!colnames(invalid.entries) %in% "BBLStatus"],
+            viewer = "pane"
+          ) %>%
+          dplyr::mutate_at("BBLStatus", as.character)
+        
+        input.data[match(invalid.entries.edit$OccurenceID,
+                         input.data$OccurenceID), "BBLStatus"] <-
+          invalid.entries.edit$BBLStatus
+      }
+      
     }
   }
+  
+  
+  input.data <-
+    input.data %>%
+    dplyr::select(-tidyselect::starts_with("temp:"))
+  
+  raw.data.list[[x]] <- input.data
+  
 }
-
-# Merge data
-new.data <- add.data %>%
-  merge(auth.data, all = TRUE)
-
-new.data <- new.data[, colnames(auth.data)]
-
+  
 ```
 
 ### Export data files
 
 ```{r}
-# Provide versioning format
-vers.suffix<- "_v"
+# Provide directory path for the authoritative data file
+download.path <- "downloads/"
 
 # Provide a directory path to write processed files
 processed.data.path <- "data-processed/to_archive/"
 
+# Do you want to merge the data with an authoritative file?
+auth.merge <- FALSE
+
+# Provide versioning format (when merging with authoritative file)
+vers.suffix <- "_v"
+
 ```
 
 ```{r}
-# versioning
-detect.vers <- suppressWarnings(as.numeric(ifelse(
-  grepl(paste0("\\",vers.suffix), auth.data.name, ignore.case = TRUE),
-  sub(paste0(".*\\",vers.suffix), "", auth.data.name, ignore.case = TRUE),
-  ""
-)))
 
-if(is.na(detect.vers)==FALSE) {
-  message(cat(
-    paste0(
-      "Provide a version number for the new authoritative data file.\nThe detected current version is '",
-      detect.vers,
-      "'."
+if (auth.merge == TRUE) {
+  # Import authoritative data file
+  downloaded.files <-
+    list.files(
+      path = download.path,
+      pattern = NULL,
+      full.names = FALSE,
+      recursive = FALSE
     )
-  ))
-} else {
-  message(cat(
-    paste0(
-      "Provide a version number for the new authoritative data file.\nA current version was not detected."
+  
+  download.choice <- utils::select.list(
+    c(downloaded.files),
+    multiple = FALSE,
+    graphics = TRUE,
+    title = cat(paste0("\nSelect a file to import."))
+  )
+  
+  download.ext <- tools::file_ext(download.choice)
+  auth.data.name <-
+    stringr::str_replace(download.choice, paste0(".", download.ext), "")
+  
+  if (download.ext %in% c("xlsx", "xls")) {
+    import.file <-
+      readxl::read_excel(paste0(download.path, download.choice))
+    
+    import.file <- import.file %>%
+      dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)) %>%
+      dplyr::mutate({{time.col}} := format(.data[[time.col]], format = time.format))
+    
+    
+    auth.data <- import.file
+    
+  } else if (download.ext %in% c("csv")) {
+    import.file <-
+      utils::read.csv(paste0(download.path, download.choice))
+    auth.data <- import.file
+    
+  }
+  
+  # Rejoin filtered data
+  raw.data.list <-
+    split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
+    purrr::map(dplyr::bind_rows)
+  
+  # Select files to merge
+  raw.data.choice <- utils::select.list(
+    c(names(raw.data.list)),
+    multiple = TRUE,
+    graphics = TRUE,
+    title = cat(paste0(
+      "\nSelect one or more data files to merge.\n"
+    ))
+  )
+  
+  raw.data.list <- raw.data.list %>% purrr::keep(names(raw.data.list) %in% raw.data.choice)
+  
+  add.data <- dplyr::bind_rows(raw.data.list)
+  
+  # Create new columns
+  new.cols <- add.data %>%
+    dplyr::mutate_if(is.character, ~ dplyr::na_if(., c(""))) %>%
+    purrr::discard(., ~ all(is.na(.))) %>%
+    colnames(.)[!colnames(.) %in% colnames(auth.data)] %>%
+    colnames()
+  
+  if (length(new.cols) != 0) {
+    col.choice <- utils::select.list(
+      c(new.cols),
+      multiple = TRUE,
+      graphics = TRUE,
+      title = cat(
+        paste0(
+          "\nOne or more columns do not exist in the authoritative data file.\nSelect which if any to add\nNote, unselected columns will not be archived."
+        )
+      )
     )
+    if (length(col.choice) != 0) {
+      for (a in col.choice) {
+        loc.choice <- utils::menu(c(colnames(auth.data)), title = cat(
+          paste0(
+            "\nInsert '",
+            col.choice,
+            "' before which existing column?\nEnter 0 to add after the last column."
+          )
+        ))
+        if (loc.choice != 0) {
+          before <- colnames(auth.data)[loc.choice]
+        } else {
+          before <- NULL
+        }
+        auth.data <- auth.data %>% tibble::add_column(!!col.choice := NA, .before = before)
+      }
+    }
+  }
+  
+  # Merge data
+  new.data <- add.data %>%
+    merge(auth.data, all = TRUE)
+  
+  new.data <- new.data[, colnames(auth.data)]
+} else if (auth.merge == FALSE) {
+  # Rejoin filtered data
+  raw.data.list <-
+    split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
+    purrr::map(dplyr::bind_rows)
+  
+  #!!!# Evaluate changes
+  test<- summary(arsenal::comparedf(
+    dplyr::mutate(raw.data.list[["Eielson_Survey_v2"]], across(
+      where(is.character), ~ dplyr::na_if(.x, "")
+    )),
+    dplyr::mutate(orig.data.list[["Eielson_Survey_v2"]], across(
+      where(is.character), ~ dplyr::na_if(.x, "")
+    ))
   ))
+  
+  # Select files to merge
+  raw.data.choice <- utils::select.list(
+    c(names(raw.data.list)),
+    multiple = TRUE,
+    graphics = TRUE,
+    title = cat(paste0(
+      "\nSelect one or more data files to combine.\n"
+    ))
+  )
+  
+  
+  raw.data.list <- raw.data.list %>% purrr::keep(names(raw.data.list) %in% raw.data.choice)
+  
+  new.data <- dplyr::bind_rows(raw.data.list)
+  
 }
 
-new.vers <-
-  noquote(as.character(readline(prompt = )))
+```
 
-if(new.vers!=""){
-  new.vers<- paste0(vers.suffix,new.vers)
+```{r}
+
+if(auth.merge == TRUE) {
+  # versioning
+  detect.vers <- suppressWarnings(as.numeric(ifelse(
+    grepl(paste0("\\", vers.suffix), auth.data.name, ignore.case = TRUE),
+    sub(
+      paste0(".*\\", vers.suffix),
+      "",
+      auth.data.name,
+      ignore.case = TRUE
+    ),
+    ""
+  )))
+  
+  if (is.na(detect.vers) == FALSE) {
+    message(cat(
+      paste0(
+        "Provide a version number for the new authoritative data file.\nThe detected current version is '",
+        detect.vers,
+        "'."
+      )
+    ))
+  } else {
+    message(cat(
+      paste0(
+        "Provide a version number for the new authoritative data file.\nA current version was not detected."
+      )
+    ))
+  }
+  
+  new.vers <-
+    noquote(as.character(readline(prompt = )))
+  
+  if (new.vers != "") {
+    new.vers <- paste0(vers.suffix, new.vers)
+  }
+  
+  
+  new.data.name <- paste0(sub(
+    paste0("*\\", vers.suffix, "."),
+    "",
+    auth.data.name,
+    ignore.case = TRUE
+  ), new.vers)
+  
+} else if (auth.merge == FALSE) {
+  message(cat(paste0("\nProvide a name for the data file.\n")))
+  
+  new.data.name <- noquote(as.character(readline(prompt =)))
+  
+  new.data.name <-  sub(" ", "_", data.name)
+  
+  new.data.name <- strsplit(gsub("[[:punct:]]$", "", data.name), " +")[[1]]
+  
 }
-
-new.data.name <- paste0(sub(
-  paste0("*\\", vers.suffix, "."),
-  "",
-  auth.data.name,
-  ignore.case = TRUE
-),
-new.vers)
 
 write.csv(
   new.data,
@@ -1563,8 +1656,6 @@ write.csv(
   na = "",
   row.names = FALSE
 )
-
-
 
 ```
 
@@ -1578,114 +1669,130 @@ if(dictionary.ext %in% c("json")) {
     multiple = TRUE,
     graphics = TRUE,
     title = cat(paste0(
-      "\nWhich format(s) would you like to export?"
+      "\nWhich format(s) would you like to export?\n"
     ))
   )
   
-   dxnry.name <- gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE)
-  
-   if ("tabular dictionary" %in% export.choice) {
-     message(cat(
-       paste0(
-         "Provide a name for the tabular dictionary.\nThe current name is '",
-         dxnry.name ,
-         "'.\nThe mdjson record name is '",
-         input.dxnry[["data"]][[1]][["meta"]][["title"]],
-         "'."
-       )
-     ))
-     
-     dxnry.name <- noquote(as.character(readline(prompt =)))
-     
-     dxnry.name <- strsplit(gsub("[[:punct:]]$", "", dxnry.name), " +")[[1]]
-     
-     table.dxnry <- mdJSONdictio::build.table(input.dxnry)
-     
-     
-     write.csv(
-       table.dxnry,
-       paste0(
-         processed.data.path,
-         dxnry.name,
-         "_",
-         format(
-           as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
-           '%Y%m%d-%H%M%S'
-         ),
-         ".csv"
-       ),
-       na = "",
-       row.names = FALSE
-     )
-     
-   }
-   
-   if ("mdjson dictionary" %in% export.choice) {
-     message(cat(
-       paste0(
-         "Provide a name for the mdjson dictionary.\nThe current name is '",
-         dxnry.name ,
-         "'.\nThe mdjson record name is '",
-         input.dxnry[["data"]][[1]][["meta"]][["title"]],
-         "'."
-       )
-     ))
-     
-     dxnry.name <- noquote(as.character(readline(prompt =)))
-     
-     dxnry.name <- strsplit(gsub("[[:punct:]]$", "", dxnry.name), " +")[[1]]
-     
+  if ("tabular dictionary" %in% export.choice) {
+    message(cat(
+        paste0(
+          "\nProvide a name for the mdjson dictionary.\nThe mdjson record name is '",
+          input.dxnry[["data"]][[1]][["meta"]][["title"]],
+          "'.\n"
+        )
+      ))
     
-     oldsubject <-
-       paste0('\"',
-              'subject',
-              '\":\"',
-              gsub(".*\"subject\":\"(\\w+)\"*", "\\1", oldsubject),
-              '\"')
-     
-     newsubject <-
-       paste0('\"', 'subject', '\":[\"', 'tabularDataset', '\"]')
-     
-     gsub(".*\"subject\":\"(\\w+)\"*", "\\1", oldsubject)
-     
-     gsub('^(.\"subject\":{1})(.*)$', '\\1[\\2', oldsubject)
-     
-      gsub('(?<=\\\\"subject\":)(?=\\\\")', "[", oldsubject)
-     
-     newstring <- gsub('\"subject\":.*$\"', "[", input.dxnry[["data"]][[1]][["attributes"]][["json"]])
-
-
-    input.dxnry[["data"]][[1]][["attributes"]][["json"]] <-
-      newstring
-
-     
-     
-     
-     test<- rjson::toJSON(x = input.dxnry)
-  
+    dxnry.name <- noquote(as.character(readline(prompt = )))
     
-     
-     write(
-       x = test,
-       file = paste0(
-         processed.data.path,
-         dxnry.name,
-         "_",
-         format(
-           as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
-           '%Y%m%d-%H%M%S'
-         ),
-         ".json"
-       )
-     )
-     
-   }
-   
-   if ("mdEditor file" %in% export.choir) {
-     ref.dictionary[["data"]][[record.num]] <- input.dxnry
-   }
-   
-   
+    if (dxnry.name == "") {
+      dxnry.name <- input.dxnry[["data"]][[1]][["meta"]][["title"]]
+    }
+    
+    dxnry.name <-  sub(" ", "_", dxnry.name)
+    
+    dxnry.name <- strsplit(gsub("[[:punct:]]$", "", dxnry.name), " +")[[1]]
+    
+    table.dxnry <- mdJSONdictio::build.table(input.dxnry)
+    
+    
+    write.csv(
+      table.dxnry,
+      paste0(
+        processed.data.path,
+        dxnry.name,
+        "_",
+        format(
+          as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
+          '%Y%m%d-%H%M%S'
+        ),
+        ".csv"
+      ),
+      na = "",
+      row.names = FALSE
+    )
+    
+  }
+  
+  if ("mdjson dictionary" %in% export.choice) {
+    
+    if (!"tabular dictionary" %in% export.choice) {
+      message(cat(
+        paste0(
+          "\nProvide a name for the mdjson dictionary.\nThe mdjson record name is '",
+          input.dxnry[["data"]][[1]][["meta"]][["title"]],
+          "'.\n"
+        )
+      ))
+      
+      dxnry.name <- noquote(as.character(readline(prompt =)))
+      
+      if (dxnry.name == "") {
+        dxnry.name <- input.dxnry[["data"]][[1]][["meta"]][["title"]]
+      }
+      
+      dxnry.name <-  sub(" ", "_", dxnry.name)
+      
+      dxnry.name <- strsplit(gsub("[[:punct:]]$", "", dxnry.name), " +")[[1]]
+      
+    }
+    
+    new.dxnry <- rjson::toJSON(x = input.dxnry)
+    
+    write(
+      x = new.dxnry,
+      file = paste0(
+        processed.data.path,
+        dxnry.name,
+        "_mdeditor-",
+        format(
+          as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
+          '%Y%m%d-%H%M%S'
+        ),
+        ".json"
+      )
+    )
+    
+  }
+  
+  if ("mdEditor file" %in% export.choice) {
+    message(cat(
+      paste0(
+        "\nProvide a name for the mdjson file.\nThe current file name is '",
+        gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE) ,
+        "'.\n"
+      )
+    ))
+    
+    file.name <- noquote(as.character(readline(prompt =)))
+    
+    if (file.name == "") {
+      file.name <-  gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE)
+    }
+    
+    file.name <-  sub(" ", "_", file.name)
+    
+    file.name <- strsplit(gsub("[[:punct:]]$", "", file.name), " +")[[1]]
+    
+    ref.dictionary[["data"]][[record.num]] <- input.dxnry[["data"]][[1]]
+    
+    new.dxnry <- rjson::toJSON(x = ref.dictionary)
+    
+    write(
+      x = new.dxnry,
+      file = paste0(
+        processed.data.path,
+        file.name,
+        "_mdeditor-",
+        format(
+          as.POSIXct(ref.dictionary[["data"]][[record.num]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
+          '%Y%m%d-%H%M%S'
+        ),
+        ".json"
+      )
+    )
+    
+  }
+  
 }
 
 ```
