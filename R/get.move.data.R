@@ -108,7 +108,9 @@ get.move.data <-
     
     ## Display study time range
     
-    if(time.choice==1) {
+    removed.studies <- c()
+    
+    if (time.choice == 1) {
       time.message <- c()
       
       for (a in 1:nrow(study.choice.df)) {
@@ -152,40 +154,39 @@ get.move.data <-
       ))
       
       ## Get time range input
-      start.time<- NA
+      start.time <- NA
       
       while (is.na(start.time)) {
-      message(
-        cat(
-          "\nEnter a start date and time for the Movebank attribute 'timestamp-start' (e.g., 2000-01-31 00:00:00):"
+        message(
+          cat(
+            "\nEnter a start date and time for the Movebank attribute 'timestamp-start' (e.g., 2000-01-31 00:00:00):"
+          )
         )
-      )
-      start.time.entry <- as.character(readline(prompt = ))
-      
-      
-      if (is.na(as.POSIXct(
-        strptime(start.time.entry,
-                 format = "%Y-%m-%d %H:%M:%S",
-                 tz = 'UTC')
-      ))) {
-        start.time.entry <- paste0(start.time.entry, " 00:00:00")
+        start.time.entry <- as.character(readline(prompt =))
         
-      }
-      
-      start.time <-
-        as.POSIXct(strptime(start.time.entry,
-                            format = "%Y-%m-%d %H:%M:%S",
-                            tz = 'UTC'))
-      
-      if (is.na(start.time)) {
-        message(cat("\nError: Timestamp incorrectly formatted.")
-        )
         
-      }
+        if (is.na(as.POSIXct(
+          strptime(start.time.entry,
+                   format = "%Y-%m-%d %H:%M:%S",
+                   tz = 'UTC')
+        ))) {
+          start.time.entry <- paste0(start.time.entry, " 00:00:00")
+          
+        }
+        
+        start.time <-
+          as.POSIXct(strptime(start.time.entry,
+                              format = "%Y-%m-%d %H:%M:%S",
+                              tz = 'UTC'))
+        
+        if (is.na(start.time)) {
+          message(cat("\nError: Timestamp incorrectly formatted."))
+          
+        }
       }
       
       
-      end.time<- NA
+      end.time <- NA
       
       while (is.na(end.time)) {
         message(
@@ -194,7 +195,7 @@ get.move.data <-
           )
         )
         
-        end.time.entry <- as.character(readline(prompt = ))
+        end.time.entry <- as.character(readline(prompt =))
         
         
         if (is.na(as.POSIXct(
@@ -242,7 +243,7 @@ get.move.data <-
       }
       
     }
-        
+    
     
     # Import options
     
@@ -257,6 +258,8 @@ get.move.data <-
                       cat(
                         paste0("\nHow do you want to import location and/or reference data?")
                       ))
+    } else {
+      import.choice<- 2
     }
     
     message(cat(paste0("\nRetrieving data for")))
@@ -273,7 +276,7 @@ get.move.data <-
       study.id <-
         move2::movebank_get_study_id(study_id = study.choice.df$id[a])
       
-      message(cat(paste0(" '",study.name,"'...")))
+      message(cat(paste0(" '", study.name, "'...")))
       
       
       ## Location data..
@@ -291,7 +294,7 @@ get.move.data <-
         
         
         # attributes.vars <- c()
-        # 
+        #
         # for (b in 1:length(sensor.id)) {
         #   attributes.add <-
         #     move2::movebank_retrieve(
@@ -301,10 +304,10 @@ get.move.data <-
         #       timestamp_end  = end.time,
         #       sensor_type_id = sensor.id[b]
         #     )$short_name
-        #   
+        #
         #   attributes.vars <- c(attributes.vars, attributes.add)
         # }
-        # 
+        #
         # attributes.vars <-
         #   unique(attributes.vars)
         
@@ -322,7 +325,7 @@ get.move.data <-
                           timestamp < end.time)
         )
         
-        if(nrow(import.loc)==0) {
+        if (nrow(import.loc) == 0) {
           study.choice <-
             study.choice[!study.choice %in% study.choice.df$name[a]]
           
@@ -358,12 +361,14 @@ get.move.data <-
     removed.studies <- c(removed.studies,
                          study.choice.df$name[!study.choice.df$name %in% study.choice])
     
-    warning(
-      paste0(
-        "The following studies do not have location data for the provided time range and were excluded."
-      ),
-      paste0(" \n  ", removed.studies)
-    )
+    if (length(removed.studies) != 0) {
+      warning(
+        paste0(
+          "The following studies do not have location data for the provided time range and were excluded."
+        ),
+        paste0(" \n  ", removed.studies)
+      )
+    }
     
     
     names(import.list) <- study.choice
@@ -388,37 +393,36 @@ get.move.data <-
     }
     
     ## Multiple study import
-    
-    if (import.choice == 2) {
-      rbind.import.list <- list()
-      
-      for (b in 1:length(names(import.list[[1]]))) {
-        sub.import.list <-
-          sapply(import.list, "[", names(import.list[[1]])[b])
+      if (import.choice == 2) {
+        rbind.import.list <- list()
         
-        names(sub.import.list)<- study.choice
+        for (b in 1:length(names(import.list[[1]]))) {
+          sub.import.list <-
+            sapply(import.list, "[", names(import.list[[1]])[b])
+          
+          names(sub.import.list) <- study.choice
+          
+          sub.import.list <-
+            data.table::rbindlist(sub.import.list, fill = TRUE, idcol = "study_name")
+          
+          rbind.import.list[[length(rbind.import.list) + 1]] <-
+            sub.import.list
+          
+          names(rbind.import.list)[[length(rbind.import.list)]] <-
+            names(import.list[[1]])[b]
+        }
         
-        sub.import.list <-
-          data.table::rbindlist(sub.import.list, fill = TRUE, idcol = "study_name")
+        if (length(rbind.import.list) == 1) {
+          rbind.import <-
+            data.table::rbindlist(rbind.import.list, fill = TRUE)
+          
+          assign("output", rbind.import)
+        } else {
+          assign("output", rbind.import.list)
+        }
         
-        rbind.import.list[[length(rbind.import.list) + 1]] <-
-          sub.import.list
-        
-        names(rbind.import.list)[[length(rbind.import.list)]] <-
-          names(import.list[[1]])[b]
-      }
-      
-      if (length(rbind.import.list) == 1) {
-        rbind.import <-
-          data.table::rbindlist(rbind.import.list, fill = TRUE)
-        
-        assign("output", rbind.import)
-      } else {
-        assign("output", rbind.import.list)
-      }
-      
-    } else if (import.choice == 1) {
-      assign("output", import.list)
+      } else if (import.choice == 1) {
+        assign("output", import.list)
     }
     
     return(output)
