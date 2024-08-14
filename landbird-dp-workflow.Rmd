@@ -67,13 +67,20 @@ If the installations fail, refer to [Install mdJSONdictio R package](https://hdv
 
 ### Create subfolders
 
+Run the following installation code to install necessary subfolders
+
 ```{r}
 setwd("~/GitHub/landbird-dp-workflow")
 
 fs::dir_create(names(which(!fs::dir_exists(
-  c("downloads", "data-raw", "data-processed")
+  c(
+    "downloads",
+    "data-raw",
+    "data-processed/bander_portal",
+    "data-processed/movebank",
+    "data-processed/to_archive"
+  )
 ))))
-
 
 ```
 
