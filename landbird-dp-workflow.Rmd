@@ -1451,7 +1451,7 @@ processed.data.path <- "data-processed/to_archive/"
 # Do you want to merge the data with an authoritative file?
 auth.merge <- FALSE
 
-# Provide versioning format (when merging with authoritative file)
+# Provide versioning format (when merging with an authoritative file)
 vers.suffix <- "_v"
 
 ```
@@ -1555,9 +1555,9 @@ if (auth.merge == TRUE) {
   
   # Merge data
   new.data <- add.data %>%
-    merge(auth.data, all = TRUE)
+    merge(auth.data, all = TRUE) %>%
+    dplyr::select(colnames(auth.data))
   
-  new.data <- new.data[, colnames(auth.data)]
 } else if (auth.merge == FALSE) {
   # Rejoin filtered data
   raw.data.list <-
@@ -1596,7 +1596,7 @@ if (auth.merge == TRUE) {
 ```{r}
 
 if(auth.merge == TRUE) {
-  # versioning
+  # Versioning
   detect.vers <- suppressWarnings(as.numeric(ifelse(
     grepl(paste0("\\", vers.suffix), auth.data.name, ignore.case = TRUE),
     sub(
@@ -1819,20 +1819,9 @@ commit <-
 
 # Capture data transformations
 
-### Biological samples inventory
-
-```{r}
-# update.bioinventory
-```
-
-### Bander Portal
-
 ```{r}
 # Provide a directory path for data file(s) to import
-raw.data.path <- "data-processed/to_archive/"
-
-# Provide a directory path to write processed files
-processed.data.path <- "data-processed/bander_portal/"
+data.path <- "data-processed/to_archive/"
 
 # Provide the relevant information (if applicable)
 missing_values<- c(NA)
@@ -1846,34 +1835,34 @@ time.format <- "%H:%M"
 
 ```{r}
 # Import raw data file(s)
-raw.data.files <-
+data.files <-
   list.files(
-    path = raw.data.path,
+    path = data.path,
     pattern = NULL,
     full.names = FALSE,
     recursive = FALSE
   )
 
-raw.data.choice <- utils::select.list(
-  c(raw.data.files),
+data.choice <- utils::select.list(
+  c(data.files),
   multiple = TRUE,
   graphics = TRUE,
   title = cat(paste0("\nSelect one or more data files to import."))
 )
 
-raw.data.ext <- tools::file_ext(raw.data.choice)
+data.ext <- tools::file_ext(data.choice)
 import.data.name <-
-  stringr::str_replace(raw.data.choice, paste0(".", raw.data.ext), "")
+  stringr::str_replace(data.choice, paste0(".", data.ext), "")
 
 
 while (TRUE %in% duplicated(import.data.name)) {
   message(cat(
     "\n\n\nError: The following files have the same name.",
-    paste0("\n  ", raw.data.choice[dup.test])
+    paste0("\n  ", data.choice[dup.test])
   ))
   
-  raw.data.choice <- utils::select.list(
-    c(raw.data.files),
+  data.choice <- utils::select.list(
+    c(data.files),
     multiple = TRUE,
     graphics = TRUE,
     title = cat(paste0(
@@ -1881,77 +1870,55 @@ while (TRUE %in% duplicated(import.data.name)) {
     ))
   )
   
-  raw.data.ext <- tools::file_ext(raw.data.choice)
+  data.ext <- tools::file_ext(data.choice)
   import.data.name <-
-    stringr::str_replace(raw.data.choice, paste0(".", raw.data.ext), "")
+    stringr::str_replace(data.choice, paste0(".", data.ext), "")
   
 }
 
-raw.data.list <- list()
+data.list <- list()
 
-for (a in 1:length(raw.data.ext)) {
-  if (raw.data.ext[a] %in% c("xlsx", "xls")) {
+for (a in 1:length(data.ext)) {
+  if (data.ext[a] %in% c("xlsx", "xls")) {
     import.file <-
-      readxl::read_excel(paste0(raw.data.path, raw.data.choice[a]), na = "")
+      readxl::read_excel(paste0(data.path, data.choice[a]), na = "")
     
     import.file <- import.file %>%
       dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)) %>%
       dplyr::mutate({{time.col}} := format(.data[[time.col]], format = time.format))
     
     
-    raw.data.list[[a]] <- import.file
+    data.list[[a]] <- import.file
     
-  } else if (raw.data.ext[a] %in% c("csv")) {
+  } else if (data.ext[a] %in% c("csv")) {
     import.file <-
-      utils::read.csv(paste0(raw.data.path, raw.data.choice[a]), na.strings = "")
-    raw.data.list[[a]] <- import.file
+      utils::read.csv(paste0(data.path, data.choice[a]), na.strings = "")
+    data.list[[a]] <- import.file
     
   }
 }
 
-names(raw.data.list) <- import.data.name
-
-
-# Reference tables
-Master_Contacts <-
-  read.csv(
-    "~/Data_management/landbirds_project_maintenance/Reformatted_data/Master_Contacts.csv",
-    na.strings = ""
-  )
-
-ref_data <-
-  lapply(list.files(path = "reference/bander_portal/", full.names = TRUE),
-         readxl::read_excel)
-
-names(ref_data) <-
-  gsub(
-    list.files(path = "reference/bander_portal/"),
-    pattern = ".xlsx$",
-    replacement = ""
-  )
-
-list2env(ref_data, globalenv())
+names(data.list) <- import.data.name
 
 
 ```
 
-#### Select data to transform
-
 ```{r}
 
+# Select data to transform
 filter.option <- utils::select.list(
   c("by species", "by date range"),
   multiple = FALSE,
   graphics = FALSE,
   title = cat(
     paste0("\nHow do you want to filter the imported files?\n"),
-    paste0(names(raw.data.list), sep = "\n"),
+    paste0(names(data.list), sep = "\n"),
     paste0("\nEnter 0 to review all data.\n")
   )
 )
 
 if (filter.option == "by species") {
-  sp.vectors <- sapply(sapply(raw.data.list, "[", sp.col), unique)
+  sp.vectors <- sapply(sapply(data.list, "[", sp.col), unique)
   
   sp.overlap <- Reduce(intersect, sp.vectors)
   
@@ -1979,7 +1946,7 @@ if (filter.option == "by species") {
     warning("Filter did not return results and will not be applied.")
     
   } else {
-    raw.data.list <- raw.data.list %>%
+    data.list <- data.list %>%
       purrr::map(.f = ~ .x %>%
                    dplyr::filter(.data[[sp.col]] %in% filter.choice))
   }
@@ -1989,7 +1956,7 @@ if (filter.option == "by species") {
 
 
 if (filter.option == "by date range") {
-  date.ranges <- raw.data.list %>% purrr::map(
+  date.ranges <- data.list %>% purrr::map(
     .f = ~ .x %>%
       dplyr::select(all_of(date.col)) %>%
       dplyr::filter(.data[[date.col]] != "") %>%
@@ -2052,7 +2019,7 @@ if (filter.option == "by date range") {
     
   }
   
-  temp <- raw.data.list %>%
+  temp <- data.list %>%
     purrr::map(.f = ~ .x %>%
                  dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
                
@@ -2066,22 +2033,428 @@ if (filter.option == "by date range") {
     warning("Filter did not return results and will not be applied.")
     
   } else {
-    raw.data.list <- temp
+    data.list <- temp
     
     }
 }
 
 # Remove empty dataframes
-  raw.data.list <- raw.data.list %>%
-    purrr::discard(., ~ nrow(.) == 0) %>%
-    purrr::map(.f = ~ .x %>%
-                 dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
+data.list <- data.list %>%
+  purrr::discard(., ~ nrow(.) == 0) %>%
+  purrr::map(.f = ~ .x %>%
+               dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
+
+```
+
+### Biological samples inventory
+
+```{r}
+
+# Provide directory path for the authoritative data file
+download.path <- "downloads/"
+
+# Provide a directory path to write processed files
+processed.data.path <- "data-processed/to_archive/"
+
+# Do you want to merge the data with an authoritative file?
+auth.merge <- TRUE
+
+# Provide versioning format (when merging with authoritative file)
+vers.suffix <- "_v"
+
+```
+
+```{r}
+
+# Prep data
+cap.data <- plyr::ldply(data.list)
+
+cap.data %>%
+  tibble::as_tibble() %>%
+  dplyr::filter(if_all(c("Date", "Year"), is.na))
+
+cap.data <- cap.data %>%
+  dplyr::mutate_at("BandNumberOut", ~ as.character(.)) %>%
+  dplyr::mutate_if(is.character, ~ dplyr::na_if(., "")) %>%
+  dplyr::mutate_if(is.character, ~ dplyr::na_if(., "NULL")) %>%
+  dplyr::mutate_if(is.character, ~ dplyr::na_if(., missing_values)) %>%
+  tidyr::drop_na(BandNumberOut, Year)
+
+
+# Load reference tables
+ref_data <-
+  lapply(list.files(path = "reference/biosample_inventory/", full.names = TRUE),
+         utils::read.csv, na.strings = "")
+
+names(ref_data) <-
+  gsub(
+    list.files(path = "reference/biosample_inventory/"),
+    pattern = ".csv$",
+    replacement = ""
+  )
+
+list2env(ref_data, globalenv())
+
+
+# Import authoritative data file
+if (auth.merge == TRUE) {
+  downloaded.files <-
+    list.files(
+      path = download.path,
+      pattern = NULL,
+      full.names = FALSE,
+      recursive = FALSE
+    )
   
-  cap_data <- plyr::ldply(raw.data.list)
+  download.choice <- utils::select.list(
+    c(downloaded.files),
+    multiple = FALSE,
+    graphics = TRUE,
+    title = cat(paste0("\nSelect a file to import."))
+  )
+  
+  download.ext <- tools::file_ext(download.choice)
+  auth.data.name <-
+    stringr::str_replace(download.choice, paste0(".", download.ext), "")
+  
+  if (download.ext %in% c("xlsx", "xls")) {
+    import.file <-
+      readxl::read_excel(paste0(download.path, download.choice))
+    
+    import.file <- import.file %>%
+      dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)) %>%
+      dplyr::mutate({{time.col}} := format(.data[[time.col]], format = time.format))
+    
+    
+    auth.data <- import.file
+    
+  } else if (download.ext %in% c("csv")) {
+    import.file <-
+      utils::read.csv(paste0(download.path, download.choice))
+    auth.data <- import.file
+    
+  }
+
+  auth.data <- auth.data %>%
+    dplyr::mutate_at("BandNumber", ~ as.character(.)) %>%
+    dplyr::mutate_if(is.character, ~ dplyr::na_if(., "")) %>%
+    dplyr::mutate_if(is.character, ~ dplyr::na_if(., "NULL")) %>%
+    dplyr::mutate_if(is.character, ~ dplyr::na_if(., missing_values))
+  
+  # Remove inventoried data
+  cap.data <- cap.data %>%
+    dplyr::anti_join(auth.data,
+                     by = dplyr::join_by("BandNumberOut" == "BandNumber", "Year" == "YearCollected"))
+  
+}
 
 
-# Remove NA columns
-cap_data <- cap_data %>%
+```
+
+#### Recode data
+
+```{r}
+
+# Correct colnames
+cap.data <- cap.data %>%
+  dplyr::rename_at(dplyr::vars(matches("Out$")), ~ stringr::str_remove(., "Out$")) %>%
+  plyr::rename(
+    replace = c(
+      "Year" = "YearCollected",
+      "Month" = "MonthCollected",
+      "Day" = "DayCollected",
+      "BanderID" = "Collector"
+    )
+  ) %>%
+  tidyr::unite("Feather",
+               c("FeatherType", "FeatherType1")[c("FeatherType", "FeatherType1") %in% names(cap.data)],
+               remove = TRUE,
+               na.rm = TRUE) %>%
+  dplyr::mutate_at("Feather", ~ dplyr::na_if(., ""))
+
+# Pivot sample columns
+
+# Blood
+  # c("BloodGenetics",
+  # "BloodIsotope",
+  # "BloodHg")
+  
+sample.cols <- c(
+  "Feather",
+  "AISwabO",
+  "AISwabC",
+  "Fecal",
+  "Nails",
+  "BloodFilter",
+  "BloodCapTube",
+  "BloodSmear"
+)
+
+cap.data <- cap.data %>%
+  tidyr::pivot_longer(
+    cols = tidyselect::any_of(sample.cols),
+    names_to = "SampleType",
+    values_to = "SampleTaken"
+  ) %>%
+  dplyr::mutate("FeatherType1" = ifelse(SampleType == "Feather", SampleTaken, NA)) %>%
+  dplyr::mutate("SampleTaken" = ifelse(
+    SampleType == "Feather" &
+      is.na(FeatherType1) == FALSE,
+    "Y",
+    SampleTaken
+  )) %>%
+  dplyr::filter(SampleTaken %in% c("Y"))
+
+
+```
+
+#### Translate data
+
+```{r}
+
+# Auto fill sample details
+cap.data<- cap.data %>%
+  dplyr::left_join(.,sample_info,
+                   by = "SampleType",
+                   keep = FALSE,
+                   relationship = "many-to-one")
+
+
+# Add missing info
+## OccurenceID
+
+cap.data %>%
+  dplyr::filter_at("SpeciesCode", is.na)
+
+cap.data %>%
+  dplyr::filter(if_all(c("StateProvince", "City", "Area"), is.na))
+
+
+cap.data<- cap.data %>%
+  dplyr::mutate(
+    "StorageMethod" = "frozen",
+    "StorageLocation" = "Alaska MBM",
+    "SampleStatus" = NA,
+    "Contact" = NA,
+    "Notes" = NA
+  )
+
+
+```
+
+#### Export data files
+
+```{r}
+
+if(auth.merge==TRUE) {
+  # Merge data
+  new.data <- auth.data %>%
+    merge(cap.data, all = TRUE) %>%
+    dplyr::select(colnames(auth.data))
+
+  # Versioning
+  detect.vers <- suppressWarnings(as.numeric(ifelse(
+    grepl(paste0("\\", vers.suffix), auth.data.name, ignore.case = TRUE),
+    sub(
+      paste0(".*\\", vers.suffix),
+      "",
+      auth.data.name,
+      ignore.case = TRUE
+    ),
+    ""
+  )))
+  
+  if (is.na(detect.vers) == FALSE) {
+    message(cat(
+      paste0(
+        "Provide a version number for the new authoritative data file.\nThe detected current version is '",
+        detect.vers,
+        "'."
+      )
+    ))
+  } else {
+    message(cat(
+      paste0(
+        "Provide a version number for the new authoritative data file.\nA current version was not detected."
+      )
+    ))
+  }
+  
+  new.vers <-
+    noquote(as.character(readline(prompt = )))
+  
+  if (new.vers != "") {
+    new.vers <- paste0(vers.suffix, new.vers)
+  }
+  
+  new.data.name <- paste0(sub(
+    paste0("\\", vers.suffix, ".*"),
+    "",
+    auth.data.name,
+    ignore.case = TRUE
+  ), new.vers)
+  
+} else if (auth.merge == FALSE) {
+  message(cat(paste0("\nProvide a name for the data file.\n")))
+  
+  new.data.name <- noquote(as.character(readline(prompt =)))
+  
+  new.data.name <-  sub(" ", "_", data.name)
+  
+  new.data.name <- strsplit(gsub("[[:punct:]]$", "", data.name), " +")[[1]]
+  
+}
+
+
+write.csv(
+  new.data,
+  paste0(processed.data.path, new.data.name, ".csv"),
+  na = "",
+  row.names = FALSE
+)
+
+
+```
+
+#### Update sample status
+
+```{r}
+# Provide the directory path to the sex results
+file.path = "C:/Users/hvincelette/OneDrive - DOI/Documents/Fieldwork_wrap/2023/Sexing_Analysis/"
+```
+
+```{r}
+# Import sex results
+files <-
+  list.files(
+    path = file.path,
+    pattern = NULL,
+    full.names = FALSE,
+    recursive = FALSE
+  )
+
+file.choice <- utils::select.list(
+  c(files),
+  multiple = FALSE,
+  graphics = TRUE,
+  title = cat(paste0("\nSelect one or more data files to import."))
+)
+
+if (tools::file_ext(file.choice) %in% c("xlsx", "xls")) {
+  sex_results <-
+    readxl::read_excel(paste0(file.path, file.choice))
+  
+} else if (tools::file_ext(file.choice) %in% c("csv")) {
+  sex_results <-
+    utils::read.csv(paste0(file.path, file.choice))
+  
+}
+
+# Correct results table
+sex_results<- sex_results %>%
+  dplyr::mutate_at("BandNumber", as.character) %>%
+  tidyr::drop_na("OccurenceID") %>%
+  dplyr::filter(Sex %in% c("F","M"))
+
+
+# Check for duplicate results (creates duplicate rows in left_join)
+sex_results[c(
+  anyDuplicated(sex_results$BandNumber, fromLast = TRUE),
+  anyDuplicated(sex_results$BandNumber, fromLast = FALSE)
+), ]
+
+
+# Join sex results
+new.data <- new.data %>%
+  dplyr::mutate(".id" = 1:nrow(.)) %>%
+  dplyr::left_join(
+    .,
+    dplyr::distinct(sex_results[, c("SpeciesCode",
+                                    "BandNumber",
+                                    "YearCollected",
+                                    "SampleTissue",
+                                    "SampleForm",
+                                    "Sex")]),
+    by = c(
+      "SpeciesCode",
+      "BandNumber",
+      "YearCollected",
+      "SampleTissue",
+      "SampleForm"
+    ),
+    keep = FALSE,
+    relationship = "many-to-many"
+  ) %>%
+  dplyr::mutate_at(
+    "SampleStatus",
+    ~ dplyr::case_when(Sex %in% c("F", "M") ~ "analysis complete", TRUE ~ SampleStatus)
+  ) %>%
+  dplyr::select(-"Sex")
+
+
+# # If status is out of sync..
+# unanalyzed.index <- which(
+#   new.data$Contact == "Sarah Sonsthagen" &
+#     is.na(new.data$Sex) &
+#     new.data$SpeciesCode != "REKN"
+# ) 
+# 
+# new.data <- new.data %>%
+#   dplyr::mutate_at("StorageMethod",
+#             ~ dplyr::case_when(dplyr::row_number() %in% unanalyzed.index ~ "frozen", TRUE ~ .)) %>%
+#   dplyr::mutate_at("StorageLocation",
+#             ~ dplyr::case_when(dplyr::row_number() %in% unanalyzed.index ~ "Alaska MBM", TRUE ~ .)) %>%
+#   dplyr::mutate_at("SampleStatus",
+#             ~ dplyr::case_when(dplyr::row_number() %in% unanalyzed.index ~ NA, TRUE ~ .)) %>%
+#    dplyr::mutate_at("Contact",
+#             ~ dplyr::case_when(dplyr::row_number() %in% unanalyzed.index ~ NA, TRUE ~ .)) %>%
+#     dplyr::select(-c("Sex",".id"))
+
+  
+write.csv(
+  new.data,
+  paste0(processed.data.path, new.data.name, ".csv"),
+  na = "",
+  row.names = FALSE
+)
+
+```
+
+### Bander Portal
+
+```{r}
+# Provide a directory path to write processed files
+processed.data.path <- "data-processed/bander_portal/"
+
+```
+
+```{r}
+
+cap.data <- plyr::ldply(data.list)
+
+# Reference tables
+Master_Contacts <-
+  read.csv(
+    "~/Data_management/landbirds_project_maintenance/Reformatted_data/Master_Contacts.csv",
+    na.strings = ""
+  )
+
+ref_data <-
+  lapply(list.files(path = "reference/bander_portal/", full.names = TRUE),
+         readxl::read_excel)
+
+names(ref_data) <-
+  gsub(
+    list.files(path = "reference/bander_portal/"),
+    pattern = ".xlsx$",
+    replacement = ""
+  )
+
+list2env(ref_data, globalenv())
+
+
+# Standardize missing values
+cap.data <- cap.data %>%
   dplyr::mutate_if(is.character,  ~ dplyr::na_if(., "")) %>%
   dplyr::mutate_if(is.character,  ~ dplyr::na_if(., "NULL")) %>%
   dplyr::mutate_if(is.character,  ~ dplyr::na_if(., missing_values))
@@ -2094,9 +2467,9 @@ miss_cols <- setdiff(c(
   "TagStatus1",
   "TagStatus2"
 ),
-colnames(cap_data))
+colnames(cap.data))
 
-cap_data[miss_cols] <-
+cap.data[miss_cols] <-
   as.character(NA)
 
 ```
@@ -2106,7 +2479,7 @@ cap_data[miss_cols] <-
 ```{r}
 
 # How Obtained
-recap.info <- cap_data %>%
+recap.info <- cap.data %>%
   dplyr::filter(BBLDisposition == "R") %>%
   dplyr::select(SpeciesCode, BBLDisposition, BBLCondition) %>%
   dplyr::distinct()
@@ -2152,7 +2525,7 @@ typical.num <- which(BBL_ref == "66")
         ))
     }
     
-    cap_data <- cap_data %>%
+    cap.data <- cap.data %>%
       dplyr::rowwise() %>%
       dplyr::mutate_at(
         "HowObtained",
@@ -2160,7 +2533,7 @@ typical.num <- which(BBL_ref == "66")
           BBLDisposition == "R" &
             SpeciesCode == recap.info$SpeciesCode[a] &
             BBLCondition == recap.info$BBLCondition[a],
-          cap_data$HowObtained[a] <- BBL_ref[obtained.choice],
+          cap.data$HowObtained[a] <- BBL_ref[obtained.choice],
           
           .
         )
@@ -2171,9 +2544,9 @@ typical.num <- which(BBL_ref == "66")
 
 # Locations
 loc.cols <- c("City", "Area")
-loc.cols <- loc.cols[loc.cols %in% colnames(cap_data)]
+loc.cols <- loc.cols[loc.cols %in% colnames(cap.data)]
 
-cap_data <- cap_data %>%
+cap.data <- cap.data %>%
   dplyr::mutate_at(
     dplyr::vars(which(names(.) %in% loc.cols)),
     ~ as.character(.) %>% dplyr::recode(
@@ -2213,7 +2586,7 @@ BBL_locations <- c(
   "FORTYUK"
 )
 
-loc.num <- which(!cap_data$LocationID %in%
+loc.num <- which(!cap.data$LocationID %in%
                    BBL_locations)
 
 for(a in loc.num) {
@@ -2222,7 +2595,7 @@ for(a in loc.num) {
                 title = cat(
                   paste0(
                     "\n'",
-                    cap_data$LocationID[a],
+                    cap.data$LocationID[a],
                     "' is not a listed BBL location ID.\nChoose an existing or new ID.\n"
                   )
                 ))
@@ -2243,22 +2616,22 @@ for(a in loc.num) {
   }
   
   if (new_loc != "") {
-    if (is.na(cap_data$LocationID[a])) {
-      cap_data <-  cap_data %>%
+    if (is.na(cap.data$LocationID[a])) {
+      cap.data <-  cap.data %>%
         dplyr::mutate_at("LocationID",
                          ~ replace(.,
                                    is.na(.), new_loc))
     } else {
-      cap_data <-  cap_data %>%
+      cap.data <-  cap.data %>%
         dplyr::mutate_at("LocationID",
                          ~ replace(.,
-                                   . == cap_data$LocationID[a], new_loc))
+                                   . == cap.data$LocationID[a], new_loc))
     }
   }
 }
 
 # Capture method
-cap_data <- cap_data %>%
+cap.data <- cap.data %>%
   dplyr::mutate_at(
     "CaptureMethod",
     ~ as.character(.) %>%
@@ -2275,7 +2648,7 @@ cap_data <- cap_data %>%
   )
 
 # Bander/Scribe ID
-cap_data <- cap_data %>%
+cap.data <- cap.data %>%
   dplyr::mutate_at(
     c("BanderID", "ScribeID"),
     ~ as.character(.) %>% plyr::mapvalues(
@@ -2296,7 +2669,7 @@ cap_data <- cap_data %>%
   )
 
 # Sex
-cap_data <- cap_data %>%
+cap.data <- cap.data %>%
   dplyr::mutate_at("FieldSex", ~ as.character(.)) %>%
   dplyr::rowwise() %>%
   dplyr::mutate_at("FieldSex",
@@ -2308,7 +2681,7 @@ cap_data <- cap_data %>%
 
 
 # Molt
-cap_data <- cap_data %>%
+cap.data <- cap.data %>%
   dplyr::mutate_at(
     "BodyMolt",
     ~ as.character(.) %>% dplyr::recode(
@@ -2344,12 +2717,12 @@ leg_cols <-   c(
   "LROut"
 )
 
-leg_cols <- leg_cols[leg_cols %in% colnames(cap_data)]
+leg_cols <- leg_cols[leg_cols %in% colnames(cap.data)]
 
 color_cols<- paste0(leg_cols,"_colorband")
 
 
-# test <- cap_data %>%
+# test <- cap.data %>%
 #   dplyr::filter_at(leg_cols, dplyr::any_vars(stringr::str_detect(., stringr::regex("-", ignore_case =
 #                                                                                      TRUE))))
 
@@ -2393,7 +2766,7 @@ BBL_colors <-
     "Yellow"
   )
 
-cap_data <-  cap_data %>%
+cap.data <-  cap.data %>%
   dplyr::mutate_if(is.logical, as.factor) %>%
   dplyr::rowwise() %>%
   dplyr::mutate_at(
@@ -2443,7 +2816,7 @@ cap_data <-  cap_data %>%
 
 
 ## Flag code colors by species - new/retained/replaced
-flag_info <- cap_data %>%
+flag_info <- cap.data %>%
   dplyr::filter(dplyr::if_any(c(leg_cols),
                               ~ stringr::str_detect(., "69")))  %>%
   dplyr::rowwise() %>%
@@ -2463,8 +2836,8 @@ BBL_ref <- bander_portal_lookups$code[bander_portal_lookups$field ==
                                         "Marker color"]
 BBL_ref<- BBL_ref[!grepl("/", BBL_ref)]
 
-cap_data[, "FlagCodeIn_color"] <- NA
-cap_data[, "FlagCodeOut_color"] <- NA
+cap.data[, "FlagCodeIn_color"] <- NA
+cap.data[, "FlagCodeOut_color"] <- NA
 
 if(nrow(flag_info)!=0) {
   for (b in 1:nrow(flag_info)) {
@@ -2500,9 +2873,9 @@ if(nrow(flag_info)!=0) {
     
     if (flag_info$FlagIn[b] == 0) {
       ### new
-      cap_data$FlagCodeOut_color[cap_data$SpeciesCode == flag_info$SpeciesCode[b] &
-                                   is.na(cap_data$FlagCodeIn) &
-                                   !is.na(cap_data$FlagCodeOut)] <-
+      cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                   is.na(cap.data$FlagCodeIn) &
+                                   !is.na(cap.data$FlagCodeOut)] <-
         BBL_ref[flag.choice]
     } else {
       if (flag_info$FlagCodeChange[b] == 1) {
@@ -2515,28 +2888,28 @@ if(nrow(flag_info)!=0) {
         }
         
         ### replaced
-        cap_data$FlagCodeIn_color[cap_data$SpeciesCode == flag_info$SpeciesCode[b] &
-                                    !is.na(cap_data$FlagCodeIn) &
-                                    cap_data$FlagCodeIn != cap_data$FlagCodeOut &
-                                    !is.na(cap_data$FlagCodeOut)] <-
+        cap.data$FlagCodeIn_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                    !is.na(cap.data$FlagCodeIn) &
+                                    cap.data$FlagCodeIn != cap.data$FlagCodeOut &
+                                    !is.na(cap.data$FlagCodeOut)] <-
           BBL_ref[flag.choice]
         
-        cap_data$FlagCodeOut_color[cap_data$SpeciesCode == flag_info$SpeciesCode[b] &
-                                     !is.na(cap_data$FlagCodeIn) &
-                                     cap_data$FlagCodeIn != cap_data$FlagCodeOut &
-                                     !is.na(cap_data$FlagCodeOut)] <-
+        cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                     !is.na(cap.data$FlagCodeIn) &
+                                     cap.data$FlagCodeIn != cap.data$FlagCodeOut &
+                                     !is.na(cap.data$FlagCodeOut)] <-
           BBL_ref[flag.choice.2]
         
       } else {
         ### retained
-        cap_data$FlagCodeIn_color[cap_data$SpeciesCode == flag_info$SpeciesCode[b] &
-                                    !is.na(cap_data$FlagCodeIn) &
-                                    cap_data$FlagCodeIn == cap_data$FlagCodeOut] <-
+        cap.data$FlagCodeIn_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                    !is.na(cap.data$FlagCodeIn) &
+                                    cap.data$FlagCodeIn == cap.data$FlagCodeOut] <-
           BBL_ref[flag.choice]
         
-        cap_data$FlagCodeOut_color[cap_data$SpeciesCode == flag_info$SpeciesCode[b] &
-                                     !is.na(cap_data$FlagCodeIn) &
-                                     cap_data$FlagCodeIn == cap_data$FlagCodeOut] <-
+        cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                     !is.na(cap.data$FlagCodeIn) &
+                                     cap.data$FlagCodeIn == cap.data$FlagCodeOut] <-
           BBL_ref[flag.choice]
       }
       
@@ -2547,7 +2920,7 @@ if(nrow(flag_info)!=0) {
 
 # Tags
 tag_types <- c("Geo", "Radio", "GPS", "PTT")
-tag_info <- cap_data %>%
+tag_info <- cap.data %>%
   dplyr::filter_at(c("TagType1", "TagType2"),
                    dplyr::any_vars(stringr::str_detect(
                      ., stringr::regex(paste(tag_types, collapse = '|'), ignore_case =
@@ -2595,7 +2968,7 @@ if(nrow(tag_info)!=0){
         ))
     }
     
-    cap_data <- cap_data %>%
+    cap.data <- cap.data %>%
       dplyr::rowwise() %>%
       dplyr::mutate_at(
         c(leg_cols, "TagType1"),
@@ -2655,13 +3028,13 @@ BBL_col <-
     "maleTailLength_max_mm"
   )
 
-for (x in unique(cap_data$SpeciesCode)) {
+for (x in unique(cap.data$SpeciesCode)) {
   species.num <-
     which(bander_portal_species_measurements$alphaCode == x)
   if (length(species.num) == 0) {
     warning(paste0("SpeciesCode '", x, "' is invalid."))
   } else {
-    sp_mydata <- cap_data %>%
+    sp_mydata <- cap.data %>%
       dplyr::filter(SpeciesCode == x) %>%
       dplyr::rowwise() %>%
       dplyr::mutate_at("FieldSex",
@@ -2778,10 +3151,10 @@ for (a in lookups) {
   b <- which(capture_cols$BBL_col[capture_cols$BBL_template=="band_aux"] == a)
   for (c in b) {
     invalid.num <-
-      which(!na.omit(cap_data[[capture_cols$my_col[c]]]) %in% bander_portal_lookups$code[bander_portal_lookups$field == a])
+      which(!na.omit(cap.data[[capture_cols$my_col[c]]]) %in% bander_portal_lookups$code[bander_portal_lookups$field == a])
     
     invalid.index <-
-      setdiff(1:nrow(cap_data), which(is.na(cap_data[[capture_cols$my_col[c]]])))[invalid.num]
+      setdiff(1:nrow(cap.data), which(is.na(cap.data[[capture_cols$my_col[c]]])))[invalid.num]
     
     entry.skip <- c()
     
@@ -2796,7 +3169,7 @@ for (a in lookups) {
                         title = cat(
                           paste0(
                             "\n'",
-                            cap_data[[capture_cols$my_col[c]]][d],
+                            cap.data[[capture_cols$my_col[c]]][d],
                             "' (",
                             capture_cols$my_col[c],
                             ") is not listed as a BBL ",
@@ -2826,16 +3199,16 @@ for (a in lookups) {
             
             if (replace.choice != 0) {
               entry.skip <- c(entry.skip,
-                              which(cap_data[[capture_cols$my_col[c]]] == cap_data[[capture_cols$my_col[c]]][d]))
+                              which(cap.data[[capture_cols$my_col[c]]] == cap.data[[capture_cols$my_col[c]]][d]))
               
-              cap_data[[capture_cols$my_col[c]]] <-
-                replace(cap_data[[capture_cols$my_col[c]]],
-                        cap_data[[capture_cols$my_col[c]]] %in% cap_data[[capture_cols$my_col[c]]][d],
+              cap.data[[capture_cols$my_col[c]]] <-
+                replace(cap.data[[capture_cols$my_col[c]]],
+                        cap.data[[capture_cols$my_col[c]]] %in% cap.data[[capture_cols$my_col[c]]][d],
                         bander_portal_lookups$code[bander_portal_lookups$field == a][replace.choice])
             }
             
           } else if (entry.choice == 2) {
-            entry.skip <- c(entry.skip, which(cap_data[[capture_cols$my_col[c]]] == cap_data[[capture_cols$my_col[c]]][d]))
+            entry.skip <- c(entry.skip, which(cap.data[[capture_cols$my_col[c]]] == cap.data[[capture_cols$my_col[c]]][d]))
           }
         }
       }
@@ -2845,7 +3218,7 @@ for (a in lookups) {
 
 # Bird status
 ## Status codes
-status_info <- cap_data %>%
+status_info <- cap.data %>%
   dplyr::rowwise() %>%
   dplyr::mutate_at("TagType1", ~ ifelse(TagStatus1 %in% c("Removed", "Lost"), TagType1 <-
                                           NA
@@ -2906,7 +3279,7 @@ status_info <- cap_data %>%
   ) %>%
   dplyr::rename(`temp:BBLStatus` = BBLStatus)
 
-cap_data <- cap_data %>%
+cap.data <- cap.data %>%
   dplyr::left_join(
     .,
     status_info[, c("OccurenceID", "temp:BBLStatus")],
@@ -2916,7 +3289,7 @@ cap_data <- cap_data %>%
   ) %>%
   dplyr::mutate_at("BBLStatus", ~ as.character(.))
 
-invalid.index <- which(cap_data$BBLStatus != cap_data$`temp:BBLStatus`)
+invalid.index <- which(cap.data$BBLStatus != cap.data$`temp:BBLStatus`)
 
 
 if (length(invalid.index) != 0) {
@@ -2924,49 +3297,49 @@ if (length(invalid.index) != 0) {
     message(cat(
       paste0(
         "The status for the following individual appears invalid.\nSpecies: ",
-        cap_data$SpeciesCode[a],
+        cap.data$SpeciesCode[a],
         "\nBand number: ",
-        cap_data$BandNumberOut[a],
+        cap.data$BandNumberOut[a],
         "\nStatus (reported): ",
-        cap_data$BBLStatus[a],
+        cap.data$BBLStatus[a],
         " [",
-        bander_portal_lookups$description[grepl(stringr::str_sub(cap_data$BBLStatus[a], 1, 1),
+        bander_portal_lookups$description[grepl(stringr::str_sub(cap.data$BBLStatus[a], 1, 1),
                                                 bander_portal_lookups$code) == TRUE &
                                             bander_portal_lookups$field == "Bird Status"],
         " ",
-        bander_portal_lookups$description[grepl(stringr::str_sub(cap_data$BBLStatus[a], 2, 3),
+        bander_portal_lookups$description[grepl(stringr::str_sub(cap.data$BBLStatus[a], 2, 3),
                                                 bander_portal_lookups$code) == TRUE &
                                             bander_portal_lookups$field == "Bird Status Extra Info"],
         "]",
         "\nStatus (detected): ",
-        cap_data$`temp:BBLStatus`[a],
+        cap.data$`temp:BBLStatus`[a],
         " [",
         bander_portal_lookups$description[grepl(
-          stringr::str_sub(cap_data$`temp:BBLStatus`[a], 1, 1),
+          stringr::str_sub(cap.data$`temp:BBLStatus`[a], 1, 1),
           bander_portal_lookups$code
         ) == TRUE &
           bander_portal_lookups$field == "Bird Status"],
         " ",
         bander_portal_lookups$description[grepl(
-          stringr::str_sub(cap_data$`temp:BBLStatus`[a], 2, 3),
+          stringr::str_sub(cap.data$`temp:BBLStatus`[a], 2, 3),
           bander_portal_lookups$code
         ) == TRUE &
           bander_portal_lookups$field == "Bird Status Extra Info"],
         "]",
         "\nBlood: ",
-        cap_data$Blood[a],
+        cap.data$Blood[a],
         "\nULOut: ",
-        cap_data$ULOut[a],
+        cap.data$ULOut[a],
         "\nLLOut: ",
-        cap_data$LLOut[a],
+        cap.data$LLOut[a],
         "\nUROut: ",
-        cap_data$UROut[a],
+        cap.data$UROut[a],
         "\nLROut: ",
-        cap_data$LROut[a],
+        cap.data$LROut[a],
         "\nTagStatus1: ",
-        cap_data$TagStatus1[a],
+        cap.data$TagStatus1[a],
         "\nTagStatus2: ",
-        cap_data$TagStatus2[a]
+        cap.data$TagStatus2[a]
       )
     ))
     
@@ -2977,7 +3350,7 @@ if (length(invalid.index) != 0) {
     )
     
     if (status.choice == 1) {
-      cap_data$BBLStatus[a] <- cap_data$`temp:BBLStatus`[a]
+      cap.data$BBLStatus[a] <- cap.data$`temp:BBLStatus`[a]
       
       
     }
@@ -2986,7 +3359,7 @@ if (length(invalid.index) != 0) {
         "\nIMPROTANT: you must click 'syncronise' (arrow loop icon) and then 'Done' to enact changes."
       )
       
-      invalid.entries <- cap_data %>%
+      invalid.entries <- cap.data %>%
         dplyr::ungroup() %>%
         dplyr::filter(dplyr::row_number() == a)
       
@@ -2998,8 +3371,8 @@ if (length(invalid.index) != 0) {
         ) %>%
         dplyr::mutate_at("BBLStatus", as.character)
       
-      cap_data[match(invalid.entries.edit$OccurenceID,
-                     cap_data$OccurenceID), "BBLStatus"] <-
+      cap.data[match(invalid.entries.edit$OccurenceID,
+                     cap.data$OccurenceID), "BBLStatus"] <-
         invalid.entries.edit$BBLStatus
     }
     
@@ -3007,8 +3380,8 @@ if (length(invalid.index) != 0) {
 }
 
 
-cap_data <-
-  cap_data %>%
+cap.data <-
+  cap.data %>%
   dplyr::select(-tidyselect::starts_with("temp:"))
 
 
@@ -3017,7 +3390,7 @@ cap_data <-
 for(a in c("In", "Out")) {
   invalid_code.num <-
     which(!c(nchar(na.omit(
-      gsub("-", "", cap_data[[paste0("BandNumber", a)]])
+      gsub("-", "", cap.data[[paste0("BandNumber", a)]])
     ))) %in% c(8, 9))
   
   dir <-
@@ -3030,12 +3403,12 @@ for(a in c("In", "Out")) {
         dir,
         " band numbers appear invalid. BBL issued federal metal bands should have 8 or 9 digits.\n"
       ),
-      paste0(na.omit(cap_data[[paste0("BandNumber", a)]])[invalid_code.num], sep = "\n")
+      paste0(na.omit(cap.data[[paste0("BandNumber", a)]])[invalid_code.num], sep = "\n")
     )
   }
 }
 
-invalid_bands <- cap_data %>%
+invalid_bands <- cap.data %>%
   dplyr::group_by(BandNumberOut, BBLDisposition) %>%
   dplyr::filter(BBLDisposition == "1",
                 dplyr::n() > 1)
@@ -3061,11 +3434,11 @@ for(a in unique(invalid_bands$BandNumberOut)) {
 }
 
 ## Date
-if(NA %in% cap_data$Day |
-   NA %in% cap_data$Month |
-   NA %in% cap_data$Year) {
-  if ("Date" %in% colnames(cap_data)) {
-    if (!NA %in% suppressWarnings(chron::chron(cap_data$Date, format = gsub("%", "",date.format)))) {
+if(NA %in% cap.data$Day |
+   NA %in% cap.data$Month |
+   NA %in% cap.data$Year) {
+  if ("Date" %in% colnames(cap.data)) {
+    if (!NA %in% suppressWarnings(chron::chron(cap.data$Date, format = gsub("%", "",date.format)))) {
       
       date.choice <-
         utils::menu(c("please do", "absolutely not"),
@@ -3076,8 +3449,8 @@ if(NA %in% cap_data$Day |
                     ))
     
       if(date.choice==1) {
-        cap_data <-
-          cap_data %>%
+        cap.data <-
+          cap.data %>%
           dplyr::mutate(
             Date = as.Date(Date, date.format),
             Day = lubridate::day(Date),
@@ -3095,28 +3468,28 @@ if(NA %in% cap_data$Day |
 
 ## Time
 time.num <-
-  which(is.na(lubridate::hm(cap_data$CaptureTime_2400, quiet = TRUE)) |
-          grepl("[A-Za-z]", cap_data$CaptureTime_2400) == TRUE)
+  which(is.na(lubridate::hm(cap.data$CaptureTime_2400, quiet = TRUE)) |
+          grepl("[A-Za-z]", cap.data$CaptureTime_2400) == TRUE)
 
 if (length(time.num) != 0) {
   warning(
     paste0(
       "One or more time entries (CaptureTime_2400) are invalid. Time must be formatted as 24:00.\n"
     ),
-    paste0(unique(cap_data$CaptureTime_2400[time.num]), sep = "\n")
+    paste0(unique(cap.data$CaptureTime_2400[time.num]), sep = "\n")
   )
 }
 
               
 ## Bander ID/Scribe ID
 for (a in c("BanderID", "ScribeID")) {
-  invalid_code.num <- which(nchar(unique(cap_data[[a]])) > 3)
+  invalid_code.num <- which(nchar(unique(cap.data[[a]])) > 3)
   
   for (b in invalid_code.num) {
     message(cat(
       paste0(
         "'",
-        cap_data[[a]][b],
+        cap.data[[a]][b],
         "' (",
         a,
         ") appears invalid.\nProvide a replacement value. Press Enter to retain the current value."
@@ -3127,9 +3500,9 @@ for (a in c("BanderID", "ScribeID")) {
       noquote(as.character(readline(prompt =)))
     
     if (new_code != "") {
-      cap_data <-  cap_data %>%
+      cap.data <-  cap.data %>%
         dplyr::mutate_at(c("BanderID", "ScribeID"),
-                         ~ replace(., . == cap_data[[a]][b], new_code))
+                         ~ replace(., . == cap.data[[a]][b], new_code))
     }
   }
 }
@@ -3141,25 +3514,25 @@ for (a in c("BanderID", "ScribeID")) {
 ```{r}
 
 # Partition by disposition
-cap_data_aux <-
-  cap_data %>% dplyr::filter(dplyr::if_any(leg_cols, ~ !. %in% c(NA, "00")))
+cap.data_aux <-
+  cap.data %>% dplyr::filter(dplyr::if_any(leg_cols, ~ !. %in% c(NA, "00")))
 
-cap_data_no_aux <-
-  cap_data %>% dplyr::filter(dplyr::if_all(leg_cols, ~ . %in% c(NA, "00")))
+cap.data_no_aux <-
+  cap.data %>% dplyr::filter(dplyr::if_all(leg_cols, ~ . %in% c(NA, "00")))
 
-cap_data_aux <- split(cap_data_aux, cap_data_aux$BBLDisposition)
-cap_data_no_aux <- split(cap_data_no_aux, cap_data_no_aux$BBLDisposition)
+cap.data_aux <- split(cap.data_aux, cap.data_aux$BBLDisposition)
+cap.data_no_aux <- split(cap.data_no_aux, cap.data_no_aux$BBLDisposition)
 
 #!!# Improve process for no data
 #!!# 8 just reports band number in band_no_aux
-for (a in c("cap_data_aux", "cap_data_no_aux")) {
+for (a in c("cap.data_aux", "cap.data_no_aux")) {
   for (b in c("1", "R")) {
     if (!b %in% names(eval(as.name(a)))) {
       temp <-  list(rbind(tibble::as_tibble(
         matrix(
-          ncol = length(cap_data),
+          ncol = length(cap.data),
           nrow = 1,
-          dimnames = list(NULL, colnames(cap_data))
+          dimnames = list(NULL, colnames(cap.data))
         ), check.names = FALSE
       )))
       
@@ -3175,19 +3548,19 @@ for (a in c("cap_data_aux", "cap_data_no_aux")) {
 
 
 # Merge 1, 5, & 8 dispositions
-cap_data_no_aux$'1' <-
-  tibble::as_tibble(data.table::rbindlist(cap_data_no_aux[c('1', '5', '8')]))
-cap_data_no_aux <- suppressWarnings(within(cap_data_no_aux, rm('5','8')))
-cap_data_aux$'1' <-
-  tibble::as_tibble(data.table::rbindlist(cap_data_aux[c('1', '5', '8')]))
-cap_data_aux <- suppressWarnings(within(cap_data_aux, rm('5', '8')))
+cap.data_no_aux$'1' <-
+  tibble::as_tibble(data.table::rbindlist(cap.data_no_aux[c('1', '5', '8')]))
+cap.data_no_aux <- suppressWarnings(within(cap.data_no_aux, rm('5','8')))
+cap.data_aux$'1' <-
+  tibble::as_tibble(data.table::rbindlist(cap.data_aux[c('1', '5', '8')]))
+cap.data_aux <- suppressWarnings(within(cap.data_aux, rm('5', '8')))
 
 ## Correct variable classes
-cap_data_aux <- lapply(cap_data_aux, function(x) {
+cap.data_aux <- lapply(cap.data_aux, function(x) {
   x %>%
     dplyr::mutate_if(is.character, ~ dplyr::na_if(., ''))
 })
-cap_data_no_aux <- lapply(cap_data_no_aux, function(x) {
+cap.data_no_aux <- lapply(cap.data_no_aux, function(x) {
   x %>%
     dplyr::mutate_if(is.character, ~ dplyr::na_if(., ''))
 })
@@ -3212,7 +3585,7 @@ band_no_aux_col <-
 band_no_aux <-
   data.frame(matrix(
     ncol = length(band_no_aux_col),
-    nrow = nrow(cap_data_no_aux$'1'),
+    nrow = nrow(cap.data_no_aux$'1'),
     dimnames = list(NULL, band_no_aux_col)
   ),
   check.names = FALSE)
@@ -3224,7 +3597,7 @@ recap_no_aux_col <-
 recap_no_aux <-
   data.frame(matrix(
     ncol = length(recap_no_aux_col),
-    nrow = nrow(cap_data_no_aux$'R'),
+    nrow = nrow(cap.data_no_aux$'R'),
     dimnames = list(NULL, recap_no_aux_col)
   ),
   check.names = FALSE)
@@ -3236,7 +3609,7 @@ band_aux_col <-
 band_aux <-
   data.frame(matrix(
     ncol = length(band_aux_col),
-    nrow = nrow(cap_data_aux$'1'),
+    nrow = nrow(cap.data_aux$'1'),
     dimnames = list(NULL, band_aux_col)
   ),
   check.names = FALSE)
@@ -3248,7 +3621,7 @@ recap_aux_col <-
 recap_aux <-
   data.frame(matrix(
     ncol = length(recap_aux_col),
-    nrow = nrow(cap_data_aux$'R'),
+    nrow = nrow(cap.data_aux$'R'),
     dimnames = list(NULL, recap_aux_col)
   ),
   check.names = FALSE)
@@ -3268,16 +3641,16 @@ auto.match.num <-
 
 for (a in na.omit(auto.match.num)) {
   band_no_aux[[band_no_aux_ref$BBL_col[a]]] <-
-    cap_data_no_aux$'1'[[band_no_aux_ref$my_col[a]]]
+    cap.data_no_aux$'1'[[band_no_aux_ref$my_col[a]]]
 }
 
 band_no_aux[["Replaced Band Number"]] <-
-  unlist(cap_data_no_aux$'1'["BandNumberIn"])
+  unlist(cap.data_no_aux$'1'["BandNumberIn"])
 
 banded_legs <- c()
 banded_legs <-
-  c(banded_legs, sapply(1:nrow(cap_data_no_aux$'1'), function(x)
-    substring(colnames(cap_data_no_aux$'1'[leg_cols])[cap_data_no_aux$'1'[x, leg_cols] %in% "00"][1], 2, 2)))
+  c(banded_legs, sapply(1:nrow(cap.data_no_aux$'1'), function(x)
+    substring(colnames(cap.data_no_aux$'1'[leg_cols])[cap.data_no_aux$'1'[x, leg_cols] %in% "00"][1], 2, 2)))
 
 band_no_aux[["Banded Leg"]]<- banded_legs
 
@@ -3289,13 +3662,13 @@ auto.match.num <-
 
 for (a in na.omit(auto.match.num)) {
   recap_no_aux[[recap_no_aux_ref$BBL_col[a]]] <-
-    cap_data_no_aux$'R'[[recap_no_aux_ref$my_col[a]]]
+    cap.data_no_aux$'R'[[recap_no_aux_ref$my_col[a]]]
 }
 
 banded_legs <- c()
 banded_legs <-
-  c(banded_legs, sapply(1:nrow(cap_data_no_aux$'R'), function(x)
-    substring(colnames(cap_data_no_aux$'R'[leg_cols])[cap_data_no_aux$'R'[x, leg_cols] %in% "00"][1], 2, 2)))
+  c(banded_legs, sapply(1:nrow(cap.data_no_aux$'R'), function(x)
+    substring(colnames(cap.data_no_aux$'R'[leg_cols])[cap.data_no_aux$'R'[x, leg_cols] %in% "00"][1], 2, 2)))
 
 recap_no_aux[["Banded Leg"]]<- banded_legs
 
@@ -3311,16 +3684,16 @@ manual.match.num <-
 
 for (a in na.omit(auto.match.num)) {
   band_aux[[band_aux_ref$BBL_col[a]]] <-
-    cap_data_aux$'1'[[band_aux_ref$my_col[a]]]
+    cap.data_aux$'1'[[band_aux_ref$my_col[a]]]
 }
 
 
-for (a in 1:nrow(cap_data_aux$'1')) {
+for (a in 1:nrow(cap.data_aux$'1')) {
   n <- 0
   marker_string <- c()
   for (b in c(leg_cols[grepl("Out",leg_cols)])) {
-    if (!is.na(cap_data_aux$'1'[a, b])) {
-      for (c in unlist(strsplit(paste0(cap_data_aux$'1'[a, b]), "/"))) {
+    if (!is.na(cap.data_aux$'1'[a, b])) {
+      for (c in unlist(strsplit(paste0(cap.data_aux$'1'[a, b]), "/"))) {
         n <- n + 1
          marker_cols <-
             colnames(band_aux)[grepl(n, colnames(band_aux))]
@@ -3333,7 +3706,7 @@ for (a in 1:nrow(cap_data_aux$'1')) {
             grepl(x, c))]
         if (length(code_col) != 0) {
           band_aux[[marker_cols[2]]][a] <-
-            cap_data_aux$'1'[[code_col]][a]
+            cap.data_aux$'1'[[code_col]][a]
         }
         
         color_col <-
@@ -3342,7 +3715,7 @@ for (a in 1:nrow(cap_data_aux$'1')) {
               grepl(x, c))]
         if (length(color_col) != 0) {
           band_aux[[marker_cols[3]]][a] <-
-            cap_data_aux$'1'[[color_col]][a]
+            cap.data_aux$'1'[[color_col]][a]
         }
         
         code_color_col <-
@@ -3350,7 +3723,7 @@ for (a in 1:nrow(cap_data_aux$'1')) {
             grepl(x, c))]
         if (length(code_color_col) != 0) {
           band_aux[[marker_cols[4]]][a] <-
-            cap_data_aux$'1'[[code_color_col]][a]
+            cap.data_aux$'1'[[code_color_col]][a]
         }
         
         band_aux[[marker_cols[5]]][a] <-
@@ -3361,7 +3734,7 @@ for (a in 1:nrow(cap_data_aux$'1')) {
           paste0("L", c("B", "A")[sapply(c("^L", "^U"), function(x)
             grepl(x, b))])
         
-        if (cap_data_aux$'1'[a, b] == "00") {
+        if (cap.data_aux$'1'[a, b] == "00") {
           band_aux[["Banded Leg"]][a] <-
             c("L", "R")[sapply(c(".{1}L", ".{1}R"), function(x)
               grepl(x, b))]
@@ -3372,19 +3745,19 @@ for (a in 1:nrow(cap_data_aux$'1')) {
   }
   
   for (b in c("TagType1", "TagType2")) {
-    if (!is.na(cap_data_aux$'1'[a, b])) {
+    if (!is.na(cap.data_aux$'1'[a, b])) {
       n <- n + 1
       
       status <-
-        cap_data_aux$'1'[a, paste0("TagStatus", c("1", "2")[sapply(c("1", "2"), function(x)
+        cap.data_aux$'1'[a, paste0("TagStatus", c("1", "2")[sapply(c("1", "2"), function(x)
           grepl(x, b))])]
       
       if (!TRUE %in% sapply(leg_cols, function(x)
-        grepl(cap_data_aux$'1'[a, b], cap_data_aux$'1'[a, x])) &
+        grepl(cap.data_aux$'1'[a, b], cap.data_aux$'1'[a, x])) &
         status != "Removed") {
   
         band_aux[[colnames(band_aux)[grepl(n, colnames(band_aux))][1]]][a] <-
-          unlist(cap_data_aux$'1'[a, b])
+          unlist(cap.data_aux$'1'[a, b])
         
       }
     }
@@ -3407,7 +3780,7 @@ for (a in 1:nrow(cap_data_aux$'1')) {
     paste0(paste0(marker_string, collapse = "|"), "|")
 }
 
-band_aux[["Replaced Band Number"]]<-  unlist(cap_data_aux$'1'["BandNumberIn"])
+band_aux[["Replaced Band Number"]]<-  unlist(cap.data_aux$'1'["BandNumberIn"])
 
 
 ## Fill recaptures - aux
@@ -3417,17 +3790,17 @@ auto.match.num <-
 
 for (a in na.omit(auto.match.num)) {
   recap_aux[[recap_aux_ref$BBL_col[a]]] <-
-    cap_data_aux$'R'[[recap_aux_ref$my_col[a]]]
+    cap.data_aux$'R'[[recap_aux_ref$my_col[a]]]
 }
 
 
-for (a in 1:nrow(cap_data_aux$'R')) {
+for (a in 1:nrow(cap.data_aux$'R')) {
   in.num <- 0
   out.num <- 0
   
   for (b in leg_cols) {
-    if (!is.na(cap_data_aux$'R'[a, b])) {
-      for (c in unlist(strsplit(paste0(cap_data_aux$'R'[a, b]), "/"))) {
+    if (!is.na(cap.data_aux$'R'[a, b])) {
+      for (c in unlist(strsplit(paste0(cap.data_aux$'R'[a, b]), "/"))) {
         if (grepl("In", b)) {
           in.num <- in.num + 1
           n <- in.num
@@ -3454,7 +3827,7 @@ for (a in 1:nrow(cap_data_aux$'R')) {
             grepl(x, c))]
         if (length(code_col) != 0) {
           recap_aux[[marker_cols[2]]][a] <-
-            cap_data_aux$'R'[[code_col]][a]
+            cap.data_aux$'R'[[code_col]][a]
         }
         
         color_col <-
@@ -3462,7 +3835,7 @@ for (a in 1:nrow(cap_data_aux$'R')) {
             grepl(x, c))]
         if (length(color_col) != 0) {
           recap_aux[[marker_cols[3]]][a] <-
-            cap_data_aux$'R'[[color_col]][a]
+            cap.data_aux$'R'[[color_col]][a]
         }
         
         code_color_col <-
@@ -3470,7 +3843,7 @@ for (a in 1:nrow(cap_data_aux$'R')) {
             grepl(x, c))]
         if (length(code_color_col) != 0) {
           recap_aux[[marker_cols[4]]][a] <-
-            cap_data_aux$'R'[[code_color_col]][a]
+            cap.data_aux$'R'[[code_color_col]][a]
         }
         
         recap_aux[[marker_cols[5]]][a] <-
@@ -3481,7 +3854,7 @@ for (a in 1:nrow(cap_data_aux$'R')) {
           paste0("L", c("B", "A")[sapply(c("^L", "^U"), function(x)
             grepl(x, b))])
         
-        if (cap_data_aux$'R'[a, b] == "00") {
+        if (cap.data_aux$'R'[a, b] == "00") {
           recap_aux[["Banded Leg"]][a] <-
             c("L", "R")[sapply(c(".{1}L", ".{1}R"), function(x)
               grepl(x, b))]
@@ -3492,11 +3865,11 @@ for (a in 1:nrow(cap_data_aux$'R')) {
   }
   
   for (b in c("TagType1", "TagType2")) {
-    if (!is.na(cap_data_aux$'R'[a, b]) &
+    if (!is.na(cap.data_aux$'R'[a, b]) &
         !TRUE %in% sapply(leg_cols, function(x)
-          grepl(cap_data_aux$'R'[a, b], cap_data_aux$'R'[a, x]))) {
+          grepl(cap.data_aux$'R'[a, b], cap.data_aux$'R'[a, x]))) {
       status <-
-        cap_data_aux$'R'[a, paste0("TagStatus", c("1", "2")[sapply(c("1", "2"), function(x)
+        cap.data_aux$'R'[a, paste0("TagStatus", c("1", "2")[sapply(c("1", "2"), function(x)
           grepl(x, b))])]
       
       dir <-
@@ -3522,7 +3895,7 @@ for (a in 1:nrow(cap_data_aux$'R')) {
         
         recap_aux[[colnames(recap_aux)[grepl(n, colnames(recap_aux)) &
                                          grepl(direction, colnames(recap_aux))][1]]][a] <-
-          unlist(cap_data_aux$'R'[a, b])
+          unlist(cap.data_aux$'R'[a, b])
         
       }
     }
@@ -3847,8 +4220,8 @@ keyring::key_list()
 
 # Add login credentials
 move2::movebank_store_credentials(username = "mbmlandbirds",
-                                  password = "AKmove2018!",
-                                  key_name = "myOtherAccount")
+                                  password = "",
+                                  key_name = "movebank")
 
 # Remove login credentials
 move2::movebank_remove_credentials(key_name = getOption("move2_movebank_key_name"))
