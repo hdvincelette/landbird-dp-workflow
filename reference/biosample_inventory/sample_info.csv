@@ -1,0 +1,9 @@
+﻿SampleType,SampleTissue,SampleForm,SamplePurpose,SampleBuffer,StorageMedium
+Nails,claw,,,,coin envelope
+Feather,feather,,,,coin envelope
+BloodFilter,blood,filter,,,coin envelope
+BloodCapTube,blood,capillary tube,,,vacuette tube
+BloodSmear,blood,,,,
+Fecal,feces,,,ETOH,vial
+AISwabO,buccal,swab,AI,,
+AISwabC,cloacal,swab,AI,,
