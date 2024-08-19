@@ -96,14 +96,16 @@ Paste the names of the project folder, data dictionary(ies), and data entry temp
 setwd("~/GitHub/landbird-dp-workflow")
 
 # Provide the relevent information
-project.folder <- "mbmlb_005_DOD_Shorebird_Migration"
+project.folder <- "mbmlb_003_Red_Knot_Breeding"
 dictionary.list <- c("mdeditor")
-template.list <- c("banding")
+template.list <- c("brood","nest","encounters")
 
 # Provide a directory path to save files
 download.path <- "downloads/"
 
 ```
+
+Imp
 
 Now run the following code chunk.
 
@@ -141,6 +143,8 @@ Before beginning, make sure all entered data and data dictionary(ies) are saved 
 
 SpeciesCode, Date, Location, Attachments (bands, tags), Morphometrics
 
+### Provide inputs
+
 ```{r}
 # Provide directory paths for the data file(s) and dictionary
 raw.data.path <- "data-raw/"
@@ -155,114 +159,27 @@ time.format <- "%H:%M"
 
 ```
 
-```{r}
-# Import raw data file(s)
-raw.data.files <-
-  list.files(
-    path = raw.data.path,
-    pattern = NULL,
-    full.names = FALSE,
-    recursive = FALSE
-  )
+### Import data
 
-raw.data.choice <- utils::select.list(
-  c(raw.data.files),
+```{r}
+
+raw.data.list <- importer(
+  path = raw.data.path,
   multiple = TRUE,
   graphics = TRUE,
-  title = cat(paste0("\nSelect one or more data files to import.\nAll files should be similarly formatted and correspond to the same dictionary."))
+  column.format = list(
+    c(column = date.col, format = date.format),
+    c(column = time.col, format = time.format)
+  )
 )
 
-raw.data.ext <- tools::file_ext(raw.data.choice)
-import.data.name <-
-  stringr::str_replace(raw.data.choice, paste0(".", raw.data.ext), "")
-
-
-while (TRUE %in% duplicated(import.data.name)) {
-  message(cat(
-    "\n\n\nError: The following files have the same name.",
-    paste0("\n  ", raw.data.choice[dup.test])
-  ))
-  
-  raw.data.choice <- utils::select.list(
-    c(raw.data.files),
-    multiple = TRUE,
-    graphics = TRUE,
-    title = cat(paste0(
-      "\n...Reselect one or more data files to import."
-    ))
-  )
-  
-  raw.data.ext <- tools::file_ext(raw.data.choice)
-  import.data.name <-
-    stringr::str_replace(raw.data.choice, paste0(".", raw.data.ext), "")
-  
-}
-
-raw.data.list <- list()
-
-if (endsWith(raw.data.path, "/")==FALSE) {
-  raw.data.path <- paste0(raw.data.path, "/")
-}
-
-for (a in 1:length(raw.data.ext)) {
-  if (raw.data.ext[a] %in% c("xlsx", "xls")) {
-    import.file <-
-      readxl::read_excel(paste0(raw.data.path, raw.data.choice[a]))
-    
-    # Fix date/time columns
-    import.file <- import.file %>%
-      dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)) %>%
-      dplyr::mutate({{time.col}} := format(.data[[time.col]], format = time.format))
-    
-    raw.data.list[[a]] <- import.file
-    
-  } else if (raw.data.ext[a] %in% c("csv")) {
-    import.file <-
-      utils::read.csv(paste0(raw.data.path, raw.data.choice[a]))
-    raw.data.list[[a]] <- import.file
-    
-  }
-}
-
-names(raw.data.list) <- import.data.name
-
-
-# Import data dictionary
-dictionary.files <-
-  list.files(
-    path = dictionary.path,
-    pattern = NULL,
-    full.names = FALSE,
-    recursive = FALSE
-  )
-
-dictionary.choice <- utils::select.list(
-  c(dictionary.files),
-  multiple = FALSE,
-  graphics = TRUE,
-  title = cat(paste0("\nSelect a dictionary to import."))
-)
-
-
-dictionary.ext <- tools::file_ext(dictionary.choice)
-
-if (dictionary.ext %in% c("xlsx", "xls")) {
-  ref.dictionary <-
-    readxl::read_excel(paste0(dictionary.path, dictionary.choice))
-  
-} else if (dictionary.ext %in% c("csv")) {
-  ref.dictionary <-
-    utils::read.csv(paste0(dictionary.path, dictionary.choice))
-  
-} else if (dictionary.ext %in% c("json")) {
-  ref.dictionary <-
-    rjson::fromJSON(file = paste0(getwd(), "/", dictionary.path, dictionary.choice))
-  
-}
+ref.dictionary <- importer(path = dictionary.path,
+                                multiple = FALSE,
+                                graphics = TRUE)
 
 ```
 
-### Select data to review
+### Select data
 
 ```{r}
 other.data.list <- list()
@@ -434,10 +351,46 @@ other.data.list <- other.data.list %>%
   purrr::map(.f = ~ .x %>%
                dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
 
+# Check if data frames should be combined
+column.compare <- janitor::compare_df_cols(raw.data.list, bind_method  = "bind_rows") %>%
+  rowwise() %>%
+  replace(is.na(.), "N/A") %>%
+  dplyr::filter(n_distinct(c_across(-1)) != 1)
+
+if (nrow(column.compare) != 0) {
+  message(
+    paste0("\n"),
+    huxtable::print_screen(
+      huxtable::hux(column.compare) %>% huxtable::set_text_color(2:nrow(.), 2:ncol(.), "red"),
+      colnames = FALSE
+    ),
+    cat(
+      paste0(
+        "\nThere are column name and/or class inconsistencies in the imported data frames.\n"
+      )
+    )
+  )
+}
+
+merge.choice <- utils::menu(c("please do", "absolutely not"),
+                            graphics = FALSE,
+                            title = cat(
+                              paste0(
+                                "\nWould you like to combine these into a single data frame to enable faster data processing?\n"
+                                
+                              )
+                            )
+)
+
+
+if (merge.choice == 1) {
+  raw.data.list <- list(combined_data = dplyr::bind_rows(raw.data.list))
+  import.data.name<- paste0(import.data.name, collapse = " ")
+}
 
 ```
 
-### Validate data file(s) v dictionary
+### Validate data
 
 ```{r}
 
@@ -510,7 +463,7 @@ for (a in 1:length(raw.data.list)) {
                                            )
                                          ))
         
-        if (length(colname.selection) != 0) {
+        if (colname.selection != 0) {
           input.data <- input.data %>% dplyr::rename(., !!unused_colnames[colname.selection] := !!invalid_colnames[b])
           
           unused_colnames <- unused_colnames[!unused_colnames %in% unused_colnames[colname.selection]]
@@ -538,7 +491,7 @@ names(warning.list) <- import.data.name
 
 ```
 
-### Correct data files
+### Correct data
 
 ```{r}
 
@@ -772,7 +725,7 @@ for (a in 1:length(raw.data.list)) {
 
 ```
 
-### Correct data dictionary
+### Correct dictionary
 
 ```{r}
 
@@ -973,7 +926,7 @@ for (a in 1:length(warning.list)) {
   
 ```
 
-### Quality control checks
+### Quality checks
 
 ```{r}
 # continuous: box plots
@@ -1211,7 +1164,7 @@ raw.data.list <- raw.data.list %>%
 
 ```
 
-### Fill bird status info (capture data)
+### Fill missing info
 
 ```{r}
 
@@ -1458,7 +1411,7 @@ for (x in 1:length(raw.data.list)) {
   
 ```
 
-### Export data files
+### Export data
 
 ```{r}
 # Provide directory path for the authoritative data file
@@ -1678,7 +1631,7 @@ write.csv(
 
 ```
 
-### Export dictionary files
+### Export dictionary
 
 ```{r}
 
@@ -1838,6 +1791,8 @@ commit <-
 
 # Capture data transformations
 
+#### Provide inputs
+
 ```{r}
 # Provide a directory path for data file(s) to import
 data.path <- "data-processed/to_archive/"
@@ -1852,75 +1807,23 @@ time.format <- "%H:%M"
 
 ```
 
-```{r}
-# Import raw data file(s)
-data.files <-
-  list.files(
-    path = data.path,
-    pattern = NULL,
-    full.names = FALSE,
-    recursive = FALSE
-  )
+#### Import data
 
-data.choice <- utils::select.list(
-  c(data.files),
+```{r}
+
+data.list <- importer(
+  path = data.path,
   multiple = TRUE,
   graphics = TRUE,
-  title = cat(paste0("\nSelect one or more data files to import."))
+  column.format = list(
+    c(column = date.col, format = date.format),
+    c(column = time.col, format = time.format)
+  )
 )
 
-data.ext <- tools::file_ext(data.choice)
-import.data.name <-
-  stringr::str_replace(data.choice, paste0(".", data.ext), "")
-
-
-while (TRUE %in% duplicated(import.data.name)) {
-  message(cat(
-    "\n\n\nError: The following files have the same name.",
-    paste0("\n  ", data.choice[dup.test])
-  ))
-  
-  data.choice <- utils::select.list(
-    c(data.files),
-    multiple = TRUE,
-    graphics = TRUE,
-    title = cat(paste0(
-      "\n...Reselect one or more data files to import."
-    ))
-  )
-  
-  data.ext <- tools::file_ext(data.choice)
-  import.data.name <-
-    stringr::str_replace(data.choice, paste0(".", data.ext), "")
-  
-}
-
-data.list <- list()
-
-for (a in 1:length(data.ext)) {
-  if (data.ext[a] %in% c("xlsx", "xls")) {
-    import.file <-
-      readxl::read_excel(paste0(data.path, data.choice[a]), na = "")
-    
-    import.file <- import.file %>%
-      dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)) %>%
-      dplyr::mutate({{time.col}} := format(.data[[time.col]], format = time.format))
-    
-    
-    data.list[[a]] <- import.file
-    
-  } else if (data.ext[a] %in% c("csv")) {
-    import.file <-
-      utils::read.csv(paste0(data.path, data.choice[a]), na.strings = "")
-    data.list[[a]] <- import.file
-    
-  }
-}
-
-names(data.list) <- import.data.name
-
-
 ```
+
+#### Select data
 
 ```{r}
 
@@ -2261,7 +2164,7 @@ cap.data<- cap.data %>%
 
 ```
 
-#### Export data files
+#### Export data
 
 ```{r}
 
@@ -3016,7 +2919,7 @@ if(nrow(tag_info)!=0){
 
 ```
 
-#### Quality control checks
+#### Quality checks
 
 ```{r}
 
@@ -4029,9 +3932,9 @@ library("auk")
 # Rename photos
 
 ```{r}
-photo.file.path <- "C:/Users/hvincelette/OneDrive - DOI/Documents/Fieldwork_wrap/2024/Eielson/photos/ALMS_points/"
+photo.file.path <- "C:/Users/hvincelette/OneDrive - DOI/Documents/Fieldwork_wrap/2024/Eielson/photos/ALMS_points/CFGesmundo/"
 
-ref.file.path<- "C:/Users/hvincelette/OneDrive - DOI/Documents/Fieldwork_wrap/2024/Eielson/data/"
+ref.file.path<- "data-processed/to_archive/"
 
 date.col<- "Date"
 date.format <- "%m/%d/%Y"
@@ -4040,9 +3943,9 @@ time.format<- "%H:%M"
 obs.col<- "ObserverID"
 ref.col<- "UnitID"
 prefix<- "EIEL"
-missing.photo<- c("83")
+missing.photo<- c("221","181")
 
-variation <- c("N", "E", "S", "W")
+variation <- c("")
 
 ```
 
@@ -4210,8 +4113,8 @@ date.taken <- date.taken %>%
       prefix,
       "_",
       ref.order,
-      "_",
-      variation.vector,
+      # "_",
+      # variation.vector,
       "_",
       date.taken$"DateTimeOriginal",
       ".",
