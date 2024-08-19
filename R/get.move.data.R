@@ -1,12 +1,12 @@
-#' Import Movebank study loation and reference data into R
+#' Import Movebank study location and reference data into R
 #'
 #' Imports location and reference data from one or more Movebank studies managed by a specified Movebank account.
 #' @param project Character string. Name of the project folder.
-#' @param path  	Character string. Directory path where the cloned project will be located. Default is the working directory, getwd().
+#' @param path Character string. Directory path where the cloned project will be located. Default is the working directory, getwd().
 #' @param main Logical. Whether to return results from the main project folder (all subfolders except "incoming"). Default is TRUE.
 #' @param incoming Logical. Whether to return results from the "incoming" project subfolder. Default is TRUE.
 #' @return Returns a download of the project folder and all its contents.
-#' @keywords USFWS, repository, download, clone
+#' @keywords movebank, import, tracking
 #' @seealso ``` ```
 #' @export
 #' @examples
