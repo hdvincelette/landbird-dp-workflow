@@ -1,0 +1,10 @@
+name: landbird-dp-workflow
+title:
+username: hdvincelette
+account: hdvincelette
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 12485149
+bundleId: 9007221
+url: https://hdvincelette.shinyapps.io/landbird-dp-workflow/
+version: 1
