@@ -4,7 +4,13 @@
 \alias{importer}
 \title{Import one or more files into R}
 \usage{
-importer(path, multiple, graphics, column.format = list(c(column, format)))
+importer(
+  path,
+  multiple = FALSE,
+  graphics = TRUE,
+  pattern = NULL,
+  column.format = list(c(column = NULL, format = NULL))
+)
 }
 \arguments{
 \item{path}{Character string. Directory path here files are located. Default is the working directory, getwd().}
@@ -13,13 +19,15 @@ importer(path, multiple, graphics, column.format = list(c(column, format)))
 
 \item{graphics}{Logical. Whether to use a graphical widget for file selection. Default is TRUE.}
 
-\item{formats}{Optional list. Specifies formatting for one or more data frame columns, particularly those of class "Date."}
+\item{pattern}{Character vector. File name pattern(s). Must be a regular expression; print ?base::regex for help. Default is NULL, which returns results for all files.}
+
+\item{column.format}{Optional list. Specifies formatting for one or more data frame columns, particularly those of class "Date."}
 }
 \value{
 Returns an R list object (multiple = TRUE or the imported file is json format) or data frame (when multiple = FALSE and the imported file is not json format).
 }
 \description{
-Supports csv, Excel, and/or json files.
+Supports csv, Excel, json, gpx, kml, and/or kmz files.
 }
 \examples{
 # e.g.import <- importer(path = "downloads/, multiple = FALSE, graphics = TRUE)
