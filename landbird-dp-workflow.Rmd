@@ -38,27 +38,34 @@ Run the following installation code.
 
 ```{r include=FALSE, results=TRUE}
 
-# Install missing packages
+# Clear environment
+rm(list=ls())
+
+# Load project
+setwd(dirname(rstudioapi::documentPath()))
+rstudioapi::filesPaneNavigate(getwd())
+devtools::load_all()
+
+# Install missing CRAN packages
 if (!require("pacman"))
   install.packages("pacman")
-pacman::p_load("devtools", "move", "auk", "dplyr")
+pacman::p_load("devtools", "move", "auk", "magrittr", "shiny")
 
-# Uninstall packages (if re-installing)
-remove.packages("FWSAkRDRtools")
-remove.packages("mdJSONdictio")
-.rs.restartR()
 
-# (optional) Set GitHub download file method
-options(download.file.method = "wininet")
-
-# Install FWSAkRDRtools from GitHub
-devtools::install_github("hdvincelette/FWSAkRDRtools")
-
-# Install mdJSONdictio from GitHub
-devtools::install_github("hdvincelette/mdJSONdictio")
-
-# Load packages
-library(magrittr)
+# # Install GitHub packages
+# ## Uninstall packages (if re-installing)
+# remove.packages("FWSAkRDRtools")
+# remove.packages("mdJSONdictio")
+# .rs.restartR()
+# 
+# ## Set GitHub download file method (optional)
+# options(download.file.method = "wininet")
+# 
+# ## Install FWSAkRDRtools from GitHub
+# devtools::install_github("hdvincelette/FWSAkRDRtools")
+# 
+# ## Install mdJSONdictio from GitHub
+# devtools::install_github("hdvincelette/mdJSONdictio")
 
 
 ```
@@ -70,7 +77,6 @@ If the installations fail, refer to [Install mdJSONdictio R package](https://hdv
 Run the following installation code to install necessary subfolders
 
 ```{r}
-setwd("~/GitHub/landbird-dp-workflow")
 
 fs::dir_create(names(which(!fs::dir_exists(
   c(
@@ -86,14 +92,13 @@ fs::dir_create(names(which(!fs::dir_exists(
 
 # Data preprocessing
 
-### Download authoritative copies of project files
+### Download authoritative files
 
 Open the [Migratory Bird Management Regional Data Repository](file://ifw7ro-file.fws.doi.net/datamgt/mbm/) and navigate to the project folder. If you are working from a remote location, you must be connected to the VPN (Virtual Private Network) to access this folder.
 
 Paste the names of the project folder, data dictionary(ies), and data entry template(s).
 
 ```{r include=FALSE}
-setwd("~/GitHub/landbird-dp-workflow")
 
 # Provide the relevent information
 project.folder <- "mbmlb_003_Red_Knot_Breeding"
@@ -104,8 +109,6 @@ template.list <- c("brood","nest","encounters")
 download.path <- "downloads/"
 
 ```
-
-Imp
 
 Now run the following code chunk.
 
@@ -129,7 +132,7 @@ View and verify the downloaded data dictionary(ies) and data entry template(s) (
 
 *Optional: You can skip the above steps and download everything manually from the [Migratory Bird Management Regional Data Repository](file://ifw7ro-file.fws.doi.net/datamgt/mbm/) project folder. Data dictionaries and data entry templates should be available in the "metadata" sub-folder. Save a copy of data dictionary(ies) and data entry template(s) in an accessible location (i.e. the "downloads" sub-folder of this R project)*
 
-### Enter scanned or hard copy data
+### Enter data
 
 Copy and save each data entry template in a preferred location for data entry (this can be in the "data-raw" sub-folder of this R project). Use a unique and descriptive name - refer to [Best Practices in Naming Conventions](https://ak-region-dst.gitbook.io/alaska-region-interim-data-management-user-guide/alaska-data-management-101/file-organization-and-best-practices/best-practices-in-naming-conventions). It's okay to save this file in an Excel file format to preserve validation rules.
 
@@ -140,8 +143,6 @@ Save the entered data file(s) in the "data-raw" sub-folder of this R project. Co
 # Data quality checks
 
 Before beginning, make sure all entered data and data dictionary(ies) are saved in the sub-folders of this R project ("data-raw" and "downloads", respectively).
-
-SpeciesCode, Date, Location, Attachments (bands, tags), Morphometrics
 
 ### Provide inputs
 
@@ -159,7 +160,7 @@ time.format <- "%H:%M"
 
 ```
 
-### Import data
+### Import
 
 ```{r}
 
@@ -179,163 +180,173 @@ ref.dictionary <- importer(path = dictionary.path,
 
 ```
 
-### Select data
+### Filter data
 
 ```{r}
+
 other.data.list <- list()
-  
+
 filter.option <- utils::select.list(
-  c("by species", "by date range"),
-  multiple = FALSE,
-  graphics = FALSE,
+  c("species", "date range"),
+  multiple = TRUE,
+  graphics = TRUE,
   title = cat(
     paste0("\nHow do you want to filter the imported files?\n"),
-    paste0(names(raw.data.list), sep = "\n"),
-    paste0("\nEnter 0 to review all data.\n")
+    paste0(names(raw.data.list), sep = "\n")
   )
 )
 
-if(filter.option=="by species") {
-  sp.vectors <- sapply(sapply(raw.data.list, "[", sp.col), unique)
-  
-  sp.overlap <- Reduce(intersect, sp.vectors)
-  
-  if (length(sp.overlap) == 0) {
-    message(cat("A common species was not detected across imported files."))
-  } else if (length(sp.overlap) > 0) {
-    message(cat(
-      paste0("The following species were detected in all imported files.\n"),
-      paste0(sp.overlap, sp = "\n")
-    ))
-  }
-  
-  filter.choice <- utils::select.list(
-    c(unique(unlist(sp.vectors))),
-    multiple = TRUE,
-    graphics = TRUE,
-    title = cat(
-      paste0(
-        "\nSelect one or more species.\nUnselected species will be excluded from subsequent data processing.\n"
+if (length(filter.option) != 0) {
+  if ("species" %in% filter.option) {
+    sp.vectors <- sapply(sapply(raw.data.list, "[", sp.col), unique)
+    
+    sp.overlap <- Reduce(intersect, sp.vectors)
+    
+    if (length(sp.overlap) == 0) {
+      message(cat("A common species was not detected across imported files."))
+    } else if (length(sp.overlap) > 0) {
+      message(cat(
+        paste0(
+          "The following species were detected in all imported files.\n"
+        ),
+        paste0(sp.overlap, sp = "\n")
+      ))
+    }
+    
+    filter.choice <- utils::select.list(
+      c(unique(unlist(sp.vectors))),
+      multiple = TRUE,
+      graphics = TRUE,
+      title = cat(
+        paste0(
+          "\nSelect one or more species.\nUnselected species will be excluded from subsequent data processing.\n"
+        )
       )
     )
-  )
-  
-  temp <- raw.data.list %>%
-    purrr::map(.f = ~ .x %>%
-                 dplyr::filter(.data[[sp.col]] %in% filter.choice))
-  
-  if (sum(sapply(temp, nrow)) == 0) {
-    warning("Filter did not return results and will not be applied.")
     
-  } else {
-    other.data.list <- raw.data.list %>%
-    purrr::map(.f = ~ .x %>%
-                 dplyr::filter(!.data[[sp.col]] %in% filter.choice))
+    temp <- raw.data.list %>%
+      purrr::map(.f = ~ .x %>%
+                   dplyr::filter(.data[[sp.col]] %in% filter.choice))
     
-    raw.data.list <- temp
-  }
-  
-}
-
-
-if(filter.option=="by date range") {
-  date.ranges <- raw.data.list %>% purrr::map(
-    .f = ~ .x %>%
-      dplyr::select(all_of(date.col)) %>%
-      dplyr::filter(.data[[date.col]] != "") %>%
-      dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
-    
-    %>%
-      append(list(
-        "Min" = min(.[[date.col]]), "Max" = max(.[[date.col]])
-      ))
-  )
-  
-  date.message <- c()
-  
-  for (a in 1:length(date.ranges)) {
-    date.message[a] <-
-      paste0(names(date.ranges[a]),
-             ": ",
-             date.ranges[[a]][["Min"]],
-             " - ",
-             date.ranges[[a]][["Max"]])
-  }
-  
-  message(cat(
-    paste0("The following date ranges were detected the imported files.\n"),
-    paste0(date.message, sp = "\n")
-  ))
-  
-  message(cat(
-    paste0(
-      "Provide start and end dates (e.g., 2022-1-1).\nMissing dates and dates out of range will be excluded from subsequent data processing.\n"
-    )
-  ))
-  
-  
-  start.date <- NA
-  
-  while (is.na(start.date)) {
-    start.date.entry <- as.character(readline(prompt = "Start: "))
-    
-    if (is.na(as.Date(start.date.entry, format = "%Y-%m-%d"))) {
-      message("\nError: Date incorrectly formatted.\n")
+    if (sum(sapply(temp, nrow)) == 0) {
+      warning("Filter did not return results and will not be applied.")
       
     } else {
-      start.date <- as.Date(start.date.entry, format = "%Y-%m-%d")
-    }
-    
-  }
-  
-  end.date <- NA
-  
-  while (is.na(end.date)) {
-    end.date.entry <- as.character(readline(prompt = "End: "))
-    
-    if (is.na(as.Date(end.date.entry, format = "%Y-%m-%d"))) {
-      message("\nError: Date incorrectly formatted.\n")
+      other.data.list <- raw.data.list %>%
+        purrr::map(.f = ~ .x %>%
+                     dplyr::filter(!.data[[sp.col]] %in% filter.choice))
       
-    } else {
-      end.date <- as.Date(end.date.entry, format = "%Y-%m-%d")
+      raw.data.list <- temp
     }
     
   }
   
   
-  temp <- raw.data.list %>%
-    purrr::map(.f = ~ .x %>%
-                 dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
-               
-               %>%
-                 dplyr::filter(
-                   data.table::between(.data[[date.col]], start.date, end.date, NAbounds =
-                                         FALSE)
-                 ))
-  if (sum(sapply(temp, nrow)) == 0) {
-    warning("Filter did not return results and will not be applied.")
+  if ("date range" %in% filter.option) {
     
-  } else {
-    other.data.list <- raw.data.list %>%
-    purrr::map(
+    date.ranges <- raw.data.list %>% purrr::map(
       .f = ~ .x %>%
+        dplyr::select(all_of(date.col)) %>%
+        dplyr::filter(.data[[date.col]] != "") %>%
         dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
       
       %>%
-        dplyr::filter(
-          is.na(.data[[date.col]]) |
-            !data.table::between(.data[[date.col]], start.date, end.date, NAbounds =
-                                   FALSE)
-        )
+        append(list(
+          "Min" = min(.[[date.col]]), "Max" = max(.[[date.col]])
+        ))
     )
     
-    raw.data.list <- temp
+    date.message <- c()
+    
+    for (a in 1:length(date.ranges)) {
+      date.message[a] <-
+        paste0(names(date.ranges[a]), ": ", date.ranges[[a]][["Min"]], " - ", date.ranges[[a]][["Max"]])
+    }
+    
+    message(cat(
+      paste0("The following date ranges were detected the imported files.\n"),
+      paste0(date.message, sp = "\n")
+    ))
+    
+    message(cat(
+      paste0(
+        "Provide start and end dates (e.g., 2022-1-1).\nMissing dates and dates out of range will be excluded from subsequent data processing.\n"
+      )
+    ))
+    
+    start.date <- NA
+    
+    while (is.na(start.date)) {
+      start.date.entry <- as.character(svDialogs::dlg_input(message = "Start:")$res)
+      if (length(start.date.entry) == 0) {
+        break()
+      } else if (start.date.entry == "") {
+        start.date.entry <- NA
+      }
+      if (is.na(as.Date(start.date.entry, format = "%Y-%m-%d"))) {
+        message("\nError: Date incorrectly formatted.\n")
+        
+      } else {
+        start.date <- as.Date(start.date.entry, format = "%Y-%m-%d")
+      }
+      
+    }
+    
+    if (is.na(start.date) == FALSE) {
+      end.date <- NA
+      
+      while (is.na(end.date)) {
+        end.date.entry <- as.character(svDialogs::dlg_input(message = "End:")$res)
+        if (length(end.date.entry) == 0) {
+          break()
+        } else if (end.date.entry == "") {
+          end.date.entry <- NA
+        }
+        
+        if (is.na(as.Date(end.date.entry, format = "%Y-%m-%d"))) {
+          message("\nError: Date incorrectly formatted.\n")
+          
+        } else {
+          end.date <- as.Date(end.date.entry, format = "%Y-%m-%d")
+        }
+        
+      }
+      
+      if (all(is.na(c(start.date, end.date))) == FALSE) {
+        temp <- raw.data.list %>%
+          purrr::map(.f = ~ .x %>%
+                       dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+                     
+                     %>%
+                       dplyr::filter(
+                         data.table::between(.data[[date.col]], start.date, end.date, NAbounds =
+                                               FALSE)
+                       ))
+        if (sum(sapply(temp, nrow)) == 0) {
+          warning("Filter did not return results and will not be applied.")
+          
+        } else {
+          other.data.list <- raw.data.list %>%
+            purrr::map(
+              .f = ~ .x %>%
+                dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+              
+              %>%
+                dplyr::filter(
+                  is.na(.data[[date.col]]) |
+                    !data.table::between(.data[[date.col]], start.date, end.date, NAbounds =
+                                           FALSE)
+                )
+            )
+          
+          raw.data.list <- temp
+          
+        }
+      }
+    }
     
   }
-  
-}
-
-if(filter.option=="") {
+} else {
   other.data.list <- list()
 }
 
@@ -353,44 +364,191 @@ other.data.list <- other.data.list %>%
 
 # Check if data frames should be combined
 column.compare <- janitor::compare_df_cols(raw.data.list, bind_method  = "bind_rows") %>%
-  rowwise() %>%
+  dplyr::rowwise() %>%
   replace(is.na(.), "N/A") %>%
-  dplyr::filter(n_distinct(c_across(-1)) != 1)
+  dplyr::filter(dplyr::n_distinct(dplyr::c_across(-1)) != 1) %>%
+  dplyr::rename(all_of(setNames(1, "variable")))
 
-if (nrow(column.compare) != 0) {
-  message(
-    paste0("\n"),
-    huxtable::print_screen(
-      huxtable::hux(column.compare) %>% huxtable::set_text_color(2:nrow(.), 2:ncol(.), "red"),
-      colnames = FALSE
-    ),
-    cat(
-      paste0(
-        "\nThere are column name and/or class inconsistencies in the imported data frames.\n"
-      )
-    )
-  )
-}
+  # message(
+  #   paste0("\n"),
+  #   huxtable::print_screen(
+  #     huxtable::hux(column.compare) %>% huxtable::set_text_color(2:nrow(.), 2:ncol(.), "red"),
+  #     colnames = FALSE
+  #   ),
+  #   cat(
+  #     paste0(
+  #       "\nThere are column name and/or class inconsistencies in the imported data frames.\n"
+  #     )
+  #   )
+  # )
+
+DT::datatable(
+  column.compare,
+  options = list(pageLength = nrow(column.compare), scrollX = '400px'),
+  filter = 'top'
+)
+
 
 merge.choice <- utils::menu(c("please do", "absolutely not"),
-                            graphics = FALSE,
+                            graphics = TRUE,
                             title = cat(
                               paste0(
-                                "\nWould you like to combine these into a single data frame to enable faster data processing?\n"
+                                "\nVariable name and class inconsistencies between improted data frames are displayed in the Viewer pane.\nWould you like to combine these into a single data frame to enable faster data processing?\n"
                                 
                               )
                             )
 )
 
-
 if (merge.choice == 1) {
+  raw.data.name <- names(raw.data.list)
   raw.data.list <- list(combined_data = dplyr::bind_rows(raw.data.list))
-  import.data.name<- paste0(import.data.name, collapse = " ")
 }
+
+rstudioapi::executeCommand("viewerStop")
 
 ```
 
 ### Validate data
+
+```{r}
+
+sp.vectors <- sapply(sapply(raw.data.list, "[", sp.col), unique)
+
+date.ranges <- raw.data.list %>% purrr::map(
+  .f = ~ .x %>%
+    dplyr::select(all_of(date.col)) %>%
+    dplyr::filter(.data[[date.col]] != "") %>%
+    dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+  
+  %>%
+    append(list(
+      "Min" = min(.[[date.col]]), "Max" = max(.[[date.col]])
+    ))
+)
+
+
+dates.df <-raw.data.list %>% purrr::map(
+  .f = ~ .x %>%
+    dplyr::select(all_of(date.col)) %>%
+    dplyr::filter(.data[[date.col]] != "") %>%
+    dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+) %>%
+  dplyr::bind_rows(., .id = "id")
+    
+
+ui <- fluidPage(bootstrapPage(
+  theme = shinythemes::shinytheme("simplex"),
+  shinyjs::useShinyjs(),
+  br(),
+  column(
+    width = 10,
+    shinyWidgets::pickerInput(
+      "species",
+      h4(strong("Select one or more species.")),
+      choices =  unique(unlist(sp.vectors)),
+      selected = unique(unlist(sp.vectors)),
+      multiple = TRUE,
+      options = shinyWidgets::pickerOptions(actionsBox = TRUE
+      )
+    ),
+    
+    
+    dateRangeInput(
+      "date.range",
+      h4(strong("Select a date range.")),
+      start = min(do.call("c", lapply(
+        date.ranges, "[[", "Min"
+      ))),
+      end = max(do.call("c", lapply(
+        date.ranges, "[[", "Min"
+      ))),
+      min = min(do.call("c", lapply(
+        date.ranges, "[[", "Min"
+      ))),
+      max = max(do.call("c", lapply(
+        date.ranges, "[[", "Min"
+      ))),
+      format = "yyyy-mm-dd"
+    ),
+    
+    
+    textOutput("species"),
+    textOutput("date.range"),
+    actionButton("action", 
+                 "Submit"),
+    br(),
+    br(),
+    hr(),
+    br(),
+    h4(strong("Number of selected rows")),
+    tableOutput("selected.nrow"),
+    textOutput("selected.rowsum")
+    
+  )
+))
+
+
+server <- function(input, output, session) {
+  observeEvent(input$action, stopApp())
+  
+  species <- reactive(input$species)
+  date.range <- reactive(input$date.range)
+  
+  selected.nrow <- reactive({
+    as.data.frame(lapply(
+      raw.data.list %>%
+        purrr::map(
+          .f = ~ .x %>%
+            dplyr::filter(.data[[sp.col]] %in% species()) %>%
+            dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+          
+          %>%
+            dplyr::filter(data.table::between(
+              .data[[date.col]], min(date.range()), max(date.range()), NAbounds =
+                FALSE
+            ))
+        ),
+      nrow
+    ))
+    
+  })
+  
+  output$selected.nrow <- renderTable({
+    selected.nrow()
+  })
+  
+  
+  
+  output$selected.rowsum <- renderText({
+    paste("Total: ", rowSums(selected.nrow()))
+  })
+
+    
+  
+  observe({
+    if (rowSums(selected.nrow()) == 0) {
+      shinyjs::disable("action")
+    }
+    else{
+      shinyjs::enable("action")
+    }
+  })
+    
+  observe({
+    my_global_env <- globalenv()
+    my_global_env$species <- input$species
+    my_global_env$date.range <- input$date.range
+  })
+}
+
+
+runGadget(ui,
+          server,
+          viewer = dialogViewer('landbird-dp-workflow ~ Filter data', height = 450))
+
+
+
+```
 
 ```{r}
 
@@ -402,7 +560,7 @@ for (a in 1:length(raw.data.list)) {
   assign("input.data", raw.data.list[[a]])
   
   # Check colnames
-  if (dictionary.ext %in% c("json")) {
+  if (class(ref.dictionary) == "list") {
     input.dxnry <- mdJSONdictio::extract.mdJSON(x = input.dxnry,
                                                 record.type = "dictionaries",
                                                 multiple = FALSE)
@@ -435,11 +593,11 @@ for (a in 1:length(raw.data.list)) {
       
       colname.choice <- utils::menu(
         c(
-          "select an unused column from the dictionary",
+          "select a dictionary attribute",
           "remove column",
           "leave as is"
         ),
-        graphics = FALSE,
+        graphics = TRUE,
         title = cat(
           paste0(
             "\nThe column '",
@@ -454,7 +612,7 @@ for (a in 1:length(raw.data.list)) {
       if (colname.choice == 1) {
         colname.selection <- utils::menu(unused_colnames
                                          ,
-                                         graphics = FALSE,
+                                         graphics = TRUE,
                                          title = cat(
                                            paste0(
                                              "\nSelect a column name to replace '",
@@ -476,7 +634,7 @@ for (a in 1:length(raw.data.list)) {
   }
   
   # Create warning table
-  if (dictionary.ext %in% c("json")) {
+  if (class(ref.dictionary) == "list") {
     warning.list[[a]] <-
       mdJSONdictio::validate.mdJSON(x = input.dxnry, y = input.data)
   } else {
@@ -487,7 +645,8 @@ for (a in 1:length(raw.data.list)) {
   raw.data.list[[a]]<- input.data
 }
 
-names(warning.list) <- import.data.name
+names(warning.list) <- names(raw.data.list)
+
 
 ```
 
@@ -496,7 +655,6 @@ names(warning.list) <- import.data.name
 ```{r}
 
 for (a in 1:length(raw.data.list)) {
-  
   assign("input.data", raw.data.list[[a]])
   
   input.data$.id <- 1:nrow(input.data)
@@ -509,7 +667,7 @@ for (a in 1:length(raw.data.list)) {
     domainItem_value.table <-
       warn.table %>% dplyr::filter(Category == "domainItem_value")
     
-    if (length(domainItem_value.table) != 0) {
+    if (nrow(domainItem_value.table) != 0) {
       for (b in 1:nrow(domainItem_value.table)) {
         domainItem.vector <-
           scan(
@@ -532,7 +690,7 @@ for (a in 1:length(raw.data.list)) {
                 "\nThe attribute '",
                 domainItem_value.table$Variable[b] ,
                 "' in the data file '",
-                import.data.name[a],
+                names(raw.data.list[a]),
                 "' contains entry values not found in the data dictionary.\nSelect values to correct in the data.\n"
               )
             )
@@ -575,7 +733,7 @@ for (a in 1:length(raw.data.list)) {
                     "manually edit one by one",
                     "leave as is"
                   ),
-                  graphics = FALSE,
+                  graphics = TRUE,
                   title = cat(
                     paste0(
                       "\nHow would you like to correct the value '",
@@ -589,10 +747,12 @@ for (a in 1:length(raw.data.list)) {
                   
                 )
                 if (fix.choice == 1) {
-                  if (dictionary.ext == "json") {
+                  if (class(ref.dictionary) == "list") {
                     temp <- rjson::fromJSON(input.dxnry[["data"]][[1]][["attributes"]][["json"]])
                     
-                    domain.num <- which(sapply(temp[["dataDictionary"]][["domain"]], "[", "codeName") == domainItem_value.table$Variable[b])
+                    domain.num <- which(
+                      sapply(temp[["dataDictionary"]][["domain"]], "[", "codeName") == domainItem_value.table$Variable[b]
+                    )
                     
                     if (length(domain.num) == 0) {
                       message(cat(
@@ -612,8 +772,10 @@ for (a in 1:length(raw.data.list)) {
                     
                   } else {
                     domainItems <- input.dxnry %>%
-                      dplyr::filter(codeName == domainItem_value.table$Variable[b],
-                                    domainItem_value != "dataField") %>%
+                      dplyr::filter(
+                        codeName == domainItem_value.table$Variable[b],
+                        domainItem_value != "dataField"
+                      ) %>%
                       purrr::pluck("domainItem_value")
                     
                     if (length(domainItems) == 0) {
@@ -624,9 +786,13 @@ for (a in 1:length(raw.data.list)) {
                   }
                   
                   if (menu.skip == "N") {
-                    domainItem.num <- utils::menu(c(domainItems),
-                                                  graphics = FALSE,
-                                                  title = cat(paste0("\nSelect a domain item.")))
+                    domainItem.num <- utils::menu(
+                      c(domainItems),
+                      graphics = TRUE,
+                      title = cat(paste0(
+                        "\nSelect a domain item."
+                      ))
+                    )
                     if (domainItem.num != 0) {
                       if (class(input.data[[domainItem_value.table$Variable[b]]]) != class(domainItems[domainItem.num]) &
                           class(input.data[[domainItem_value.table$Variable[b]]]) == "integer") {
@@ -635,17 +801,23 @@ for (a in 1:length(raw.data.list)) {
                           new.value <- as.numeric(domainItems[domainItem.num])
                         } else {
                           input.data <- input.data %>%
-                            dplyr::mutate_at(domainItem_value.table$Variable[b], ~
+                            dplyr::mutate_at(domainItem_value.table$Variable[b],
+                                             ~
                                                as.character(.))
                           
-                          new.value<- domainItems[domainItem.num]
+                          new.value <- domainItems[domainItem.num]
                         }
+                      } else {
+                        new.value <- domainItems[domainItem.num]
                       }
                       
                       input.data <- input.data %>%
                         dplyr::mutate_at(
                           domainItem_value.table$Variable[b],
-                          ~ dplyr::case_when(.x == domainItem.choice[c] ~ new.value, TRUE ~ .x)
+                          ~ dplyr::case_when(
+                            .x == domainItem.choice[c] ~ new.value,
+                            TRUE ~ .x
+                          )
                         )
                       
                       reprompt <- FALSE
@@ -748,7 +920,7 @@ for (a in 1:length(warning.list)) {
       title = cat(
         paste0(
           "\nSome variables in the data file '",
-          import.data.name[a],
+          names(raw.data.list[a]),
           "' were not found in the data dictionary.\nSelect which, if any, to add to the data dictionary.\n"
         )
       )
@@ -756,7 +928,7 @@ for (a in 1:length(warning.list)) {
     
     if (length(codeName.choice)!=0) {
       for (b in 1:length(codeName.choice)) {
-        if (dictionary.ext %in% c("json")) {
+        if (class(ref.dictionary) == "list") {
           input.dxnry <-
             mdJSONdictio::modify.mdJSON(
               x = input.dxnry,
@@ -818,7 +990,7 @@ for (a in 1:length(warning.list)) {
               "\nThe attribute '",
               domainItem_value.table$Variable[b] ,
               "' in the data file '",
-              import.data.name[a],
+              names(raw.data.list[a]),
               "' contains entry values not found in the data dictionary.\nSelect which, if any, to add to the domain item list in the data dictionary.\n"
             )
           )
@@ -827,7 +999,7 @@ for (a in 1:length(warning.list)) {
       if (length(domainItem.choice)!=0) {
         for (c in 1:length(domainItem.choice)) {
           
-          if (dictionary.ext %in% c("json")) {
+          if (class(ref.dictionary) == "list") {
             input.dxnry <-
               mdJSONdictio::modify.mdJSON(
                 x = input.dxnry,
@@ -880,13 +1052,13 @@ for (a in 1:length(warning.list)) {
         utils::select.list(
           c("yes", "no"),
           multiple = FALSE,
-          graphics = FALSE,
+          graphics = TRUE,
           title = cat(
             paste0(
               "\nThe attribute '",
               dataType.table$Variable[b] ,
               "' in the data file '",
-              import.data.name[a],
+              names(raw.data.list[a]),
               "' has entry values with a different dataType (",
               detected.dataType,
               ") than indicated in the dictionary (",
@@ -922,6 +1094,8 @@ for (a in 1:length(warning.list)) {
   }
 
 }
+
+ref.dictionary[["data"]][[record.num]] <- input.dxnry[["data"]][[1]]
 
   
 ```
@@ -998,7 +1172,9 @@ raw.data.list <- raw.data.list %>%   purrr::map(
 )    
 ```
 
-### Link location data
+### Join ancillary data
+
+#### Location
 
 ```{r}
 # Provide directory paths for the location data file(s)
@@ -1015,67 +1191,16 @@ data.long.col <- "Longitude_dec"
 ```{r}
 
 # Import reference data file(s)
-ref.data.files <-
-  list.files(
-    path = ref.data.path,
-    pattern = c("*.gpx$", "*.kml$", "*.kmz$"),
-    full.names = FALSE,
-    recursive = FALSE,
-    ignore.case = FALSE
-  )
-
-ref.data.choice <- utils::select.list(
-  c(ref.data.files),
+ref.data.files <- importer(
+  path = ref.data.path,
   multiple = TRUE,
   graphics = TRUE,
-  title = cat(paste0("\nSelect one or more data files to import."))
+  pattern = c("*.gpx$", "*.kml$", "*.kmz$")
 )
-
-ref.data.ext <- tools::file_ext(raw.data.choice)
-import.data.name <-
-  stringr::str_replace(ref.data.choice, paste0(".", ref.data.ext), "")
-
-while (TRUE %in% duplicated(import.data.name)) {
-  message(cat(
-    "\n\n\nError: The following files have the same name.",
-    paste0("\n  ", ref.data.choice[dup.test])
-  ))
-  
-  ref.data.choice <- utils::select.list(
-    c(ref.data.files),
-    multiple = TRUE,
-    graphics = TRUE,
-    title = cat(paste0(
-      "\n...Reselect one or more data files to import."
-    ))
-  )
-  
-  ref.data.ext <- tools::file_ext(ref.data.choice)
-  import.data.name <-
-    stringr::str_replace(ref.data.choice, paste0(".", ref.data.ext), "")
-  
-}
-
-ref.data.list <- list()
-
-import.file <-
-  sf::st_read(paste0(ref.data.path, ref.data.choice[a]), layer = "waypoints") %>%
-  dplyr::mutate(
-    longitude = sf::st_coordinates(.)[, 1],
-    latitude = sf::st_coordinates(.)[, 2]
-  ) %>%
-  dplyr::mutate(year = lubridate::year(time)) %>%
-  dplyr::mutate(name = paste0(ref.point.prefix, name)) %>%
-  dplyr::select("time", "year", "name", "latitude", "longitude") %>%
-  sf::st_drop_geometry(.) %>%
-  setNames(paste0("temp:", names(.)))
-
-ref.data.list[[a]] <- import.file
-
-names(ref.data.list) <- import.data.name
 
 locations<- data.table::rbindlist(ref.data.list, fill = TRUE)
 
+# Join location(s)
 raw.data.list <- raw.data.list %>%
   purrr::map(
     .f = ~ .x %>%
@@ -1098,7 +1223,7 @@ raw.data.list <- raw.data.list %>%
     
 ```
 
-### Join sex results
+#### Sex results
 
 ```{r}
 file.path = "C:/Users/hvincelette/OneDrive - DOI/Documents/Fieldwork_wrap/2023/Sexing_Analysis/"
@@ -1107,30 +1232,11 @@ file.path = "C:/Users/hvincelette/OneDrive - DOI/Documents/Fieldwork_wrap/2023/S
 ```{r}
 
 # Import sex results
-files <-
-  list.files(
-    path = file.path,
-    pattern = NULL,
-    full.names = FALSE,
-    recursive = FALSE
-  )
+sex_results <- importer(path = file.path,
+                        multiple = FALSE,
+                        graphics = TRUE)
 
-file.choice <- utils::select.list(
-  c(files),
-  multiple = FALSE,
-  graphics = TRUE,
-  title = cat(paste0("\nSelect one or more data files to import."))
-)
 
-if (tools::file_ext(file.choice) %in% c("xlsx", "xls")) {
-  sex_results <-
-    readxl::read_excel(paste0(file.path, file.choice))
-  
-} else if (tools::file_ext(file.choice) %in% c("csv")) {
-  sex_results <-
-    utils::read.csv(paste0(file.path, file.choice))
-  
-}
 
 # Correct results table
 sex_results<- sex_results %>%
@@ -1165,6 +1271,8 @@ raw.data.list <- raw.data.list %>%
 ```
 
 ### Fill missing info
+
+#### Bird Status
 
 ```{r}
 
@@ -1366,7 +1474,7 @@ for (x in 1:length(raw.data.list)) {
       
       status.choice <- utils::menu(
         choice = c("update as detected", "manually edit", "leave as is"),
-        graphics = FALSE,
+        graphics = TRUE,
         title = cat("\nHow would you like to proceed?")
       )
       
@@ -1411,7 +1519,7 @@ for (x in 1:length(raw.data.list)) {
   
 ```
 
-### Export data
+### Export
 
 ```{r}
 # Provide directory path for the authoritative data file
@@ -1421,53 +1529,28 @@ download.path <- "downloads/"
 processed.data.path <- "data-processed/to_archive/"
 
 # Do you want to merge the data with an authoritative file?
-auth.merge <- FALSE
+auth.merge <- TRUE
 
 # Provide versioning format (when merging with an authoritative file)
 vers.suffix <- "_v"
 
 ```
 
+#### Data
+
 ```{r}
 
 if (auth.merge == TRUE) {
   # Import authoritative data file
-  downloaded.files <-
-    list.files(
-      path = download.path,
-      pattern = NULL,
-      full.names = FALSE,
-      recursive = FALSE
-    )
-  
-  download.choice <- utils::select.list(
-    c(downloaded.files),
+  auth.data <- importer(
+    path = download.path,
     multiple = FALSE,
     graphics = TRUE,
-    title = cat(paste0("\nSelect a file to import."))
+    column.format = list(
+      c(column = date.col, format = date.format),
+      c(column = time.col, format = time.format)
+    )
   )
-  
-  download.ext <- tools::file_ext(download.choice)
-  auth.data.name <-
-    stringr::str_replace(download.choice, paste0(".", download.ext), "")
-  
-  if (download.ext %in% c("xlsx", "xls")) {
-    import.file <-
-      readxl::read_excel(paste0(download.path, download.choice))
-    
-    import.file <- import.file %>%
-      dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)) %>%
-      dplyr::mutate({{time.col}} := format(.data[[time.col]], format = time.format))
-    
-    
-    auth.data <- import.file
-    
-  } else if (download.ext %in% c("csv")) {
-    import.file <-
-      utils::read.csv(paste0(download.path, download.choice))
-    auth.data <- import.file
-    
-  }
   
   # Rejoin filtered data
   raw.data.list <-
@@ -1631,11 +1714,11 @@ write.csv(
 
 ```
 
-### Export dictionary
+#### Dictionary
 
 ```{r}
 
-if(dictionary.ext %in% c("json")) {
+if(class(ref.dictionary) == "list") {
   export.choice <- utils::select.list(
     c("tabular dictionary", "mdjson dictionary", "mdEditor file"),
     multiple = TRUE,
@@ -1647,14 +1730,14 @@ if(dictionary.ext %in% c("json")) {
   
   if ("tabular dictionary" %in% export.choice) {
     message(cat(
-        paste0(
-          "\nProvide a name for the mdjson dictionary.\nThe mdjson record name is '",
-          input.dxnry[["data"]][[1]][["meta"]][["title"]],
-          "'.\n"
-        )
-      ))
+      paste0(
+        "\nProvide a name for the mdjson dictionary.\nThe mdjson record name is '",
+        input.dxnry[["data"]][[1]][["meta"]][["title"]],
+        "'.\n"
+      )
+    ))
     
-    dxnry.name <- noquote(as.character(readline(prompt = )))
+    dxnry.name <- noquote(as.character(readline(prompt =)))
     
     if (dxnry.name == "") {
       dxnry.name <- input.dxnry[["data"]][[1]][["meta"]][["title"]]
@@ -1686,7 +1769,6 @@ if(dictionary.ext %in% c("json")) {
   }
   
   if ("mdjson dictionary" %in% export.choice) {
-    
     if (!"tabular dictionary" %in% export.choice) {
       message(cat(
         paste0(
@@ -1696,7 +1778,7 @@ if(dictionary.ext %in% c("json")) {
         )
       ))
       
-      dxnry.name <- noquote(as.character(readline(prompt =)))
+      dxnry.name <- noquote(as.character(readline(prompt = )))
       
       if (dxnry.name == "") {
         dxnry.name <- input.dxnry[["data"]][[1]][["meta"]][["title"]]
@@ -1735,7 +1817,7 @@ if(dictionary.ext %in% c("json")) {
       )
     ))
     
-    file.name <- noquote(as.character(readline(prompt =)))
+    file.name <- noquote(as.character(readline(prompt = )))
     
     if (file.name == "") {
       file.name <-  gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE)
@@ -1744,8 +1826,6 @@ if(dictionary.ext %in% c("json")) {
     file.name <-  sub(" ", "_", file.name)
     
     file.name <- strsplit(gsub("[[:punct:]]$", "", file.name), " +")[[1]]
-    
-    ref.dictionary[["data"]][[record.num]] <- input.dxnry[["data"]][[1]]
     
     new.dxnry <- rjson::toJSON(x = ref.dictionary)
     
@@ -1823,7 +1903,7 @@ data.list <- importer(
 
 ```
 
-#### Select data
+#### Filter data
 
 ```{r}
 
@@ -1831,7 +1911,7 @@ data.list <- importer(
 filter.option <- utils::select.list(
   c("by species", "by date range"),
   multiple = FALSE,
-  graphics = FALSE,
+  graphics = TRUE,
   title = cat(
     paste0("\nHow do you want to filter the imported files?\n"),
     paste0(names(data.list), sep = "\n"),
@@ -2020,42 +2100,16 @@ list2env(ref_data, globalenv())
 
 # Import authoritative data file
 if (auth.merge == TRUE) {
-  downloaded.files <-
-    list.files(
-      path = download.path,
-      pattern = NULL,
-      full.names = FALSE,
-      recursive = FALSE
-    )
-  
-  download.choice <- utils::select.list(
-    c(downloaded.files),
+  auth.data <- importer(
+    path = download.path,
     multiple = FALSE,
     graphics = TRUE,
-    title = cat(paste0("\nSelect a file to import."))
+    column.format = list(
+      c(column = date.col, format = date.format),
+      c(column = time.col, format = time.format)
+    )
   )
-  
-  download.ext <- tools::file_ext(download.choice)
-  auth.data.name <-
-    stringr::str_replace(download.choice, paste0(".", download.ext), "")
-  
-  if (download.ext %in% c("xlsx", "xls")) {
-    import.file <-
-      readxl::read_excel(paste0(download.path, download.choice))
     
-    import.file <- import.file %>%
-      dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)) %>%
-      dplyr::mutate({{time.col}} := format(.data[[time.col]], format = time.format))
-    
-    
-    auth.data <- import.file
-    
-  } else if (download.ext %in% c("csv")) {
-    import.file <-
-      utils::read.csv(paste0(download.path, download.choice))
-    auth.data <- import.file
-    
-  }
 
   auth.data <- auth.data %>%
     dplyr::mutate_at("BandNumber", ~ as.character(.)) %>%
@@ -2246,33 +2300,13 @@ file.path = "C:/Users/hvincelette/OneDrive - DOI/Documents/Fieldwork_wrap/2023/S
 ```
 
 ```{r}
-# Import sex results
-files <-
-  list.files(
-    path = file.path,
-    pattern = NULL,
-    full.names = FALSE,
-    recursive = FALSE
-  )
+# Import results
+sex_results <- importer(path = file.path,
+                        multiple = FALSE,
+                        graphics = TRUE)
 
-file.choice <- utils::select.list(
-  c(files),
-  multiple = FALSE,
-  graphics = TRUE,
-  title = cat(paste0("\nSelect one or more data files to import."))
-)
 
-if (tools::file_ext(file.choice) %in% c("xlsx", "xls")) {
-  sex_results <-
-    readxl::read_excel(paste0(file.path, file.choice))
-  
-} else if (tools::file_ext(file.choice) %in% c("csv")) {
-  sex_results <-
-    utils::read.csv(paste0(file.path, file.choice))
-  
-}
-
-# Correct results table
+# Correct results
 sex_results<- sex_results %>%
   dplyr::mutate_at("BandNumber", as.character) %>%
   tidyr::drop_na("OccurenceID") %>%
@@ -2286,7 +2320,7 @@ sex_results[c(
 ), ]
 
 
-# Join sex results
+# Join results
 new.data <- new.data %>%
   dplyr::mutate(".id" = 1:nrow(.)) %>%
   dplyr::left_join(
@@ -3267,7 +3301,7 @@ if (length(invalid.index) != 0) {
     
     status.choice <- utils::menu(
       choice = c("update as detected", "manually edit", "leave as is"),
-      graphics = FALSE,
+      graphics = TRUE,
       title = cat("\nHow would you like to proceed?")
     )
     
@@ -3874,7 +3908,7 @@ message(cat(
   paste0(
     "The following data files have been processed and are ready for Bander Portal.\n"
   ),
-  paste0(import.data.name, sep = "\n"),
+  paste0(names(data.list), sep = "\n"),
   paste0("\n\nProvide a prefix for the newly written files.\n")
 ))
 
@@ -3931,6 +3965,8 @@ library("auk")
 
 # Rename photos
 
+### Provide inputs
+
 ```{r}
 photo.file.path <- "C:/Users/hvincelette/OneDrive - DOI/Documents/Fieldwork_wrap/2024/Eielson/photos/ALMS_points/CFGesmundo/"
 
@@ -3949,40 +3985,23 @@ variation <- c("")
 
 ```
 
+### Import data
+
 ```{r}
 # Import ref data file(s)
-ref.data.files <-
-  list.files(
-    path = ref.file.path,
-    pattern = NULL,
-    full.names = FALSE,
-    recursive = FALSE
-  )
-
-ref.data.choice <- utils::select.list(
-  c(ref.data.files),
+ref.file <- importer(
+  path = ref.file.path,
   multiple = FALSE,
   graphics = TRUE,
-  title = cat(paste0("\nSelect a data file to import."))
+  column.format = list(
+    c(column = date.col, format = date.format),
+    c(column = time.col, format = time.format)
+  )
 )
 
-ref.data.ext <- tools::file_ext(ref.data.choice)
-
-if (ref.data.ext %in% c("xlsx", "xls")) {
-  ref.file <-
-    readxl::read_excel(paste0(ref.file.path, ref.data.choice), na = "")
-  
-  ref.file <- ref.file %>%
-    dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)) %>%
-    dplyr::mutate({{time.col}} := format(.data[[time.col]], format = time.format))
-  
-} else if (ref.data.ext %in% c("csv")) {
-  ref.file <-
-    utils::read.csv(paste0(ref.file.path, ref.data.choice), na.strings = "")
-  
-}
-
 ```
+
+### Filter data
 
 ```{r}
 
@@ -4002,7 +4021,7 @@ year.options <-
 
 year.choice <- utils::select.list(
   year.options,
-  graphics = FALSE,
+  graphics = TRUE,
   multiple = FALSE,
   title = cat(
     paste0("\nSelect a year.\nEnter 0 to proceed with all years.\n")
@@ -4016,7 +4035,7 @@ if(year.choice !=""){
 obs.choice <- utils::select.list(
   c(unique(na.omit(ref.file[[obs.col]]))),
   multiple = FALSE,
-  graphics = FALSE,
+  graphics = TRUE,
   title = cat(
     paste0(
       "\nSelect an observer.\nNote, photos taken by each observer must be processed individually due to the possibility of concurrent timestamps.\n"
@@ -4029,6 +4048,8 @@ if (length(obs.choice) != 0) {
 }
 
 ```
+
+### Formulate names
 
 ```{r}
 
