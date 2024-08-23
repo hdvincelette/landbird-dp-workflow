@@ -3,4 +3,5 @@
 export("%>%")
 export(get.move.data)
 export(importer)
+export(selector)
 importFrom(magrittr,"%>%")
