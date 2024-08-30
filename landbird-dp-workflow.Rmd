@@ -32,7 +32,7 @@ This document is meant to be interactive, with text prompts and "code chunks" wh
 
 # Workspace setup
 
-### Install R packages
+### Load required packages
 
 Run the following installation code.
 
@@ -41,16 +41,15 @@ Run the following installation code.
 # Clear environment
 rm(list=ls())
 
+# Install CRAN packages
+if (!require("pacman"))
+  install.packages("pacman")
+pacman::p_load("devtools", "move", "auk", "magrittr", "shiny","bslib")
+
 # Load project
 setwd(dirname(rstudioapi::documentPath()))
 rstudioapi::filesPaneNavigate(getwd())
 devtools::load_all()
-
-# Install missing CRAN packages
-if (!require("pacman"))
-  install.packages("pacman")
-pacman::p_load("devtools", "move", "auk", "magrittr", "shiny")
-
 
 # # Install GitHub packages
 # ## Uninstall packages (if re-installing)
@@ -152,6 +151,7 @@ raw.data.path <- "data-raw/"
 dictionary.path <- "downloads/"
 
 # Provide the relevant information (if applicable)
+missing_values<- c(NA)
 sp.col <- "SpeciesCode"
 date.col <- "Date"
 date.format <-  "%m/%d/%Y"
@@ -184,235 +184,10 @@ ref.dictionary <- importer(path = dictionary.path,
 
 ```{r}
 
-other.data.list <- list()
-
-filter.option <- utils::select.list(
-  c("species", "date range"),
-  multiple = TRUE,
-  graphics = TRUE,
-  title = cat(
-    paste0("\nHow do you want to filter the imported files?\n"),
-    paste0(names(raw.data.list), sep = "\n")
-  )
-)
-
-if (length(filter.option) != 0) {
-  if ("species" %in% filter.option) {
-    sp.vectors <- sapply(sapply(raw.data.list, "[", sp.col), unique)
-    
-    sp.overlap <- Reduce(intersect, sp.vectors)
-    
-    if (length(sp.overlap) == 0) {
-      message(cat("A common species was not detected across imported files."))
-    } else if (length(sp.overlap) > 0) {
-      message(cat(
-        paste0(
-          "The following species were detected in all imported files.\n"
-        ),
-        paste0(sp.overlap, sp = "\n")
-      ))
-    }
-    
-    filter.choice <- utils::select.list(
-      c(unique(unlist(sp.vectors))),
-      multiple = TRUE,
-      graphics = TRUE,
-      title = cat(
-        paste0(
-          "\nSelect one or more species.\nUnselected species will be excluded from subsequent data processing.\n"
-        )
-      )
-    )
-    
-    temp <- raw.data.list %>%
-      purrr::map(.f = ~ .x %>%
-                   dplyr::filter(.data[[sp.col]] %in% filter.choice))
-    
-    if (sum(sapply(temp, nrow)) == 0) {
-      warning("Filter did not return results and will not be applied.")
-      
-    } else {
-      other.data.list <- raw.data.list %>%
-        purrr::map(.f = ~ .x %>%
-                     dplyr::filter(!.data[[sp.col]] %in% filter.choice))
-      
-      raw.data.list <- temp
-    }
-    
-  }
+if(any(c(sp.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames)))){
   
-  
-  if ("date range" %in% filter.option) {
-    
-    date.ranges <- raw.data.list %>% purrr::map(
-      .f = ~ .x %>%
-        dplyr::select(all_of(date.col)) %>%
-        dplyr::filter(.data[[date.col]] != "") %>%
-        dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
-      
-      %>%
-        append(list(
-          "Min" = min(.[[date.col]]), "Max" = max(.[[date.col]])
-        ))
-    )
-    
-    date.message <- c()
-    
-    for (a in 1:length(date.ranges)) {
-      date.message[a] <-
-        paste0(names(date.ranges[a]), ": ", date.ranges[[a]][["Min"]], " - ", date.ranges[[a]][["Max"]])
-    }
-    
-    message(cat(
-      paste0("The following date ranges were detected the imported files.\n"),
-      paste0(date.message, sp = "\n")
-    ))
-    
-    message(cat(
-      paste0(
-        "Provide start and end dates (e.g., 2022-1-1).\nMissing dates and dates out of range will be excluded from subsequent data processing.\n"
-      )
-    ))
-    
-    start.date <- NA
-    
-    while (is.na(start.date)) {
-      start.date.entry <- as.character(svDialogs::dlg_input(message = "Start:")$res)
-      if (length(start.date.entry) == 0) {
-        break()
-      } else if (start.date.entry == "") {
-        start.date.entry <- NA
-      }
-      if (is.na(as.Date(start.date.entry, format = "%Y-%m-%d"))) {
-        message("\nError: Date incorrectly formatted.\n")
-        
-      } else {
-        start.date <- as.Date(start.date.entry, format = "%Y-%m-%d")
-      }
-      
-    }
-    
-    if (is.na(start.date) == FALSE) {
-      end.date <- NA
-      
-      while (is.na(end.date)) {
-        end.date.entry <- as.character(svDialogs::dlg_input(message = "End:")$res)
-        if (length(end.date.entry) == 0) {
-          break()
-        } else if (end.date.entry == "") {
-          end.date.entry <- NA
-        }
-        
-        if (is.na(as.Date(end.date.entry, format = "%Y-%m-%d"))) {
-          message("\nError: Date incorrectly formatted.\n")
-          
-        } else {
-          end.date <- as.Date(end.date.entry, format = "%Y-%m-%d")
-        }
-        
-      }
-      
-      if (all(is.na(c(start.date, end.date))) == FALSE) {
-        temp <- raw.data.list %>%
-          purrr::map(.f = ~ .x %>%
-                       dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
-                     
-                     %>%
-                       dplyr::filter(
-                         data.table::between(.data[[date.col]], start.date, end.date, NAbounds =
-                                               FALSE)
-                       ))
-        if (sum(sapply(temp, nrow)) == 0) {
-          warning("Filter did not return results and will not be applied.")
-          
-        } else {
-          other.data.list <- raw.data.list %>%
-            purrr::map(
-              .f = ~ .x %>%
-                dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
-              
-              %>%
-                dplyr::filter(
-                  is.na(.data[[date.col]]) |
-                    !data.table::between(.data[[date.col]], start.date, end.date, NAbounds =
-                                           FALSE)
-                )
-            )
-          
-          raw.data.list <- temp
-          
-        }
-      }
-    }
-    
-  }
-} else {
-  other.data.list <- list()
-}
-
-# Remove empty dataframes
-raw.data.list <- raw.data.list %>%
-  purrr::discard(., ~ nrow(.) == 0) %>%
-  purrr::map(.f = ~ .x %>%
-               dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
-
-
-other.data.list <- other.data.list %>%
-  purrr::discard(., ~ nrow(.) == 0) %>%
-  purrr::map(.f = ~ .x %>%
-               dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
-
-# Check if data frames should be combined
-column.compare <- janitor::compare_df_cols(raw.data.list, bind_method  = "bind_rows") %>%
-  dplyr::rowwise() %>%
-  replace(is.na(.), "N/A") %>%
-  dplyr::filter(dplyr::n_distinct(dplyr::c_across(-1)) != 1) %>%
-  dplyr::rename(all_of(setNames(1, "variable")))
-
-  # message(
-  #   paste0("\n"),
-  #   huxtable::print_screen(
-  #     huxtable::hux(column.compare) %>% huxtable::set_text_color(2:nrow(.), 2:ncol(.), "red"),
-  #     colnames = FALSE
-  #   ),
-  #   cat(
-  #     paste0(
-  #       "\nThere are column name and/or class inconsistencies in the imported data frames.\n"
-  #     )
-  #   )
-  # )
-
-DT::datatable(
-  column.compare,
-  options = list(pageLength = nrow(column.compare), scrollX = '400px'),
-  filter = 'top'
-)
-
-
-merge.choice <- utils::menu(c("please do", "absolutely not"),
-                            graphics = TRUE,
-                            title = cat(
-                              paste0(
-                                "\nVariable name and class inconsistencies between improted data frames are displayed in the Viewer pane.\nWould you like to combine these into a single data frame to enable faster data processing?\n"
-                                
-                              )
-                            )
-)
-
-if (merge.choice == 1) {
-  raw.data.name <- names(raw.data.list)
-  raw.data.list <- list(combined_data = dplyr::bind_rows(raw.data.list))
-}
-
-rstudioapi::executeCommand("viewerStop")
-
-```
-
-### Validate data
-
-```{r}
-
-sp.vectors <- sapply(sapply(raw.data.list, "[", sp.col), unique)
+# Make filter selections
+species <- unique(unlist(sapply(sapply(raw.data.list, "[", sp.col))))
 
 date.ranges <- raw.data.list %>% purrr::map(
   .f = ~ .x %>%
@@ -426,209 +201,134 @@ date.ranges <- raw.data.list %>% purrr::map(
     ))
 )
 
-
-dates.df <-raw.data.list %>% purrr::map(
+dates.df <- raw.data.list %>% purrr::map(
   .f = ~ .x %>%
     dplyr::select(all_of(date.col)) %>%
     dplyr::filter(.data[[date.col]] != "") %>%
     dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
 ) %>%
   dplyr::bind_rows(., .id = "id")
-    
 
-ui <- fluidPage(bootstrapPage(
-  theme = shinythemes::shinytheme("simplex"),
-  shinyjs::useShinyjs(),
-  br(),
-  column(
-    width = 10,
-    shinyWidgets::pickerInput(
-      "species",
-      h4(strong("Select one or more species.")),
-      choices =  unique(unlist(sp.vectors)),
-      selected = unique(unlist(sp.vectors)),
-      multiple = TRUE,
-      options = shinyWidgets::pickerOptions(actionsBox = TRUE
+min.date<- min(do.call("c", lapply(
+              date.ranges, "[[", "Min"
+            )))
+max.date<- min(do.call("c", lapply(
+              date.ranges, "[[", "Min"
+            )))
+
+
+filter.df.app(species, min.date, max.date)
+
+
+# Apply filters
+other.data.list <- raw.data.list %>%
+  purrr::map(
+    .f = ~ .x %>%
+      dplyr::filter(!.data[[sp.col]] %in% species) %>%
+      plyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+    
+    %>%
+      dplyr::filter(
+        is.na(.data[[date.col]]) |
+          !data.table::between(.data[[date.col]], min(date.range), max(date.range), NAbounds =
+                                 FALSE)
       )
-    ),
-    
-    
-    dateRangeInput(
-      "date.range",
-      h4(strong("Select a date range.")),
-      start = min(do.call("c", lapply(
-        date.ranges, "[[", "Min"
-      ))),
-      end = max(do.call("c", lapply(
-        date.ranges, "[[", "Min"
-      ))),
-      min = min(do.call("c", lapply(
-        date.ranges, "[[", "Min"
-      ))),
-      max = max(do.call("c", lapply(
-        date.ranges, "[[", "Min"
-      ))),
-      format = "yyyy-mm-dd"
-    ),
-    
-    
-    textOutput("species"),
-    textOutput("date.range"),
-    actionButton("action", 
-                 "Submit"),
-    br(),
-    br(),
-    hr(),
-    br(),
-    h4(strong("Number of selected rows")),
-    tableOutput("selected.nrow"),
-    textOutput("selected.rowsum")
-    
   )
-))
+
+raw.data.list <- raw.data.list %>%
+  purrr::map(
+    .f = ~ .x %>%
+      dplyr::filter(.data[[sp.col]] %in% species) %>%
+      dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+    
+    %>%
+      dplyr::filter(data.table::between(
+        .data[[date.col]], min(date.range), max(date.range), NAbounds =
+          FALSE
+      ))
+  )
 
 
-server <- function(input, output, session) {
-  observeEvent(input$action, stopApp())
-  
-  species <- reactive(input$species)
-  date.range <- reactive(input$date.range)
-  
-  selected.nrow <- reactive({
-    as.data.frame(lapply(
-      raw.data.list %>%
-        purrr::map(
-          .f = ~ .x %>%
-            dplyr::filter(.data[[sp.col]] %in% species()) %>%
-            dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
-          
-          %>%
-            dplyr::filter(data.table::between(
-              .data[[date.col]], min(date.range()), max(date.range()), NAbounds =
-                FALSE
-            ))
-        ),
-      nrow
-    ))
-    
-  })
-  
-  output$selected.nrow <- renderTable({
-    selected.nrow()
-  })
-  
-  
-  
-  output$selected.rowsum <- renderText({
-    paste("Total: ", rowSums(selected.nrow()))
-  })
+# Remove empty dataframes
+raw.data.list <- raw.data.list %>%
+  purrr::discard(., ~ nrow(.) == 0) %>%
+  purrr::map(.f = ~ .x %>%
+               dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
 
-    
-  
-  observe({
-    if (rowSums(selected.nrow()) == 0) {
-      shinyjs::disable("action")
-    }
-    else{
-      shinyjs::enable("action")
-    }
-  })
-    
-  observe({
-    my_global_env <- globalenv()
-    my_global_env$species <- input$species
-    my_global_env$date.range <- input$date.range
-  })
+
+other.data.list <- other.data.list %>%
+  purrr::discard(., ~ nrow(.) == 0) %>%
+  purrr::map(.f = ~ .x %>%
+               dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
+
+}
+```
+
+### Merge data
+
+```{r}
+
+# Make data frame selections
+merge.df.app(raw.data.list)
+
+# Execute forced rbind
+if (is.null(selected.df) == FALSE) {
+  raw.data.list <-  c(list(merged_data = data.table::rbindlist(raw.data.list[names(raw.data.list) %in% selected.df], fill = TRUE)), raw.data.list[!names(raw.data.list) %in% selected.df])
 }
 
-
-runGadget(ui,
-          server,
-          viewer = dialogViewer('landbird-dp-workflow ~ Filter data', height = 450))
-
-
+raw.data.list <- raw.data.list %>%
+  purrr::map(
+    .f = ~ .x %>%
+      dplyr::mutate_if(is.character, ~ dplyr::na_if(., "")) %>%
+      dplyr::mutate_if(is.character, ~ dplyr::na_if(., "NULL")) %>%
+      dplyr::mutate_if(is.character, ~ dplyr::na_if(., missing_values))
+  )
 
 ```
+
+### Validate data
 
 ```{r}
 
 # Validate data file(s) against the dictionary
 warning.list <- list()
 assign("input.dxnry", ref.dictionary)
-
+if (class(ref.dictionary) == "list") {
+  input.dxnry <- mdJSONdictio::extract.mdJSON(x = input.dxnry,
+                                              record.type = "dictionaries",
+                                              multiple = FALSE)
+  
+  record.num <-  which(sapply(ref.dictionary[["data"]], "[", "id") == input.dxnry[["data"]][[1]][["id"]])
+  
+  
+  dxnry.colnames <- unlist(sapply(rjson::fromJSON(input.dxnry[["data"]][[1]][["attributes"]][["json"]])[["dataDictionary"]][["entity"]][[1]][["attribute"]], "[", "codeName"))
+} else {
+  dxnry.colnames <- unique(input.dxnry$codeName)
+}
+   
 for (a in 1:length(raw.data.list)) {
   assign("input.data", raw.data.list[[a]])
   
   # Check colnames
-  if (class(ref.dictionary) == "list") {
-    input.dxnry <- mdJSONdictio::extract.mdJSON(x = input.dxnry,
-                                                record.type = "dictionaries",
-                                                multiple = FALSE)
-    
-    record.num <-  which(sapply(ref.dictionary[["data"]], "[", "id") == input.dxnry[["data"]][[1]][["id"]])
-    
-    
-    dxnry_colnames <- unlist(sapply(rjson::fromJSON(input.dxnry[["data"]][[1]][["attributes"]][["json"]])[["dataDictionary"]][["entity"]][[1]][["attribute"]], "[", "codeName"))
-    
-    invalid_colnames <- colnames(input.data)[!colnames(input.data) %in% unlist(sapply(rjson::fromJSON(input.dxnry[["data"]][[1]][["attributes"]][["json"]])[["dataDictionary"]][["entity"]][[1]][["attribute"]], "[", "codeName"))]
-    
-  } else {
-    dxnry_colnames <- unique(input.dxnry$codeName)
-    invalid_colnames <- colnames(input.data)[!colnames(input.data) %in% dxnry_colnames]
-    
-  }
+  invalid.colnames <- colnames(input.data)[!colnames(input.data) %in% dxnry.colnames]
   
-  unused_colnames <- dxnry_colnames[!dxnry_colnames %in% colnames(input.data)]
+  unused.colnames <- as.vector(dxnry.colnames[!dxnry.colnames %in% colnames(input.data)])
   
-  if (length(invalid_colnames) != 0) {
-    for (b in 1:length(invalid_colnames)) {
-      col_summary <- dataMaid::summarize(input.data[[invalid_colnames[b]]])
+  
+  if (length(invalid.colnames) != 0) {
+    for (invalid.col in invalid.colnames) {
+      correct.colname.app(input.data, invalid.col, unused.colnames)
       
-      message(cat(paste0(
-        "\n\nColumn: '", invalid_colnames[b], "'"
-      )))
-      writeLines(paste0(unlist(lapply(1:length(col_summary), function(x) {
-        utils::capture.output(col_summary[[x]])
-      }))))
       
-      colname.choice <- utils::menu(
-        c(
-          "select a dictionary attribute",
-          "remove column",
-          "leave as is"
-        ),
-        graphics = TRUE,
-        title = cat(
-          paste0(
-            "\nThe column '",
-            invalid_colnames[b],
-            "' is not listed in the data dictionary. How would you like to proceed?"
-            
-          )
-        )
+      if (decision == "remove") {
+        input.data <- input.data %>% dplyr::select(., -invalid.col)
         
-      )
-      
-      if (colname.choice == 1) {
-        colname.selection <- utils::menu(unused_colnames
-                                         ,
-                                         graphics = TRUE,
-                                         title = cat(
-                                           paste0(
-                                             "\nSelect a column name to replace '",
-                                             invalid_colnames[b],
-                                             "'"
-                                           )
-                                         ))
+      } else if (decision == "replace") {
+        input.data <- input.data %>% dplyr::rename(., !!col.choice := !!invalid.col)
+        unused.colnames <- unused.colnames[!unused.colnames %in% col.choice]
         
-        if (colname.selection != 0) {
-          input.data <- input.data %>% dplyr::rename(., !!unused_colnames[colname.selection] := !!invalid_colnames[b])
-          
-          unused_colnames <- unused_colnames[!unused_colnames %in% unused_colnames[colname.selection]]
-        }
-      } else if (colname.choice == 2) {
-        input.data <- input.data %>% dplyr::select(., -invalid_colnames[b])
-        
+      } else if (decision == "rename") {
+        input.data <- input.data %>% dplyr::rename(., !!col.choice := !!invalid.col)
       }
     }
   }
@@ -642,7 +342,8 @@ for (a in 1:length(raw.data.list)) {
       mdJSONdictio::validate.table(x = input.dxnry, y = input.data)
   }
   
-  raw.data.list[[a]]<- input.data
+  raw.data.list[[a]] <- input.data
+  
 }
 
 names(warning.list) <- names(raw.data.list)
