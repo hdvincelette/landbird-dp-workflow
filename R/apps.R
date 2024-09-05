@@ -3,7 +3,25 @@
 theme.selection<- shinythemes::shinytheme("simplex")
 
 
-filter.df.app <- function(species, min.date, max.date) {
+filter.df.app <- function(species.col, date.col, species, min.date, max.date) {
+  if (missing(species.col) |
+      species.col == "") {
+    species.col = ".ERROR"
+  }
+  if (missing(date.col) |
+      date.col == "") {
+    date.col = ".ERROR"
+  }
+  if (missing(species)) {
+    species = character(0)
+  }
+  if (missing(min.date)) {
+    min.date = as.Date("0001-01-01")
+  }
+  if (missing(max.date)) {
+    max.date = as.Date("0001-01-01")
+  }
+  
   runGadget(
     app = shinyApp(
       ui <- bootstrapPage(
@@ -12,27 +30,29 @@ filter.df.app <- function(species, min.date, max.date) {
         br(),
         column(
           width = 12,
+          if(length(species) != 0){
           shinyWidgets::pickerInput(
-            "species",
+            "selected.species",
             h5(strong("Select one or more species.")),
             choices =  species,
             selected = species,
             multiple = TRUE,
             options = shinyWidgets::pickerOptions(actionsBox = TRUE)
-          ),
+          )},
           
-          
+          if(min.date != "0001-01-01" | 
+             max.date != "0001-01-01"){
           dateRangeInput(
-            "date.range",
+            "selected.dates",
             h5(strong("Select a date range.")),
             start = min.date,
             end = max.date,
             min = min.date,
             max = max.date,
             format = "yyyy-mm-dd"
-          ),
-          
-          actionButton("action", "Submit"),
+          )},
+          actionButton("action", "Submit", width = "100px"), 
+          dipsaus::actionButtonStyled("reset", "Reset", width = "100px", type="primary"), 
           br(),
           br(),
           hr(),
@@ -49,21 +69,26 @@ filter.df.app <- function(species, min.date, max.date) {
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
         
-        species <- reactive(input$species)
-        date.range <- reactive(input$date.range)
+        selected.species <- reactive(input$selected.species)
+        selected.dates <- reactive(input$selected.dates)
+        
+        observeEvent(input$reset, {
+          shinyjs::reset("selected.species")
+          shinyjs::reset("selected.dates")
+        })
         
         selected.nrow <- reactive({
           as.data.frame(lapply(
             raw.data.list %>%
               purrr::map(
                 .f = ~ .x %>%
-                  dplyr::filter(.data[[sp.col]] %in% species()) %>%
-                  dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
-                
-                %>%
-                  dplyr::filter(data.table::between(
-                    .data[[date.col]], min(date.range()), max(date.range()), NAbounds =
-                      FALSE
+                  dplyr::filter(if_any(
+                    matches(species.col), ~ .data[[species.col]] %in% selected.species())) %>%
+                  dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), as.Date, format = date.format) %>%
+                  dplyr::filter(if_any(
+                    matches(date.col),
+                    ~ data.table::between(.data[[date.col]], min(selected.dates()), max(selected.dates()), NAbounds =
+                                            FALSE)
                   ))
               ),
             nrow
@@ -91,8 +116,8 @@ filter.df.app <- function(species, min.date, max.date) {
         
         observe({
           my_global_env <- globalenv()
-          my_global_env$species <- input$species
-          my_global_env$date.range <- input$date.range
+          my_global_env$selected.species <- input$selected.species
+          my_global_env$selected.dates <- input$selected.dates
         })
       }
     ),
@@ -181,7 +206,6 @@ merge.df.app <- function(data.list) {
 }
 
 
-
 correct.colname.app <- function(data, invalid.col, unused.cols) {
   runGadget(
     app = shinyApp(
@@ -263,6 +287,21 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
         
+        results <- reactive({
+          x.list <- list()
+          for (i in 1:10) {
+            x.new_draw <- x.new(input$x.qty)
+            repeat {
+              if (x.new_draw > 20) {
+                x.list <- c(x.list, x.new_draw)
+                break
+              } # end if loop
+              x.new_draw <- x.new(x.new_draw)
+            } # end repeat
+          } # end for loop
+          x.list
+        })
+        
         output$col.view = DT::renderDataTable({
           data %>% dplyr::select(tidyselect::all_of(invalid.col))
         }, rownames = FALSE, options = list(
@@ -318,4 +357,52 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
 }
 
 
+select.value.app <- function(variable, invalid.values) {
+  runGadget(
+    app = shinyApp(
+      ui <- bootstrapPage(
+        tags$head(tags$style(HTML("pre { overflow: auto; word-wrap: normal; }"))),
+        theme = theme.selection,
+        shinyjs::useShinyjs(),
+        input_dark_mode(id = "dark_mode", mode = "light"),
+        shinyjs::useShinyjs(),
+        br(),
+          column(
+            width = 12,
+            h5(strong(
+              paste0("\nThe variable '",
+                     variable,
+                     "' contains entry values not found in the data dictionary.\n"
+              )
+            )),
+            shinyWidgets::awesomeCheckboxGroup(
+              "selected.values",
+              h5("Select values to correct in the data."),
+              choices =  invalid.values
+            ),
+            actionButton("action", "Submit"),
+            br(),
+            br(),
+            hr(),
+            
+          ),
+        
+        ), 
+      
+      server <- function(input, output, session) {
+        observeEvent(input$action, stopApp())
+
+        
+        observe({
+          my_global_env <- globalenv()
+          my_global_env$selected.values <-  input$selected.values
+        })
+      }
+    ),
+    
+    viewer = paneViewer(minHeight = 500)
+  )
+}
+
+select.value.app(variable, invalid.values)
 
