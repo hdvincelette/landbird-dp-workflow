@@ -32,7 +32,7 @@ This document is meant to be interactive, with text prompts and "code chunks" wh
 
 # Workspace setup
 
-### Load required packages
+### Load packages
 
 Run the following installation code.
 
@@ -152,7 +152,7 @@ dictionary.path <- "downloads/"
 
 # Provide the relevant information (if applicable)
 missing_values<- c(NA)
-sp.col <- "SpeciesCode"
+species.col <- ""
 date.col <- "Date"
 date.format <-  "%m/%d/%Y"
 time.col <- "CaptureTime_2400"
@@ -184,83 +184,110 @@ ref.dictionary <- importer(path = dictionary.path,
 
 ```{r}
 
-if(any(c(sp.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames)))){
+if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames)))) {
+  # Make filter selections
+  if (species.col %in% unlist(purrr::map(raw.data.list, colnames))) {
+    species <- unique(unlist(sapply(raw.data.list, "[", species.col)))
+  } else {
+    species<- character(0)
+  }
   
-# Make filter selections
-species <- unique(unlist(sapply(sapply(raw.data.list, "[", sp.col))))
+  if (date.col %in% unlist(purrr::map(raw.data.list, colnames))) {
+    date.ranges <- raw.data.list %>% purrr::map(
+      .f = ~ .x %>%
+        dplyr::select(all_of(date.col)) %>%
+        dplyr::filter(.data[[date.col]] != "") %>%
+        dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+      
+      %>%
+        append(list(
+          "Min" = min(.[[date.col]]), "Max" = max(.[[date.col]])
+        ))
+    )
+    
+    dates.df <- raw.data.list %>% purrr::map(
+      .f = ~ .x %>%
+        dplyr::select(all_of(date.col)) %>%
+        dplyr::filter(.data[[date.col]] != "") %>%
+        dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+    ) %>%
+      dplyr::bind_rows(., .id = "id")
+    
+    min.date <- min(do.call("c", lapply(date.ranges, "[[", "Min")))
+    max.date <- max(do.call("c", lapply(date.ranges, "[[", "Max")))
+    
+  } else {
+    min.date <- as.Date("0001-01-01")
+    max.date <- as.Date("0001-01-01")
+  }
 
-date.ranges <- raw.data.list %>% purrr::map(
-  .f = ~ .x %>%
-    dplyr::select(all_of(date.col)) %>%
-    dplyr::filter(.data[[date.col]] != "") %>%
-    dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
-  
-  %>%
-    append(list(
-      "Min" = min(.[[date.col]]), "Max" = max(.[[date.col]])
-    ))
-)
 
-dates.df <- raw.data.list %>% purrr::map(
-  .f = ~ .x %>%
-    dplyr::select(all_of(date.col)) %>%
-    dplyr::filter(.data[[date.col]] != "") %>%
-    dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
-) %>%
-  dplyr::bind_rows(., .id = "id")
-
-min.date<- min(do.call("c", lapply(
-              date.ranges, "[[", "Min"
-            )))
-max.date<- min(do.call("c", lapply(
-              date.ranges, "[[", "Min"
-            )))
-
-
-filter.df.app(species, min.date, max.date)
+  filter.df.app(species.col, date.col, species, min.date, max.date)
 
 
 # Apply filters
-other.data.list <- raw.data.list %>%
-  purrr::map(
-    .f = ~ .x %>%
-      dplyr::filter(!.data[[sp.col]] %in% species) %>%
-      plyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
-    
-    %>%
-      dplyr::filter(
-        is.na(.data[[date.col]]) |
-          !data.table::between(.data[[date.col]], min(date.range), max(date.range), NAbounds =
-                                 FALSE)
+  id.var <- dplyr::last(make.names(c(unique(
+    unlist(purrr::map(raw.data.list, colnames))
+  ), ".id"), unique = TRUE))
+  
+  raw.data.list <- raw.data.list %>%
+    purrr::map(.f = ~ .x %>%
+                 tibble::rowid_to_column(var = id.var))
+  
+  other.data.list <- raw.data.list
+  
+  if (length(species) != 0) {
+    raw.data.list <- raw.data.list %>%
+      purrr::map(.f = ~ .x %>%
+                   dplyr::filter(if_any(
+                     matches(species.col), ~ .data[[species.col]] %in% selected.species
+                   )))
+  }
+  
+  
+  if (min.date != "0001-01-01" |
+      max.date != "0001-01-01") {
+    raw.data.list <- raw.data.list %>%
+      purrr::map(
+        .f = ~ .x %>%
+          dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), as.Date, format = date.format) %>%
+          dplyr::filter(if_any(
+            matches(date.col),
+            ~ data.table::between(.data[[date.col]], min(selected.dates), max(selected.dates), NAbounds =
+                                    FALSE)
+          ))
       )
-  )
-
-raw.data.list <- raw.data.list %>%
-  purrr::map(
-    .f = ~ .x %>%
-      dplyr::filter(.data[[sp.col]] %in% species) %>%
-      dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+  }
+  
+  rm.row <-  purrr::map(raw.data.list, id.var)
+  
+  other.data.list <- lapply(seq_along(rm.row), function(i) {
+    if (rlang::is_empty(rm.row[[i]]) == FALSE) {
+      other.data.list[[i]] %>%
+        dplyr::slice(-rm.row[[i]])
+    } else {
+      other.data.list[[i]]
+    }
+  }) %>%
+    purrr::set_names(names(raw.data.list))
+  
+    raw.data.list <- purrr::map(raw.data.list, ~ (.x %>% dplyr::select(-tidyselect::any_of(id.var))))
     
-    %>%
-      dplyr::filter(data.table::between(
-        .data[[date.col]], min(date.range), max(date.range), NAbounds =
-          FALSE
-      ))
-  )
-
+      other.data.list <- purrr::map(other.data.list, ~ (.x %>% dplyr::select(-tidyselect::any_of(id.var))))
+   
 
 # Remove empty dataframes
-raw.data.list <- raw.data.list %>%
-  purrr::discard(., ~ nrow(.) == 0) %>%
-  purrr::map(.f = ~ .x %>%
-               dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
-
-
-other.data.list <- other.data.list %>%
-  purrr::discard(., ~ nrow(.) == 0) %>%
-  purrr::map(.f = ~ .x %>%
-               dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
-
+  raw.data.list <- raw.data.list %>%
+    purrr::discard(., ~ nrow(.) == 0) %>%
+    purrr::map(.f = ~ .x %>%
+                 dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
+  
+  
+  other.data.list <- other.data.list %>%
+    purrr::discard(., ~ nrow(.) == 0) %>%
+    purrr::map(.f = ~ .x %>%
+                 dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
+  
 }
 ```
 
@@ -310,14 +337,13 @@ for (a in 1:length(raw.data.list)) {
   assign("input.data", raw.data.list[[a]])
   
   # Check colnames
-  invalid.colnames <- colnames(input.data)[!colnames(input.data) %in% dxnry.colnames]
-  
-  unused.colnames <- as.vector(dxnry.colnames[!dxnry.colnames %in% colnames(input.data)])
+  invalid.cols <- colnames(input.data)[!colnames(input.data) %in% dxnry.colnames]
   
   
-  if (length(invalid.colnames) != 0) {
-    for (invalid.col in invalid.colnames) {
-      correct.colname.app(input.data, invalid.col, unused.colnames)
+  if (length(invalid.cols) != 0) {
+    for (invalid.col in invalid.cols) {
+      unused.cols <- as.vector(dxnry.colnames[!dxnry.colnames %in% colnames(input.data)])
+      correct.colname.app(input.data, invalid.col, unused.cols)
       
       
       if (decision == "remove") {
@@ -325,7 +351,7 @@ for (a in 1:length(raw.data.list)) {
         
       } else if (decision == "replace") {
         input.data <- input.data %>% dplyr::rename(., !!col.choice := !!invalid.col)
-        unused.colnames <- unused.colnames[!unused.colnames %in% col.choice]
+        unused.cols <- unused.cols[!unused.cols %in% col.choice]
         
       } else if (decision == "rename") {
         input.data <- input.data %>% dplyr::rename(., !!col.choice := !!invalid.col)
@@ -361,240 +387,228 @@ for (a in 1:length(raw.data.list)) {
   input.data$.id <- 1:nrow(input.data)
   
   
-  for (a in 1:length(warning.list)) {
-    warn.table <- warning.list[[a]]
-    
-    # Correct entry errors
-    domainItem_value.table <-
-      warn.table %>% dplyr::filter(Category == "domainItem_value")
-    
-    if (nrow(domainItem_value.table) != 0) {
-      for (b in 1:nrow(domainItem_value.table)) {
-        domainItem.vector <-
-          scan(
-            text = noquote(gsub(
-              ".*: ", "", domainItem_value.table$Message[b]
-            )),
-            what = "",
-            quiet = TRUE,
-            sep = ",",
-            strip.white = TRUE
-          )
+  warn.table <- warning.list[[a]]
+  
+
+  # Correct entry errors
+  domainItem_value.table <-
+    warn.table %>% dplyr::filter(Category == "domainItem_value")
+  
+  if (nrow(domainItem_value.table) != 0) {
+    for (b in 1:nrow(domainItem_value.table)) {
+      
+      invalid.values <-
+        scan(
+          text = noquote(gsub(
+            ".*: ", "", domainItem_value.table$Message[b]
+          )),
+          what = "",
+          quiet = TRUE,
+          sep = ",",
+          strip.white = TRUE
+        )
+      
+      if (class(ref.dictionary) == "list") {
+        temp <- rjson::fromJSON(input.dxnry[["data"]][[1]][["attributes"]][["json"]])
         
-        domainItem.choice <-
-          utils::select.list(
-            c(domainItem.vector),
-            multiple = TRUE,
-            graphics = TRUE,
-            title = cat(
-              paste0(
-                "\nThe attribute '",
-                domainItem_value.table$Variable[b] ,
-                "' in the data file '",
-                names(raw.data.list[a]),
-                "' contains entry values not found in the data dictionary.\nSelect values to correct in the data.\n"
-              )
+        domain.num <- which(sapply(temp[["dataDictionary"]][["domain"]], "[", "codeName") == domainItem_value.table$Variable[b])
+        
+        if (length(domain.num) != 0) {
+          domain.values <- unlist(sapply(temp[["dataDictionary"]][["domain"]][[domain.num]][["domainItem"]], "[", "value"))
+        
+          variable.def <- temp[["dataDictionary"]][["domain"]][[domain.num]][["description"]]
+          }
+        
+      } else {
+        domain.values <- input.dxnry %>%
+          dplyr::filter(codeName == domainItem_value.table$Variable[b],
+                        domainItem_value != "dataField") %>%
+          purrr::pluck("domainItem_value")
+        
+      }
+      
+      variable<- domainItem_value.table$Variable[b]
+      
+      select.value.app(variable, variable.def, invalid.values)
+      correct.value.app(input.data, invalid.values, domain.values)
+      
+      #######
+      
+      domainItem.choice <-
+        utils::select.list(
+          c(domainItem.vector),
+          multiple = TRUE,
+          graphics = TRUE,
+          title = cat(
+            paste0(
+              "\nThe attribute '",
+              domainItem_value.table$Variable[b] ,
+              "' in the data file '",
+              names(raw.data.list[a]),
+              "' contains entry values not found in the data dictionary.\nSelect values to correct in the data.\n"
             )
           )
+        )
+      
+      if (length(domainItem.choice) != 0) {
+        names(domainItem.choice) <- c(rep(
+          domainItem_value.table$Variable[b],
+          length(domainItem.choice)
+        ))
         
-        if (length(domainItem.choice) != 0) {
-          names(domainItem.choice) <- c(rep(
-            domainItem_value.table$Variable[b],
-            length(domainItem.choice)
-          ))
+        for (c in 1:length(domainItem.choice)) {
+          invalid.entries <- input.data %>%
+            dplyr::filter((!!dplyr::sym(
+              domainItem_value.table$Variable[b]
+            )) == domainItem.choice[c])
           
-          for (c in 1:length(domainItem.choice)) {
-            invalid.entries <- input.data %>%
-              dplyr::filter((!!dplyr::sym(
-                domainItem_value.table$Variable[b]
-              )) == domainItem.choice[c])
+          if (nrow(invalid.entries) != 0) {
+            # message(cat(
+            #   paste0(
+            #     "\nReview rows in which '",
+            #     names(domainItem.choice[c]),
+            #     "' contains the value '",
+            #     domainItem.choice[c],
+            #     "'.\nClick 'Done' in the upper right corner when ready to continue."
+            #
+            #   )
+            # ))
+            #
+            # DataEditR::data_edit(invalid.entries,
+            #                      col_edit = FALSE,
+            #                      viewer = "pane")
             
-            if (nrow(invalid.entries) != 0) {
-              # message(cat(
-              #   paste0(
-              #     "\nReview rows in which '",
-              #     names(domainItem.choice[c]),
-              #     "' contains the value '",
-              #     domainItem.choice[c],
-              #     "'.\nClick 'Done' in the upper right corner when ready to continue."
-              #
-              #   )
-              # ))
-              #
-              # DataEditR::data_edit(invalid.entries,
-              #                      col_edit = FALSE,
-              #                      viewer = "pane")
-              
-              reprompt <- TRUE
-              while (reprompt == TRUE) {
-                fix.choice <- utils::menu(
-                  c(
-                    "replace all with a dictionary value",
-                    "replace all with a typed value",
-                    "manually edit one by one",
-                    "leave as is"
-                  ),
-                  graphics = TRUE,
-                  title = cat(
-                    paste0(
-                      "\nHow would you like to correct the value '",
-                      domainItem.choice[c],
-                      "' in the column '",
-                      names(domainItem.choice[c]),
-                      "'?"
-                      
-                    )
+            reprompt <- TRUE
+            while (reprompt == TRUE) {
+              fix.choice <- utils::menu(
+                c(
+                  "replace all with a dictionary value",
+                  "replace all with a typed value",
+                  "manually edit one by one",
+                  "leave as is"
+                ),
+                graphics = TRUE,
+                title = cat(
+                  paste0(
+                    "\nHow would you like to correct the value '",
+                    domainItem.choice[c],
+                    "' in the column '",
+                    names(domainItem.choice[c]),
+                    "'?"
+                    
                   )
-                  
                 )
-                if (fix.choice == 1) {
-                  if (class(ref.dictionary) == "list") {
-                    temp <- rjson::fromJSON(input.dxnry[["data"]][[1]][["attributes"]][["json"]])
-                    
-                    domain.num <- which(
-                      sapply(temp[["dataDictionary"]][["domain"]], "[", "codeName") == domainItem_value.table$Variable[b]
-                    )
-                    
-                    if (length(domain.num) == 0) {
-                      message(cat(
-                        paste0(
-                          "No domain found for the attribute '",
-                          domainItem_value.table$Variable[b],
-                          "'.\n"
-                        )
-                      ))
-                      
-                      menu.skip <- "Y"
-                    } else {
-                      menu.skip <- "N"
-                      
-                      domainItems <- unlist(sapply(temp[["dataDictionary"]][["domain"]][[domain.num]][["domainItem"]], "[", "value"))
-                    }
-                    
-                  } else {
-                    domainItems <- input.dxnry %>%
-                      dplyr::filter(
-                        codeName == domainItem_value.table$Variable[b],
-                        domainItem_value != "dataField"
-                      ) %>%
-                      purrr::pluck("domainItem_value")
-                    
-                    if (length(domainItems) == 0) {
-                      menu.skip <- "Y"
-                    } else {
-                      menu.skip <- "N"
-                    }
-                  }
-                  
-                  if (menu.skip == "N") {
-                    domainItem.num <- utils::menu(
-                      c(domainItems),
-                      graphics = TRUE,
-                      title = cat(paste0(
-                        "\nSelect a domain item."
-                      ))
-                    )
-                    if (domainItem.num != 0) {
-                      if (class(input.data[[domainItem_value.table$Variable[b]]]) != class(domainItems[domainItem.num]) &
-                          class(input.data[[domainItem_value.table$Variable[b]]]) == "integer") {
-                        if (is.na(as.numeric(domainItems[domainItem.num])) ==
-                            FALSE) {
-                          new.value <- as.numeric(domainItems[domainItem.num])
-                        } else {
-                          input.data <- input.data %>%
-                            dplyr::mutate_at(domainItem_value.table$Variable[b],
-                                             ~
-                                               as.character(.))
-                          
-                          new.value <- domainItems[domainItem.num]
-                        }
+                
+              )
+              if (fix.choice == 1) {
+                
+                
+                if (menu.skip == "N") {
+                  domainItem.num <- utils::menu(c(domainItems),
+                                                graphics = TRUE,
+                                                title = cat(paste0(
+                                                  "\nSelect a domain item."
+                                                )))
+                  if (domainItem.num != 0) {
+                    if (class(input.data[[domainItem_value.table$Variable[b]]]) != class(domainItems[domainItem.num]) &
+                        class(input.data[[domainItem_value.table$Variable[b]]]) == "integer") {
+                      if (is.na(as.numeric(domainItems[domainItem.num])) ==
+                          FALSE) {
+                        new.value <- as.numeric(domainItems[domainItem.num])
                       } else {
+                        input.data <- input.data %>%
+                          dplyr::mutate_at(domainItem_value.table$Variable[b],
+                                           ~
+                                             as.character(.))
+                        
                         new.value <- domainItems[domainItem.num]
                       }
-                      
-                      input.data <- input.data %>%
-                        dplyr::mutate_at(
-                          domainItem_value.table$Variable[b],
-                          ~ dplyr::case_when(
-                            .x == domainItem.choice[c] ~ new.value,
-                            TRUE ~ .x
-                          )
+                    } else {
+                      new.value <- domainItems[domainItem.num]
+                    }
+                    
+                    input.data <- input.data %>%
+                      dplyr::mutate_at(
+                        domainItem_value.table$Variable[b],
+                        ~ dplyr::case_when(
+                          .x == domainItem.choice[c] ~ new.value,
+                          TRUE ~ .x
                         )
-                      
-                      reprompt <- FALSE
-                    }
+                      )
+                    
+                    reprompt <- FALSE
                   }
-                  
                 }
                 
-                if (fix.choice == 2) {
-                  message("\n")
-                  new.value <-
-                    readline("Provide a replacement value: ")
-                  
-                  
-                  if (is.null(new.value) == FALSE) {
-                    if (is.na(new.value) == FALSE) {
-                      new.value <-
-                        match.fun(paste0("as.", class(input.data[, domainItem_value.table$Variable[b]])))(new.value)
-                    }
-                  }
-                  
-                  if (is.null(domainItem.choice[c]) == FALSE) {
-                    if (is.na(domainItem.choice[c]) == FALSE) {
-                      old.value <-
-                        match.fun(paste0("as.", class(input.data[, domainItem_value.table$Variable[b]])))(domainItem.choice[c])
-                    }
-                  }
-                  
-                  input.data <- input.data %>%
-                    dplyr::mutate_at(
-                      domainItem_value.table$Variable[b],
-                      ~ dplyr::case_when(.x == old.value ~ new.value, TRUE ~ .x)
-                    )
-                  
-                  reprompt <- FALSE
-                }
-                
-                if (fix.choice == 3) {
-                  message(
-                    "IMPROTANT: you must click 'syncronise' (arrow loop icon) and then 'Done' to enact changes."
-                  )
-                  
-                  invalid.entries.edit <-
-                    DataEditR::data_edit(
-                      invalid.entries,
-                      col_readonly = colnames(invalid.entries)[!colnames(invalid.entries) %in% domainItem_value.table$Variable[b]],
-                      viewer = "pane"
-                    )
-                  
-                  
-                  input.data[match(invalid.entries.edit$.id, input.data$.id), ] <-
-                    invalid.entries.edit
-                  
-                  reprompt <- FALSE
-                }
-                if (fix.choice == 4) {
-                  reprompt <- FALSE
-                }
               }
-            } else {
-              message(
-                paste0(
-                  "The value '",
-                  domainItem.choice[c],
-                  "' has already been replaced."
+              
+              if (fix.choice == 2) {
+                message("\n")
+                new.value <-
+                  readline("Provide a replacement value: ")
+                
+                
+                if (is.null(new.value) == FALSE) {
+                  if (is.na(new.value) == FALSE) {
+                    new.value <-
+                      match.fun(paste0("as.", class(input.data[, domainItem_value.table$Variable[b]])))(new.value)
+                  }
+                }
+                
+                if (is.null(domainItem.choice[c]) == FALSE) {
+                  if (is.na(domainItem.choice[c]) == FALSE) {
+                    old.value <-
+                      match.fun(paste0("as.", class(input.data[, domainItem_value.table$Variable[b]])))(domainItem.choice[c])
+                  }
+                }
+                
+                input.data <- input.data %>%
+                  dplyr::mutate_at(
+                    domainItem_value.table$Variable[b],
+                    ~ dplyr::case_when(.x == old.value ~ new.value, TRUE ~ .x)
+                  )
+                
+                reprompt <- FALSE
+              }
+              
+              if (fix.choice == 3) {
+                message(
+                  "IMPROTANT: you must click 'syncronise' (arrow loop icon) and then 'Done' to enact changes."
                 )
-              )
+                
+                invalid.entries.edit <-
+                  DataEditR::data_edit(
+                    invalid.entries,
+                    col_readonly = colnames(invalid.entries)[!colnames(invalid.entries) %in% domainItem_value.table$Variable[b]],
+                    viewer = "pane"
+                  )
+                
+                
+                input.data[match(invalid.entries.edit$.id, input.data$.id), ] <-
+                  invalid.entries.edit
+                
+                reprompt <- FALSE
+              }
+              if (fix.choice == 4) {
+                reprompt <- FALSE
+              }
             }
+          } else {
+            message(paste0(
+              "The value '",
+              domainItem.choice[c],
+              "' has already been replaced."
+            ))
           }
         }
       }
     }
   }
+  
   raw.data.list[[a]] <- input.data %>%
     dplyr::select(-.id)
 }
+
 
 ```
 
@@ -1580,7 +1594,7 @@ data.path <- "data-processed/to_archive/"
 
 # Provide the relevant information (if applicable)
 missing_values<- c(NA)
-sp.col <- "SpeciesCode"
+species.col <- "SpeciesCode"
 date.col <- "Date"
 date.format <-  "%m/%d/%Y"
 time.col <- "CaptureTime_2400"
@@ -1621,7 +1635,7 @@ filter.option <- utils::select.list(
 )
 
 if (filter.option == "by species") {
-  sp.vectors <- sapply(sapply(data.list, "[", sp.col), unique)
+  sp.vectors <- sapply(sapply(data.list, "[", species.col), unique)
   
   sp.overlap <- Reduce(intersect, sp.vectors)
   
@@ -1651,7 +1665,7 @@ if (filter.option == "by species") {
   } else {
     data.list <- data.list %>%
       purrr::map(.f = ~ .x %>%
-                   dplyr::filter(.data[[sp.col]] %in% filter.choice))
+                   dplyr::filter(.data[[species.col]] %in% filter.choice))
   }
   
   
