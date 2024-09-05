@@ -287,21 +287,6 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
         
-        results <- reactive({
-          x.list <- list()
-          for (i in 1:10) {
-            x.new_draw <- x.new(input$x.qty)
-            repeat {
-              if (x.new_draw > 20) {
-                x.list <- c(x.list, x.new_draw)
-                break
-              } # end if loop
-              x.new_draw <- x.new(x.new_draw)
-            } # end repeat
-          } # end for loop
-          x.list
-        })
-        
         output$col.view = DT::renderDataTable({
           data %>% dplyr::select(tidyselect::all_of(invalid.col))
         }, rownames = FALSE, options = list(
