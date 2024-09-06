@@ -419,7 +419,7 @@ for (a in 1:length(raw.data.list)) {
       select.value.app(variable, invalid.values, ref.dxnry)
       
       for (invalid.value in selected.values) {
-        correct.value.app(variable, invalid.value, input.data, ref.dxnry)
+        correct.value.app(variable, invalid.value, ref.dxnry)
       }
       
       #######
