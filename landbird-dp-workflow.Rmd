@@ -343,6 +343,7 @@ for (a in 1:length(raw.data.list)) {
   if (length(invalid.cols) != 0) {
     for (invalid.col in invalid.cols) {
       unused.cols <- as.vector(dxnry.colnames[!dxnry.colnames %in% colnames(input.data)])
+      
       correct.colname.app(input.data, invalid.col, unused.cols)
       
       
@@ -386,9 +387,13 @@ for (a in 1:length(raw.data.list)) {
   
   input.data$.id <- 1:nrow(input.data)
   
-  
+  if (class(ref.dictionary) == "list") {
+    ref.dxnry <- mdJSONdictio::build.table(ref.dictionary)
+  } else {
+    assign("ref.dxnry", ref.dictionary)
+  }
+
   warn.table <- warning.list[[a]]
-  
 
   # Correct entry errors
   domainItem_value.table <-
@@ -407,30 +412,15 @@ for (a in 1:length(raw.data.list)) {
           sep = ",",
           strip.white = TRUE
         )
-      
-      if (class(ref.dictionary) == "list") {
-        temp <- rjson::fromJSON(input.dxnry[["data"]][[1]][["attributes"]][["json"]])
-        
-        domain.num <- which(sapply(temp[["dataDictionary"]][["domain"]], "[", "codeName") == domainItem_value.table$Variable[b])
-        
-        if (length(domain.num) != 0) {
-          domain.values <- unlist(sapply(temp[["dataDictionary"]][["domain"]][[domain.num]][["domainItem"]], "[", "value"))
-        
-          variable.def <- temp[["dataDictionary"]][["domain"]][[domain.num]][["description"]]
-          }
-        
-      } else {
-        domain.values <- input.dxnry %>%
-          dplyr::filter(codeName == domainItem_value.table$Variable[b],
-                        domainItem_value != "dataField") %>%
-          purrr::pluck("domainItem_value")
-        
-      }
+    
       
       variable<- domainItem_value.table$Variable[b]
       
-      select.value.app(variable, variable.def, invalid.values)
-      correct.value.app(input.data, invalid.values, domain.values)
+      select.value.app(variable, invalid.values, ref.dxnry)
+      
+      for (invalid.value in selected.values) {
+        correct.value.app(variable, invalid.value, input.data, ref.dxnry)
+      }
       
       #######
       
