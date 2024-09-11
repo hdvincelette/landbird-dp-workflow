@@ -51,6 +51,8 @@ setwd(dirname(rstudioapi::documentPath()))
 rstudioapi::filesPaneNavigate(getwd())
 devtools::load_all()
 
+theme.selection<- shinythemes::shinytheme("simplex")
+
 # # Install GitHub packages
 # ## Uninstall packages (if re-installing)
 # remove.packages("FWSAkRDRtools")
@@ -385,23 +387,20 @@ names(warning.list) <- names(raw.data.list)
 for (a in 1:length(raw.data.list)) {
   assign("input.data", raw.data.list[[a]])
   
-  input.data$.id <- 1:nrow(input.data)
-  
   if (class(ref.dictionary) == "list") {
     ref.dxnry <- mdJSONdictio::build.table(ref.dictionary)
   } else {
     assign("ref.dxnry", ref.dictionary)
   }
-
+  
   warn.table <- warning.list[[a]]
-
+  
   # Correct entry errors
   domainItem_value.table <-
     warn.table %>% dplyr::filter(Category == "domainItem_value")
   
   if (nrow(domainItem_value.table) != 0) {
     for (b in 1:nrow(domainItem_value.table)) {
-      
       invalid.values <-
         scan(
           text = noquote(gsub(
@@ -412,192 +411,58 @@ for (a in 1:length(raw.data.list)) {
           sep = ",",
           strip.white = TRUE
         )
-    
       
-      variable<- domainItem_value.table$Variable[b]
+      
+      variable <- domainItem_value.table$Variable[b]
       
       select.value.app(variable, invalid.values, ref.dxnry)
       
       for (invalid.value in selected.values) {
-        correct.value.app(variable, invalid.value, ref.dxnry)
-      }
-      
-      #######
-      
-      domainItem.choice <-
-        utils::select.list(
-          c(domainItem.vector),
-          multiple = TRUE,
-          graphics = TRUE,
-          title = cat(
-            paste0(
-              "\nThe attribute '",
-              domainItem_value.table$Variable[b] ,
-              "' in the data file '",
-              names(raw.data.list[a]),
-              "' contains entry values not found in the data dictionary.\nSelect values to correct in the data.\n"
-            )
-          )
-        )
-      
-      if (length(domainItem.choice) != 0) {
-        names(domainItem.choice) <- c(rep(
-          domainItem_value.table$Variable[b],
-          length(domainItem.choice)
-        ))
+        correct.value.app(variable, invalid.value, input.data, ref.dxnry)
         
-        for (c in 1:length(domainItem.choice)) {
-          invalid.entries <- input.data %>%
-            dplyr::filter((!!dplyr::sym(
-              domainItem_value.table$Variable[b]
-            )) == domainItem.choice[c])
+        if (decision %in% c("correct", "replace")) {
+          class <- class(input.data[[variable]])
           
-          if (nrow(invalid.entries) != 0) {
-            # message(cat(
-            #   paste0(
-            #     "\nReview rows in which '",
-            #     names(domainItem.choice[c]),
-            #     "' contains the value '",
-            #     domainItem.choice[c],
-            #     "'.\nClick 'Done' in the upper right corner when ready to continue."
-            #
-            #   )
-            # ))
-            #
-            # DataEditR::data_edit(invalid.entries,
-            #                      col_edit = FALSE,
-            #                      viewer = "pane")
-            
-            reprompt <- TRUE
-            while (reprompt == TRUE) {
-              fix.choice <- utils::menu(
-                c(
-                  "replace all with a dictionary value",
-                  "replace all with a typed value",
-                  "manually edit one by one",
-                  "leave as is"
-                ),
-                graphics = TRUE,
-                title = cat(
-                  paste0(
-                    "\nHow would you like to correct the value '",
-                    domainItem.choice[c],
-                    "' in the column '",
-                    names(domainItem.choice[c]),
-                    "'?"
-                    
-                  )
-                )
-                
-              )
-              if (fix.choice == 1) {
-                
-                
-                if (menu.skip == "N") {
-                  domainItem.num <- utils::menu(c(domainItems),
-                                                graphics = TRUE,
-                                                title = cat(paste0(
-                                                  "\nSelect a domain item."
-                                                )))
-                  if (domainItem.num != 0) {
-                    if (class(input.data[[domainItem_value.table$Variable[b]]]) != class(domainItems[domainItem.num]) &
-                        class(input.data[[domainItem_value.table$Variable[b]]]) == "integer") {
-                      if (is.na(as.numeric(domainItems[domainItem.num])) ==
-                          FALSE) {
-                        new.value <- as.numeric(domainItems[domainItem.num])
-                      } else {
-                        input.data <- input.data %>%
-                          dplyr::mutate_at(domainItem_value.table$Variable[b],
-                                           ~
-                                             as.character(.))
-                        
-                        new.value <- domainItems[domainItem.num]
-                      }
-                    } else {
-                      new.value <- domainItems[domainItem.num]
-                    }
-                    
-                    input.data <- input.data %>%
-                      dplyr::mutate_at(
-                        domainItem_value.table$Variable[b],
-                        ~ dplyr::case_when(
-                          .x == domainItem.choice[c] ~ new.value,
-                          TRUE ~ .x
-                        )
-                      )
-                    
-                    reprompt <- FALSE
-                  }
-                }
-                
-              }
-              
-              if (fix.choice == 2) {
-                message("\n")
-                new.value <-
-                  readline("Provide a replacement value: ")
-                
-                
-                if (is.null(new.value) == FALSE) {
-                  if (is.na(new.value) == FALSE) {
-                    new.value <-
-                      match.fun(paste0("as.", class(input.data[, domainItem_value.table$Variable[b]])))(new.value)
-                  }
-                }
-                
-                if (is.null(domainItem.choice[c]) == FALSE) {
-                  if (is.na(domainItem.choice[c]) == FALSE) {
-                    old.value <-
-                      match.fun(paste0("as.", class(input.data[, domainItem_value.table$Variable[b]])))(domainItem.choice[c])
-                  }
-                }
-                
-                input.data <- input.data %>%
-                  dplyr::mutate_at(
-                    domainItem_value.table$Variable[b],
-                    ~ dplyr::case_when(.x == old.value ~ new.value, TRUE ~ .x)
-                  )
-                
-                reprompt <- FALSE
-              }
-              
-              if (fix.choice == 3) {
-                message(
-                  "IMPROTANT: you must click 'syncronise' (arrow loop icon) and then 'Done' to enact changes."
-                )
-                
-                invalid.entries.edit <-
-                  DataEditR::data_edit(
-                    invalid.entries,
-                    col_readonly = colnames(invalid.entries)[!colnames(invalid.entries) %in% domainItem_value.table$Variable[b]],
-                    viewer = "pane"
-                  )
-                
-                
-                input.data[match(invalid.entries.edit$.id, input.data$.id), ] <-
-                  invalid.entries.edit
-                
-                reprompt <- FALSE
-              }
-              if (fix.choice == 4) {
-                reprompt <- FALSE
-              }
-            }
-          } else {
-            message(paste0(
-              "The value '",
-              domainItem.choice[c],
-              "' has already been replaced."
-            ))
-          }
+          input.data <- input.data %>%
+            dplyr::mutate_at(
+              variable,
+              ~ as.character(.) %>% dplyr::recode(., !!invalid.value := value.choice)
+            )
+          
+          # if (numeric == TRUE &
+          #     is.numeric(input.data[[variable]]) == TRUE) {
+          #   input.data <- input.data %>%
+          #     dplyr::mutate_at(variable, ~ as.numeric(.))
+          #   
+          # }
+          # 
+          # if (is.na(match.fun(paste0("as.", class))(value.choice))
+          #   == TRUE) {
+          #     
+          #   }
+          
         }
+        
+        
       }
     }
   }
   
-  raw.data.list[[a]] <- input.data %>%
-    dplyr::select(-.id)
+      
+  #     test<- summary(arsenal::comparedf(
+  #   dplyr::mutate(df, across(
+  #     where(is.character), ~ dplyr::na_if(.x, "")
+  #   )),
+  #   dplyr::mutate(input.data, across(
+  #     where(is.character), ~ dplyr::na_if(.x, "")
+  #   ))
+  # ))
+      
+  
+  raw.data.list[[a]] <- input.data
 }
+
+raw.data.list <- purrr::map(raw.data.list, ~ (.x %>% dplyr::select(-tidyselect::any_of(id.var))))
 
 
 ```
