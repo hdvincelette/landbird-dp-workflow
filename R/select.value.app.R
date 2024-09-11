@@ -1,4 +1,4 @@
-theme.selection<- shinythemes::shinytheme("simplex")
+
 
 
 select.value.app <- function(variable, invalid.values, ref.dxnry) {

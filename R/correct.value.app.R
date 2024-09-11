@@ -1,8 +1,9 @@
 
-theme.selection<- shinythemes::shinytheme("simplex")
 
 
-correct.value.app <- function(variable, invalid.value, ref.dxnry) {
+# domain Item selection conditional
+
+correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
   runGadget(
     app = shinyApp(
       ui <- bootstrapPage(
@@ -12,19 +13,23 @@ correct.value.app <- function(variable, invalid.value, ref.dxnry) {
         input_dark_mode(id = "dark_mode", mode = "light"),
         shinyjs::useShinyjs(),
         br(),
+        navset_tab(nav_panel(
+          strong("Bulk edit"),
           column(
             width = 12,
             h5(strong(
               paste0(
-                "The value '",
+                "'",
                 invalid.value,
-                "' is not listed in the data dictionary."
+                "' is an invalid entry for '",
+                variable,
+                "'."
               )
             )),
             shinyWidgets::radioGroupButtons(
               "decision",
               h5(strong("Choose an option.")),
-              choices =  c("keep", "edit","replace"),
+              choices =  c("keep", "correct","replace"),
               direction = "vertical",
               width = "200px",
               checkIcon = list(yes = icon("ok", lib = "glyphicon"))
@@ -33,7 +38,7 @@ correct.value.app <- function(variable, invalid.value, ref.dxnry) {
             conditionalPanel(
               condition = "input.decision == 'replace'",
               shinyWidgets::pickerInput(
-                "val.choice",
+                "value.choice",
                 h5("Select a dictionary value:"),
                 choices = ref.dxnry %>%
                   dplyr::filter(codeName == domainItem_value.table$Variable[b],
@@ -48,29 +53,135 @@ correct.value.app <- function(variable, invalid.value, ref.dxnry) {
               )
             ),
             conditionalPanel(
-              condition = "input.decision == 'edit'",
+              condition = "input.decision == 'correct'",
               textInput(
-                "val.choice",
+                "value.choice",
                 h5("Enter a replacement value:"),
                 value = invalid.value,
                 width = "300px"
               )
             ),
+            span(textOutput("wrn"), style = "color:red"),
+            br(),
             actionButton("action", "Submit"),
             br(),
             br()
           ),
         ), 
+        nav_panel(strong("Manual edit"), 
+                  column(
+                    width = 12,
+                    br(),
+                    tags$head(tags$style(
+                      HTML(
+                        "#refresh {
+                        color: #696969;
+                        background-color: white;
+                        box-shadow: 3px 3px 3px 3px white;
+                        }
+                        #DataTables_Table_0_filter {
+                        float: left;
+                        }
+                       table.dataTable tbody tr.selected td,
+                       table.dataTable tbody tr.selected td,
+                       table.dataTable tbody td.selected {
+                       border-top-color: #c4dfcc !important;
+                       box-shadow: inset 0 0 0 9999px #c4dfcc !important;
+                       color: black;
+                       }
+                       table.dataTable tbody tr:active td {
+                       background-color: #c4dfcc !important;
+                       }
+                       :root {
+                       --dt-row-selected: transparent !important;
+                       }
+                       table.dataTable tbody tr:hover, table.dataTable tbody tr:hover td {
+                       background-color: #c4dfcc !important;
+                        }"
+                      )
+                    )), 
+                    DT::DTOutput('df', height = "350px"),
+                    br(),
+                    shinyWidgets::actionBttn(
+                      'refresh',
+                      '',
+                      icon = icon('refresh'),
+                      style = "jelly",
+                      no_outline = TRUE,
+                      size = "md"
+                    )
+                    ))
+        )),
       
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
       
         decision <- reactive(input$decision)
-        val.choice <- reactive(input$val.choice)
+        value.choice <- reactive(input$value.choice)
+        
+        
+        dfon <- reactiveValues(data = NULL)
+
+        observe({
+          dfon$data <- data
+        })
+
+        
+        output$df = DT::renderDT({
+        data
+        }, rownames = TRUE, 
+        class = "display nowrap",
+        editable = list(target = "cell", disable = list(columns =c(which(colnames(input.data)!=variable)))),
+        options = list(
+          dom = 'ft',
+          pageLength = nrow(data),
+          autoWidth = TRUE,
+          searchHighlight = TRUE,
+          scrollX = TRUE
+        ))
+        
+        proxy<- DT::dataTableProxy("df")
+        
+        observeEvent(input$refresh, {
+          DT::reloadData(proxy)
+          
+        })
+        
+        observeEvent(input$df_cell_edit, {
+          observeEvent(input$action, {
+          info <- input$df_cell_edit
+
+          i <- info$row
+          j <- info$col
+          v <- info$value
+
+          dfon$data[i, j] <- v
+          })
+        })
+        
+        output$df.0 = DT::renderDT({
+          data
+        }, rownames = TRUE, 
+        class = "display nowrap",
+        editable = list(target = "cell", disable = list(columns =c(which(colnames(input.data)!=variable)))),
+        options = list(
+          dom = 'ft',
+          pageLength = nrow(data),
+          autoWidth = TRUE,
+          searchHighlight = TRUE,
+          scrollX = TRUE
+        ))
+        
+
+        
+        output$wrn <- renderText({
+          "Warning: all manual edits will be applied before bulk edits."
+        })
+        
         
         observe({
-          if (decision() %in% c("replace","edit") &
-              val.choice() == "" ) {
+          if (decision() %in% c("replace","correct") &
+              value.choice() == "" ) {
             shinyjs::disable("action")
           }
           else{
@@ -78,10 +189,12 @@ correct.value.app <- function(variable, invalid.value, ref.dxnry) {
           }
         })
         
+        
         observe({
           my_global_env <- globalenv()
           my_global_env$decision<- input$decision
-          my_global_env$val.choice <-  input$val.choice
+          my_global_env$value.choice <-  input$value.choice
+          my_global_env$input.data <- dfon$data
         })
       }
     ),
@@ -90,4 +203,7 @@ correct.value.app <- function(variable, invalid.value, ref.dxnry) {
   )
 }
 
-correct.value.app(variable, invalid.value, ref.dxnry)
+correct.value.app(variable,
+                  invalid.value,
+                  input.data,
+                  ref.dxnry)

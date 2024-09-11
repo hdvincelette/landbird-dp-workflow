@@ -1,4 +1,4 @@
-theme.selection<- shinythemes::shinytheme("simplex")
+
 
 
 merge.df.app <- function(data.list) {

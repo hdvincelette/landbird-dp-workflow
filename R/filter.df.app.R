@@ -1,4 +1,3 @@
-theme.selection<- shinythemes::shinytheme("simplex")
 
 
 filter.df.app <- function(species.col, date.col, species, min.date, max.date) {

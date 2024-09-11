@@ -1,4 +1,3 @@
-theme.selection<- shinythemes::shinytheme("simplex")
 
 
 correct.colname.app <- function(data, invalid.col, unused.cols) {
