@@ -1,4 +1,7 @@
 
+saveRDS(raw.data.list, "dev/raw.data.list.rds")
+raw.data.list<- readRDS("dev/raw.data.list.rds")
+
 devtools::load_all()
 devtools::document()
 ?rm_metadata
