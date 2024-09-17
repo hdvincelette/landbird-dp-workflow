@@ -1,7 +1,6 @@
 
 
-
-# domain Item selection conditional
+# Only display domain Item selection if available
 
 correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
   runGadget(
@@ -203,7 +202,3 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
   )
 }
 
-correct.value.app(variable,
-                  invalid.value,
-                  input.data,
-                  ref.dxnry)
