@@ -81,7 +81,9 @@ Run the following installation code to install necessary subfolders
 
 fs::dir_create(names(which(!fs::dir_exists(
   c(
-    "downloads",
+    "downloads/dictionaries",
+    "downloads/data",
+    "downloads/templates",
     "data-raw",
     "data-processed/bander_portal",
     "data-processed/movebank",
@@ -102,12 +104,21 @@ Paste the names of the project folder, data dictionary(ies), and data entry temp
 ```{r include=FALSE}
 
 # Provide the relevent information
-project.folder <- "mbmlb_003_Red_Knot_Breeding"
-dictionary.list <- c("mdeditor")
-template.list <- c("brood","nest","encounters")
+RDR.keyword <- "Eielson"
+
+data.keyword <- "survey"
+data.subfolder <- "data/final_data"
+
+template.keyword <- NA
+template.subfolder <- NA
+
+dictionary.keyword <- "mdeditor"
+dictionary.subfolder <- "metadata"
 
 # Provide a directory path to save files
-download.path <- "downloads/"
+data.download.path <- "downloads/data"
+template.download.path <- "downloads/template"
+dxnry.download.path <- "downloads/dictionaries"
 
 ```
 
@@ -115,15 +126,59 @@ Now run the following code chunk.
 
 ```{r include=FALSE, results=FALSE}
 
-FWSAkRDRtools::download.files(
-  pattern = c(dictionary.list, template.list),
-  project = project.folder,
-  # subfolder.path = ,
-  local.path = download.path,
-  main = TRUE,
-  incoming = TRUE,
-  recursive = TRUE
+if(dir.exists(paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/"))==FALSE) {
+  stop("Check the VPN connection and try again.")
+  
+}
+
+project.folder <- dir(
+  path = paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/"),
+  pattern = paste0("^mbmlb.*", RDR.keyword),
+  full.names = FALSE,
+  recursive = FALSE,
+  ignore.case = TRUE
 )
+
+if(length(project.folder)>1) {
+  folder.choice <- utils::menu(
+    c(project.folder),
+    graphics = TRUE,
+    title = cat(
+      paste0(
+        "\nMore than one project folder was found.\nSelect one to access.\n"
+      )
+    )
+  )
+}
+
+keywords <- c(data.keyword, 
+              template.keyword, 
+              dictionary.keyword)
+subfolders <- c(data.subfolder, 
+                template.subfolder, 
+                dictionary.subfolder)
+download.paths <- c(data.download.path,
+                    template.download.path,
+                    dxnry.download.path)
+
+for(x in seq_along(keywords)) {
+  if (length(keywords[x]) != 0) {
+    if (is.na(keywords[x])==FALSE) {
+      
+      FWSAkRDRtools::download.files(
+        pattern = keywords[x],
+        project = project.folder,
+        subfolder.path = subfolders[x],
+        local.path = download.paths[x],
+        main = TRUE,
+        incoming = TRUE,
+        recursive = TRUE
+      )
+      
+    }
+  }
+}
+
 
 utils::browseURL(download.path)
 
@@ -150,11 +205,11 @@ Before beginning, make sure all entered data and data dictionary(ies) are saved 
 ```{r}
 # Provide directory paths for the data file(s) and dictionary
 raw.data.path <- "data-raw/"
-dictionary.path <- "downloads/"
+dictionary.path <- "downloads/dictionaries"
 
 # Provide the relevant information (if applicable)
 missing_values<- c(NA)
-species.col <- ""
+species.col <- "SpeciesCode"
 date.col <- "Date"
 date.format <-  "%m/%d/%Y"
 time.col <- "CaptureTime_2400"
@@ -185,6 +240,23 @@ ref.dictionary <- importer(path = dictionary.path,
 ### Filter data
 
 ```{r}
+
+#!!# Translate and correct species codes
+aou_code <- read.csv("reference/IBP-AOS-LIST23.csv", na = "")
+
+raw.data.list <- raw.data.list %>%
+  purrr::map(
+    .f = ~ .x %>%
+      dplyr::inner_join(
+        .,
+        aou_code[, c("COMMONNAME", "SPEC")],
+        by = c("CommonName" = "COMMONNAME"),
+        keep = FALSE,
+        relationship = "many-to-many"
+      ) %>%
+      dplyr::mutate("SpeciesCode" = `SPEC`) %>%
+      dplyr::select(-"SPEC")
+  )
 
 if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames)))) {
   # Make filter selections
@@ -297,21 +369,24 @@ if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames))
 
 ```{r}
 
-# Make data frame selections
-merge.df.app(raw.data.list)
-
-# Execute forced rbind
-if (is.null(selected.df) == FALSE) {
-  raw.data.list <-  c(list(merged_data = data.table::rbindlist(raw.data.list[names(raw.data.list) %in% selected.df], fill = TRUE)), raw.data.list[!names(raw.data.list) %in% selected.df])
+if(length(raw.data.list)>1) {
+  # Make data frame selections
+  merge.df.app(raw.data.list)
+  
+  # Execute forced rbind
+  if (is.null(selected.df) == FALSE) {
+    raw.data.list <-  c(list(merged_data = data.table::rbindlist(raw.data.list[names(raw.data.list) %in% selected.df], fill = TRUE)),
+                        raw.data.list[!names(raw.data.list) %in% selected.df])
+  }
+  
+  raw.data.list <- raw.data.list %>%
+    purrr::map(
+      .f = ~ .x %>%
+        dplyr::mutate_if(is.character, ~ dplyr::na_if(., "")) %>%
+        dplyr::mutate_if(is.character, ~ dplyr::na_if(., "NULL")) %>%
+        dplyr::mutate_if(is.character, ~ dplyr::na_if(., missing_values))
+    )
 }
-
-raw.data.list <- raw.data.list %>%
-  purrr::map(
-    .f = ~ .x %>%
-      dplyr::mutate_if(is.character, ~ dplyr::na_if(., "")) %>%
-      dplyr::mutate_if(is.character, ~ dplyr::na_if(., "NULL")) %>%
-      dplyr::mutate_if(is.character, ~ dplyr::na_if(., missing_values))
-  )
 
 ```
 
@@ -388,9 +463,9 @@ for (a in 1:length(raw.data.list)) {
   assign("input.data", raw.data.list[[a]])
   
   if (class(ref.dictionary) == "list") {
-    ref.dxnry <- mdJSONdictio::build.table(ref.dictionary)
+    ref.dxnry <- mdJSONdictio::build.table(input.dxnry)
   } else {
-    assign("ref.dxnry", ref.dictionary)
+    assign("ref.dxnry", input.dxnry)
   }
   
   warn.table <- warning.list[[a]]
@@ -748,7 +823,7 @@ raw.data.list <- raw.data.list %>%   purrr::map(
 
 ```{r}
 # Provide directory paths for the location data file(s)
-ref.data.path <- "data-raw/"
+ref.data.path <- "reference/ALMS/"
 
 # Provide the relevent information
 ref.point.prefix <- "EIEL_"
@@ -765,10 +840,10 @@ ref.data.files <- importer(
   path = ref.data.path,
   multiple = TRUE,
   graphics = TRUE,
-  pattern = c("*.gpx$", "*.kml$", "*.kmz$")
+  pattern = c("*.gpx$", "*.kml$")
 )
 
-locations<- data.table::rbindlist(ref.data.list, fill = TRUE)
+locations<- data.table::rbindlist(ref.data.files, fill = TRUE)
 
 # Join location(s)
 raw.data.list <- raw.data.list %>%
@@ -777,16 +852,17 @@ raw.data.list <- raw.data.list %>%
       dplyr::left_join(
         .,
         locations,
-        by = c(setNames("temp:name", data.point.col), "Year" = "temp:year"),
+        by = c(setNames("temp:Name", data.point.col)), 
+               # "Year" = "temp:year"),
         keep = FALSE
       ) %>%
       dplyr::mutate_at(
         data.lat.col,
-        ~ dplyr::case_when(is.na(.) ~ `temp:latitude`, TRUE ~ !!as.name(data.lat.col))
+        ~ dplyr::case_when(is.na(.) ~ `temp:Latitude`, TRUE ~ !!as.name(data.lat.col))
       ) %>%
       dplyr::mutate_at(
         data.long.col,
-        ~ dplyr::case_when(is.na(.) ~ `temp:longitude`, TRUE ~ !!as.name(data.long.col))
+        ~ dplyr::case_when(is.na(.) ~ `temp:Longitude`, TRUE ~ !!as.name(data.long.col))
       ) %>%
       dplyr::select(-tidyselect::starts_with("temp:"))
   )
@@ -1093,7 +1169,7 @@ for (x in 1:length(raw.data.list)) {
 
 ```{r}
 # Provide directory path for the authoritative data file
-download.path <- "downloads/"
+download.path <- "downloads/data"
 
 # Provide a directory path to write processed files
 processed.data.path <- "data-processed/to_archive/"
@@ -1128,18 +1204,21 @@ if (auth.merge == TRUE) {
     purrr::map(dplyr::bind_rows)
   
   # Select files to merge
-  raw.data.choice <- utils::select.list(
-    c(names(raw.data.list)),
-    multiple = TRUE,
-    graphics = TRUE,
-    title = cat(paste0(
-      "\nSelect one or more data files to merge.\n"
-    ))
-  )
-  
-  raw.data.list <- raw.data.list %>% purrr::keep(names(raw.data.list) %in% raw.data.choice)
+  if(length(raw.data.list)>1) {
+    raw.data.choice <- utils::select.list(
+      c(names(raw.data.list)),
+      multiple = TRUE,
+      graphics = TRUE,
+      title = cat(paste0(
+        "\nSelect one or more data files to merge.\n"
+      ))
+    )
+    
+    raw.data.list <- raw.data.list %>% purrr::keep(names(raw.data.list) %in% raw.data.choice)
+  }
   
   add.data <- dplyr::bind_rows(raw.data.list)
+  
   
   # Create new columns
   new.cols <- add.data %>%
@@ -1155,25 +1234,29 @@ if (auth.merge == TRUE) {
       graphics = TRUE,
       title = cat(
         paste0(
-          "\nOne or more columns do not exist in the authoritative data file.\nSelect which if any to add\nNote, unselected columns will not be archived."
+          "\nOne or more columns do not exist in the authoritative data file.\nSelect which if any to add\nNote, unselected columns will not be archived.\n"
         )
       )
     )
     if (length(col.choice) != 0) {
       for (a in col.choice) {
-        loc.choice <- utils::menu(c(colnames(auth.data)), title = cat(
+        loc.choice <- utils::select.list(
+          c(colnames(auth.data)), 
+          multiple = FALSE, 
+          graphics = TRUE,
+          title = cat(
           paste0(
             "\nInsert '",
-            col.choice,
-            "' before which existing column?\nEnter 0 to add after the last column."
+            a,
+            "' before which existing column?\nEnter 0 to add after the last column.\n"
           )
         ))
         if (loc.choice != 0) {
-          before <- colnames(auth.data)[loc.choice]
+          before <- loc.choice
         } else {
           before <- NULL
         }
-        auth.data <- auth.data %>% tibble::add_column(!!col.choice := NA, .before = before)
+        auth.data <- auth.data %>% tibble::add_column(!!a := NA, .before = before)
       }
     }
   }
@@ -1191,10 +1274,10 @@ if (auth.merge == TRUE) {
   
   #!!!# Evaluate changes
   test<- summary(arsenal::comparedf(
-    dplyr::mutate(raw.data.list[["Eielson_Survey_v2"]], across(
+    dplyr::mutate(new.data, across(
       where(is.character), ~ dplyr::na_if(.x, "")
     )),
-    dplyr::mutate(orig.data.list[["Eielson_Survey_v2"]], across(
+    dplyr::mutate(auth.data, across(
       where(is.character), ~ dplyr::na_if(.x, "")
     ))
   ))
@@ -1220,34 +1303,33 @@ if (auth.merge == TRUE) {
 
 ```{r}
 
-if(auth.merge == TRUE) {
   # Versioning
-  detect.vers <- suppressWarnings(as.numeric(ifelse(
-    grepl(paste0("\\", vers.suffix), auth.data.name, ignore.case = TRUE),
-    sub(
-      paste0(".*\\", vers.suffix),
-      "",
-      auth.data.name,
-      ignore.case = TRUE
-    ),
-    ""
-  )))
+  # detect.vers <- suppressWarnings(as.numeric(ifelse(
+  #   grepl(paste0("\\", vers.suffix), auth.data.name, ignore.case = TRUE),
+  #   sub(
+  #     paste0(".*\\", vers.suffix),
+  #     "",
+  #     auth.data.name,
+  #     ignore.case = TRUE
+  #   ),
+  #   ""
+  # )))
   
-  if (is.na(detect.vers) == FALSE) {
-    message(cat(
-      paste0(
-        "Provide a version number for the new authoritative data file.\nThe detected current version is '",
-        detect.vers,
-        "'."
-      )
-    ))
-  } else {
+  # if (is.na(detect.vers) == FALSE) {
+  #   message(cat(
+  #     paste0(
+  #       "Provide a version number for the new authoritative data file.\nThe detected current version is '",
+  #       detect.vers,
+  #       "'."
+  #     )
+  #   ))
+  # } else {
     message(cat(
       paste0(
         "Provide a version number for the new authoritative data file.\nA current version was not detected."
       )
     ))
-  }
+  # }
   
   new.vers <-
     noquote(as.character(readline(prompt = )))
@@ -1256,24 +1338,17 @@ if(auth.merge == TRUE) {
     new.vers <- paste0(vers.suffix, new.vers)
   }
   
-  
-  new.data.name <- paste0(sub(
-    paste0("*\\", vers.suffix, "."),
-    "",
-    auth.data.name,
-    ignore.case = TRUE
-  ), new.vers)
-  
-} else if (auth.merge == FALSE) {
   message(cat(paste0("\nProvide a name for the data file.\n")))
   
   new.data.name <- noquote(as.character(readline(prompt =)))
   
-  new.data.name <-  sub(" ", "_", data.name)
+  new.data.name <-  sub(" ", "_", new.data.name)
   
-  new.data.name <- strsplit(gsub("[[:punct:]]$", "", data.name), " +")[[1]]
+  new.data.name<- gsub('^[[:punct:]]|[[:punct:]]$', '', new.data.name)
+
+  new.data.name <- paste0(new.data.name, new.vers)
   
-}
+
 
 write.csv(
   new.data,
@@ -1381,21 +1456,21 @@ if(class(ref.dictionary) == "list") {
   if ("mdEditor file" %in% export.choice) {
     message(cat(
       paste0(
-        "\nProvide a name for the mdjson file.\nThe current file name is '",
-        gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE) ,
-        "'.\n"
+        "\nProvide a name for the mdjson file."
+        # \nThe current file name is '",
+        # gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE) ,
+        # "'.\n"
       )
     ))
     
     file.name <- noquote(as.character(readline(prompt = )))
     
-    if (file.name == "") {
-      file.name <-  gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE)
-    }
+    # if (file.name == "") {
+    #   file.name <-  gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE)
+    # }
     
     file.name <-  sub(" ", "_", file.name)
-    
-    file.name <- strsplit(gsub("[[:punct:]]$", "", file.name), " +")[[1]]
+    file.name <- gsub('^[[:punct:]]|[[:punct:]]$', '', file.name)
     
     new.dxnry <- rjson::toJSON(x = ref.dictionary)
     
