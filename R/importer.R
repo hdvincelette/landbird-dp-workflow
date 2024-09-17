@@ -48,7 +48,7 @@ importer <-
       ))
     
     if (multiple == TRUE) {
-      select.message <- "\nSelect one or more files to import.\nAll files should be similarly formatted."
+      select.message <- "\nSelect one or more files to import.\nAll files should be similarly formatted.\n"
     } else {
       select.message <- "\nSelect a file to import.\n"
     }
@@ -101,20 +101,17 @@ importer <-
           import.file <-
             rjson::fromJSON(file = paste0(full.path, file.choice[a]))
           
-        } else if (grepl(pattern = "gpx|kml|kmz",
+        } else if (grepl(pattern = "gpx|kml",
                          x = file.ext[a],
                          ignore.case = TRUE) == TRUE) {
           import.file <-
             sf::st_read(paste0(path, file.choice[a]),
-                        layer = "waypoints",
                         quiet = TRUE) %>%
             dplyr::mutate(
-              longitude = sf::st_coordinates(.)[, 1],
-              latitude = sf::st_coordinates(.)[, 2]
+              Longitude = sf::st_coordinates(.)[, 1],
+              Latitude = sf::st_coordinates(.)[, 2]
             ) %>%
-            dplyr::mutate(year = lubridate::year(time)) %>%
-            dplyr::mutate(name = paste0(ref.point.prefix, name)) %>%
-            dplyr::select("time", "year", "name", "latitude", "longitude") %>%
+            dplyr::select("Name","Latitude", "Longitude") %>%
             sf::st_drop_geometry(.) %>%
             setNames(paste0("temp:", names(.)))
         }
