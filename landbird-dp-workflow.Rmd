@@ -758,7 +758,7 @@ ref.dictionary[["data"]][[record.num]] <- input.dxnry[["data"]][[1]]
   
 ```
 
-### Quality checks
+### Final checks
 
 ```{r}
 # continuous: box plots
@@ -1551,7 +1551,7 @@ commit <-
 
 # Capture data transformations
 
-#### Provide inputs
+### Provide inputs
 
 ```{r}
 # Provide a directory path for data file(s) to import
@@ -1567,7 +1567,7 @@ time.format <- "%H:%M"
 
 ```
 
-#### Import data
+### Import data
 
 ```{r}
 
@@ -1583,7 +1583,7 @@ data.list <- importer(
 
 ```
 
-#### Filter data
+### Filter data
 
 ```{r}
 
@@ -4471,6 +4471,13 @@ invalid_timestamps <-
 lapply(import.dfs, function(x)
   colnames(x)[!colnames(x) %in% movebank_attributes])
 
+
+```
+
+### Export files
+
+```{r}
+
 # Save dataframes as separate objects 
 export<- lapply(import.dfs, function(x)
   split(x, x$`individual-taxon-canonical-name`))
@@ -4580,6 +4587,5 @@ write.csv(move.vocab, "move.vocab.csv", na = "", row.names = FALSE)
 #                          "Allowed values are \\s*(.*?)\\s*\\." = ""
 #                        )
 #                      ))
-
 
 ```
