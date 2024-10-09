@@ -1,6 +1,6 @@
 #' Import one or more files into R
 #'
-#' Supports csv, Excel, json, gpx, kml, and/or kmz files.
+#' Supports csv, Excel, json, gpx, and/or kml files.
 #' @param path Character string. Directory path here files are located. Default is the working directory, getwd().
 #' @param multiple Logical. Whether to allow multiple file selections. This will always return an R list object. Default is FALSE.
 #' @param graphics Logical. Whether to use a graphical widget for file selection. Default is TRUE.
