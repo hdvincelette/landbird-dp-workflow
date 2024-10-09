@@ -13,6 +13,10 @@
 #' @examples
 #' # e.g.import <- importer(path = "downloads/, multiple = FALSE, graphics = TRUE)
 #' 
+#' 
+
+## Remove all na/"NA" rows
+## option to ignore folders (archive)
 
 importer <-
   function(path,
