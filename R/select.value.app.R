@@ -42,6 +42,8 @@ select.value.app <- function(variable, invalid.values, ref.dxnry) {
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
         
+        selected.values <- reactive(input$selected.values)
+        
         output$defs <- renderUI({
           HTML(
             paste(
@@ -71,11 +73,12 @@ select.value.app <- function(variable, invalid.values, ref.dxnry) {
             "}"
           )
         ))
-        
+      
         observe({
           my_global_env <- globalenv()
           my_global_env$selected.values <-  input$selected.values
         })
+        
       }
     ),
     
