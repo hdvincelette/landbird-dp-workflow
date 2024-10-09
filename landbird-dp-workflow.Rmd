@@ -3838,9 +3838,9 @@ file.rename(
 
 ```
 
-# Tracking data
+# Movebank download
 
-### Movebank import
+### Provide inputs
 
 Verify the stored login credentials are correct, and add/remove credentials as needed.
 
@@ -3869,6 +3869,8 @@ keyring::key_list()
 options("move2_movebank_key_name" = "movebank")
 
 ```
+
+### Import data
 
 Run the following code to import location data from one or more studies into R. Single study imports have the option of selecting a time range of location data, whereas multiple study imports include all location data. By default, the location and reference data are both imported
 
@@ -3908,7 +3910,7 @@ if(any(sapply(import, function(x)
 
 ```
 
-### Transformations
+### Prepare data
 
 ```{r}
 
