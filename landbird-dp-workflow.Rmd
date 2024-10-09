@@ -104,9 +104,9 @@ Paste the names of the project folder, data dictionary(ies), and data entry temp
 ```{r include=FALSE}
 
 # Provide the relevent information
-RDR.keyword <- "Eielson"
+RDR.keyword <- "JBER"
 
-data.keyword <- "survey"
+data.keyword <- "banding"
 data.subfolder <- "data/final_data"
 
 template.keyword <- NA
@@ -180,7 +180,7 @@ for(x in seq_along(keywords)) {
 }
 
 
-utils::browseURL(download.path)
+utils::browseURL(data.download.path)
 
 ```
 
@@ -241,22 +241,30 @@ ref.dictionary <- importer(path = dictionary.path,
 
 ```{r}
 
-#!!# Translate and correct species codes
 aou_code <- read.csv("reference/IBP-AOS-LIST23.csv", na = "")
 
-raw.data.list <- raw.data.list %>%
-  purrr::map(
-    .f = ~ .x %>%
-      dplyr::inner_join(
-        .,
-        aou_code[, c("COMMONNAME", "SPEC")],
-        by = c("CommonName" = "COMMONNAME"),
-        keep = FALSE,
-        relationship = "many-to-many"
-      ) %>%
-      dplyr::mutate("SpeciesCode" = `SPEC`) %>%
-      dplyr::select(-"SPEC")
-  )
+## Translate species names/codes (if neccessary)
+# 
+# raw.data.list <- raw.data.list %>%
+#   purrr::map(
+#     .f = ~ .x %>%
+#       dplyr::rename_with(., ~gsub('\\.', '', .x)) %>%
+#       dplyr::inner_join(
+#         .,
+#         aou_code[, c("COMMONNAME", "SPEC")],
+#         by = c("CommonName" = "COMMONNAME"),
+#         keep = FALSE,
+#         relationship = "many-to-many"
+#       ) %>%
+#       dplyr::mutate("SpeciesCode" = `SPEC`) %>%
+#       dplyr::select(-"SPEC")
+#   )
+
+# Check species names/codes
+raw.data.list %>%
+  purrr::map(.f = ~ .x %>%
+               dplyr::filter(!.data[[species.col]] %in% aou_code$SPEC))
+
 
 if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames)))) {
   # Make filter selections
@@ -491,6 +499,11 @@ for (a in 1:length(raw.data.list)) {
       variable <- domainItem_value.table$Variable[b]
       
       select.value.app(variable, invalid.values, ref.dxnry)
+      
+      #!!# temporary patch
+      if ("" %in% selected.values) {
+        selected.values <- ifelse(selected.values == "", "NA", selected.values)
+      }
       
       for (invalid.value in selected.values) {
         correct.value.app(variable, invalid.value, input.data, ref.dxnry)
@@ -751,6 +764,9 @@ ref.dictionary[["data"]][[record.num]] <- input.dxnry[["data"]][[1]]
 # continuous: box plots
 # discrete: range of values (interactive table)
 # plot lat/long
+# Check flag code, flag color, and leg attachments for recaps
+
+# Check/correct time cols
 
 # All data
 for (x in 1:length(raw.data.list)) {
@@ -918,7 +934,7 @@ raw.data.list <- raw.data.list %>%
 
 ### Fill missing info
 
-#### Bird Status
+#### Bird status
 
 ```{r}
 
@@ -1165,7 +1181,23 @@ for (x in 1:length(raw.data.list)) {
   
 ```
 
+#### Other variables
+
+```{r}
+
+raw.data.list %>% purrr::map(
+  .f = ~ .x %>%
+    dplyr::mutate_if(is.character, list(~ dplyr::na_if(., "")))  %>%
+    dplyr::select(tidyselect::where(~ any(is.na(
+      .
+    ))))
+)
+
+```
+
 ### Export
+
+#### Provide inputs
 
 ```{r}
 # Provide directory path for the authoritative data file
@@ -1199,9 +1231,9 @@ if (auth.merge == TRUE) {
   )
   
   # Rejoin filtered data
-  raw.data.list <-
-    split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
-    purrr::map(dplyr::bind_rows)
+  # raw.data.list <-
+  #   split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
+  #   purrr::map(dplyr::bind_rows)
   
   # Select files to merge
   if(length(raw.data.list)>1) {
@@ -1262,25 +1294,28 @@ if (auth.merge == TRUE) {
   }
   
   # Merge data
-  new.data <- add.data %>%
-    merge(auth.data, all = TRUE) %>%
+  new.data <- auth.data %>%
+    merge(as.data.frame(add.data), all = TRUE, sort = FALSE) %>%
     dplyr::select(colnames(auth.data))
   
-} else if (auth.merge == FALSE) {
-  # Rejoin filtered data
-  raw.data.list <-
-    split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
-    purrr::map(dplyr::bind_rows)
   
   #!!!# Evaluate changes
-  test<- summary(arsenal::comparedf(
-    dplyr::mutate(new.data, across(
+  test <- summary(arsenal::comparedf(
+    auth.data %>% dplyr::mutate(across(
       where(is.character), ~ dplyr::na_if(.x, "")
     )),
-    dplyr::mutate(auth.data, across(
+    new.data %>% dplyr::mutate(across(
       where(is.character), ~ dplyr::na_if(.x, "")
     ))
   ))
+  
+  test[["diffs.table"]]
+  
+} else if (auth.merge == FALSE) {
+  # Rejoin filtered data
+  # raw.data.list <-
+  #   split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
+  #   purrr::map(dplyr::bind_rows)
   
   # Select files to merge
   raw.data.choice <- utils::select.list(
@@ -1326,7 +1361,7 @@ if (auth.merge == TRUE) {
   # } else {
     message(cat(
       paste0(
-        "Provide a version number for the new authoritative data file.\nA current version was not detected."
+        "Provide a version number for the new authoritative data file.\n"
       )
     ))
   # }
@@ -2081,7 +2116,7 @@ cap.data[miss_cols] <-
 
 # How Obtained
 recap.info <- cap.data %>%
-  dplyr::filter(BBLDisposition == "R") %>%
+  dplyr::filter(BBLDisposition == "R", !is.na(BBLCondition)) %>%
   dplyr::select(SpeciesCode, BBLDisposition, BBLCondition) %>%
   dplyr::distinct()
 
@@ -2128,20 +2163,20 @@ typical.num <- which(BBL_ref == "66")
     
     cap.data <- cap.data %>%
       dplyr::rowwise() %>%
-      dplyr::mutate_at(
-        "HowObtained",
-        ~ ifelse(
-          BBLDisposition == "R" &
-            SpeciesCode == recap.info$SpeciesCode[a] &
-            BBLCondition == recap.info$BBLCondition[a],
-          cap.data$HowObtained[a] <- BBL_ref[obtained.choice],
-          
-          .
-        )
+      dplyr::mutate(
+        "HowObtained" =
+          ifelse(
+            BBLDisposition == "R" &
+              SpeciesCode == recap.info$SpeciesCode[a] &
+              BBLCondition == recap.info$BBLCondition[a],
+            BBL_ref[obtained.choice],
+            
+            HowObtained
+          )
       )
+    
   }
 }
-  
 
 # Locations
 loc.cols <- c("City", "Area")
@@ -2164,13 +2199,7 @@ cap.data <- cap.data %>%
       "Fort Yukon" = "FORTYUK"
     )
   ) %>%
-  tidyr::unite(
-    LocationID,
-    all_of(loc.cols),
-    sep = "",
-    remove = TRUE,
-    na.rm = TRUE
-  )
+   dplyr::mutate(LocationID = dplyr::coalesce(!!!rlang::syms(loc.cols)))
 
 BBL_locations <- c(
   "EIEL",
@@ -2179,7 +2208,6 @@ BBL_locations <- c(
   "BELUGA",
   "KING",
   "NOME",
-  "EARECK",
   "ANC",
   "JBER",
   "OTTER",
@@ -2187,16 +2215,18 @@ BBL_locations <- c(
   "FORTYUK"
 )
 
-loc.num <- which(!cap.data$LocationID %in%
-                   BBL_locations)
+#!!# remove loc nums that correspond to the same locations
+       
+locs <- unique(cap.data$LocationID)[!unique(cap.data$LocationID) %in%
+                                      BBL_locations]
 
-for(a in loc.num) {
+for(a in locs) {
   loc.choice <-
     utils::menu(c(BBL_locations, "Enter a new location"),
                 title = cat(
                   paste0(
                     "\n'",
-                    cap.data$LocationID[a],
+                    a,
                     "' is not a listed BBL location ID.\nChoose an existing or new ID.\n"
                   )
                 ))
@@ -2217,7 +2247,7 @@ for(a in loc.num) {
   }
   
   if (new_loc != "") {
-    if (is.na(cap.data$LocationID[a])) {
+    if (is.na(a)) {
       cap.data <-  cap.data %>%
         dplyr::mutate_at("LocationID",
                          ~ replace(.,
@@ -2226,7 +2256,7 @@ for(a in loc.num) {
       cap.data <-  cap.data %>%
         dplyr::mutate_at("LocationID",
                          ~ replace(.,
-                                   . == cap.data$LocationID[a], new_loc))
+                                   . == a, new_loc))
     }
   }
 }
@@ -2371,7 +2401,7 @@ cap.data <-  cap.data %>%
   dplyr::mutate_if(is.logical, as.factor) %>%
   dplyr::rowwise() %>%
   dplyr::mutate_at(
-    c(leg_cols, "FlagColorIn", "FlagColorOut"),
+    c(leg_cols, "FlagColorIn", "FlagColorOut",  "FlagCodeColorIn", "FlagCodeColorOut"),
     ~ stringi::stri_replace_all_fixed(.,
                                       my_colors,
                                       BBL_colors,
@@ -2407,7 +2437,7 @@ cap.data <-  cap.data %>%
     )) %>%
   dplyr::mutate_at(color_cols,
                    ~ ifelse(
-                     grepl("/$", .),
+                     grepl("/$|.*/", .),
                      stringi::stri_replace_all_fixed(.,
                                                      "/",
                                                      "", vectorize_all = FALSE),
@@ -2416,107 +2446,107 @@ cap.data <-  cap.data %>%
               ))
 
 
-## Flag code colors by species - new/retained/replaced
-flag_info <- cap.data %>%
-  dplyr::filter(dplyr::if_any(c(leg_cols),
-                              ~ stringr::str_detect(., "69")))  %>%
-  dplyr::rowwise() %>%
-  dplyr::mutate(
-    FlagCodeChange = ifelse(FlagCodeIn != FlagCodeOut, 1, 0),
-    FlagIn = ifelse(is.na(FlagCodeIn) == FALSE, 1, 0),
-    FlagOut = ifelse(is.na(FlagCodeOut) == FALSE, 1, 0)
-  ) %>%
-  dplyr::select(any_of(c(
-    "SpeciesCode", "FlagIn", "FlagOut", "FlagCodeChange"
-  ))) %>%
-  dplyr::distinct() %>%
-  dplyr::mutate_all(as.character) %>%
-  dplyr::mutate_at("FlagCodeChange", ~ replace(., is.na(.), 0))
-
-BBL_ref <- bander_portal_lookups$code[bander_portal_lookups$field ==
-                                        "Marker color"]
-BBL_ref<- BBL_ref[!grepl("/", BBL_ref)]
-
-cap.data[, "FlagCodeIn_color"] <- NA
-cap.data[, "FlagCodeOut_color"] <- NA
-
-if(nrow(flag_info)!=0) {
-  for (b in 1:nrow(flag_info)) {
-    flag_status <-
-      ifelse(flag_info$FlagIn[b] == 0,
-             "received a new",
-             "were recaptured with a")
-    
-    flag_status <-
-      ifelse(flag_info$FlagCodeChange[b] == 0,
-             flag_status,
-             "received a replacement")
-    
-    flag_status.2 <-
-      ifelse(flag_info$FlagCodeChange[b] == 0, "", "original ")
-    
-    
-    flag.choice <- 0
-    while (flag.choice == 0) {
-      flag.choice <-
-        utils::menu(c(BBL_ref), title = cat(
-          paste0(
-            "\nOne or more ",
-            flag_info$SpeciesCode[b] ,
-            " ",
-            flag_status,
-            " flag.\nWhat is the ",
-            flag_status.2 ,
-            "flag code color?\n"
-          )
-        ))
-    }
-    
-    if (flag_info$FlagIn[b] == 0) {
-      ### new
-      cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
-                                   is.na(cap.data$FlagCodeIn) &
-                                   !is.na(cap.data$FlagCodeOut)] <-
-        BBL_ref[flag.choice]
-    } else {
-      if (flag_info$FlagCodeChange[b] == 1) {
-        flag.choice.2 <- 0
-        while (flag.choice.2 == 0) {
-          flag.choice.2 <-
-            utils::menu(c(BBL_ref), title = cat(paste0(
-              "\nWhat is the new flag code color?\n"
-            )))
-        }
-        
-        ### replaced
-        cap.data$FlagCodeIn_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
-                                    !is.na(cap.data$FlagCodeIn) &
-                                    cap.data$FlagCodeIn != cap.data$FlagCodeOut &
-                                    !is.na(cap.data$FlagCodeOut)] <-
-          BBL_ref[flag.choice]
-        
-        cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
-                                     !is.na(cap.data$FlagCodeIn) &
-                                     cap.data$FlagCodeIn != cap.data$FlagCodeOut &
-                                     !is.na(cap.data$FlagCodeOut)] <-
-          BBL_ref[flag.choice.2]
-        
-      } else {
-        ### retained
-        cap.data$FlagCodeIn_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
-                                    !is.na(cap.data$FlagCodeIn) &
-                                    cap.data$FlagCodeIn == cap.data$FlagCodeOut] <-
-          BBL_ref[flag.choice]
-        
-        cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
-                                     !is.na(cap.data$FlagCodeIn) &
-                                     cap.data$FlagCodeIn == cap.data$FlagCodeOut] <-
-          BBL_ref[flag.choice]
-      }
-      
-    }
-  }
-}
+# ## Flag code colors by species - new/retained/replaced
+# flag_info <- cap.data %>%
+#   dplyr::filter(dplyr::if_any(c(leg_cols),
+#                               ~ stringr::str_detect(., "69")))  %>%
+#   dplyr::rowwise() %>%
+#   dplyr::mutate(
+#     FlagCodeChange = ifelse(FlagCodeIn != FlagCodeOut, 1, 0),
+#     FlagIn = ifelse(is.na(FlagCodeIn) == FALSE, 1, 0),
+#     FlagOut = ifelse(is.na(FlagCodeOut) == FALSE, 1, 0)
+#   ) %>%
+#   dplyr::select(any_of(c(
+#     "SpeciesCode", "FlagIn", "FlagOut", "FlagCodeChange"
+#   ))) %>%
+#   dplyr::distinct() %>%
+#   dplyr::mutate_all(as.character) %>%
+#   dplyr::mutate_at("FlagCodeChange", ~ replace(., is.na(.), 0))
+# 
+# BBL_ref <- bander_portal_lookups$code[bander_portal_lookups$field ==
+#                                         "Marker color"]
+# BBL_ref<- BBL_ref[!grepl("/", BBL_ref)]
+# 
+# cap.data[, "FlagCodeIn_color"] <- NA
+# cap.data[, "FlagCodeOut_color"] <- NA
+# 
+# if(nrow(flag_info)!=0) {
+#   for (b in 1:nrow(flag_info)) {
+#     flag_status <-
+#       ifelse(flag_info$FlagIn[b] == 0,
+#              "received a new",
+#              "were recaptured with a")
+#     
+#     flag_status <-
+#       ifelse(flag_info$FlagCodeChange[b] == 0,
+#              flag_status,
+#              "received a replacement")
+#     
+#     flag_status.2 <-
+#       ifelse(flag_info$FlagCodeChange[b] == 0, "", "original ")
+#     
+#     
+#     flag.choice <- 0
+#     while (flag.choice == 0) {
+#       flag.choice <-
+#         utils::menu(c(BBL_ref), title = cat(
+#           paste0(
+#             "\nOne or more ",
+#             flag_info$SpeciesCode[b] ,
+#             " ",
+#             flag_status,
+#             " flag.\nWhat is the ",
+#             flag_status.2 ,
+#             "flag code color?\n"
+#           )
+#         ))
+#     }
+#     
+#     if (flag_info$FlagIn[b] == 0) {
+#       ### new
+#       cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+#                                    is.na(cap.data$FlagCodeIn) &
+#                                    !is.na(cap.data$FlagCodeOut)] <-
+#         BBL_ref[flag.choice]
+#     } else {
+#       if (flag_info$FlagCodeChange[b] == 1) {
+#         flag.choice.2 <- 0
+#         while (flag.choice.2 == 0) {
+#           flag.choice.2 <-
+#             utils::menu(c(BBL_ref), title = cat(paste0(
+#               "\nWhat is the new flag code color?\n"
+#             )))
+#         }
+#         
+#         ### replaced
+#         cap.data$FlagCodeIn_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+#                                     !is.na(cap.data$FlagCodeIn) &
+#                                     cap.data$FlagCodeIn != cap.data$FlagCodeOut &
+#                                     !is.na(cap.data$FlagCodeOut)] <-
+#           BBL_ref[flag.choice]
+#         
+#         cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+#                                      !is.na(cap.data$FlagCodeIn) &
+#                                      cap.data$FlagCodeIn != cap.data$FlagCodeOut &
+#                                      !is.na(cap.data$FlagCodeOut)] <-
+#           BBL_ref[flag.choice.2]
+#         
+#       } else {
+#         ### retained
+#         cap.data$FlagCodeIn_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+#                                     !is.na(cap.data$FlagCodeIn) &
+#                                     cap.data$FlagCodeIn == cap.data$FlagCodeOut] <-
+#           BBL_ref[flag.choice]
+#         
+#         cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+#                                      !is.na(cap.data$FlagCodeIn) &
+#                                      cap.data$FlagCodeIn == cap.data$FlagCodeOut] <-
+#           BBL_ref[flag.choice]
+#       }
+#       
+#     }
+#   }
+# }
 
 
 # Tags
@@ -2783,7 +2813,7 @@ for (a in lookups) {
           if (all(is.na(descriptions))) {
             descriptions <- ""
           } else {
-            paste0(" - ", descriptions)
+            descriptions<- paste0(" - ", descriptions)
           }
           
           if (entry.choice == 1) {
@@ -2843,7 +2873,7 @@ status_info <- cap.data %>%
   )), ~as.character(.) %>% dplyr::na_if(.,"")) %>%
   dplyr::mutate(NumMarkers = sum(!unique(dplyr::c_across(
     c(leg_cols[grepl("Out", leg_cols)], "TagType1", "TagType2")
-  ))  %in% c("X", NA))) %>%
+  ))  %in% c("00", NA))) %>%
   dplyr::mutate_at(
     "BBLStatus",
     ~ dplyr::case_when(
@@ -2947,7 +2977,7 @@ if (length(invalid.index) != 0) {
     status.choice <- utils::menu(
       choice = c("update as detected", "manually edit", "leave as is"),
       graphics = TRUE,
-      title = cat("\nHow would you like to proceed?")
+      title = cat("\nHow would you like to proceed?\n")
     )
     
     if (status.choice == 1) {
@@ -3024,9 +3054,9 @@ for(a in unique(invalid_bands$BandNumberOut)) {
     ),
     paste0(
       paste0(
-        invalid_bands$SpeciesCode[invalid_bands$BandNumberOut == a],
+        invalid_bands$SpeciesCode[which(invalid_bands$BandNumberOut == a)],
         " (",
-        invalid_bands$FlagCodeOut[invalid_bands$BandNumberOut == a],
+        invalid_bands$FlagCodeOut[which(invalid_bands$BandNumberOut == a)],
         ")"
       ),
       sep = "\n"
@@ -3090,7 +3120,7 @@ for (a in c("BanderID", "ScribeID")) {
     message(cat(
       paste0(
         "'",
-        cap.data[[a]][b],
+        unique(cap.data[[a]])[b],
         "' (",
         a,
         ") appears invalid.\nProvide a replacement value. Press Enter to retain the current value."
@@ -3103,7 +3133,7 @@ for (a in c("BanderID", "ScribeID")) {
     if (new_code != "") {
       cap.data <-  cap.data %>%
         dplyr::mutate_at(c("BanderID", "ScribeID"),
-                         ~ replace(., . == cap.data[[a]][b], new_code))
+                         ~ replace(., . == unique(cap.data[[a]])[b], new_code))
     }
   }
 }
@@ -3148,13 +3178,22 @@ for (a in c("cap.data_aux", "cap.data_no_aux")) {
 }
 
 
-# Merge 1, 5, & 8 dispositions
+# Merge 1, 5, 8, & F dispositions
 cap.data_no_aux$'1' <-
   tibble::as_tibble(data.table::rbindlist(cap.data_no_aux[c('1', '5', '8')]))
 cap.data_no_aux <- suppressWarnings(within(cap.data_no_aux, rm('5','8')))
+
 cap.data_aux$'1' <-
   tibble::as_tibble(data.table::rbindlist(cap.data_aux[c('1', '5', '8')]))
 cap.data_aux <- suppressWarnings(within(cap.data_aux, rm('5', '8')))
+
+cap.data_no_aux$'R' <-
+  tibble::as_tibble(data.table::rbindlist(cap.data_no_aux[c('R', 'F')]))
+cap.data_no_aux <- suppressWarnings(within(cap.data_no_aux, rm('F')))
+
+cap.data_aux$'R' <-
+  tibble::as_tibble(data.table::rbindlist(cap.data_aux[c('R', 'F')]))
+cap.data_aux <- suppressWarnings(within(cap.data_aux, rm('F')))
 
 ## Correct variable classes
 cap.data_aux <- lapply(cap.data_aux, function(x) {
@@ -3320,7 +3359,7 @@ for (a in 1:nrow(cap.data_aux$'1')) {
         }
         
         code_color_col <-
-          "FlagCodeOut_color"[sapply("69", function(x)
+          "FlagCodeColorOut"[sapply("69", function(x)
             grepl(x, c))]
         if (length(code_color_col) != 0) {
           band_aux[[marker_cols[4]]][a] <-
@@ -3440,7 +3479,7 @@ for (a in 1:nrow(cap.data_aux$'R')) {
         }
         
         code_color_col <-
-          paste0("FlagCode", dir, "_color")[sapply(c("69"), function(x)
+          paste0("FlagCodeColor", dir)[sapply(c("69"), function(x)
             grepl(x, c))]
         if (length(code_color_col) != 0) {
           recap_aux[[marker_cols[4]]][a] <-
@@ -3502,9 +3541,13 @@ for (a in 1:nrow(cap.data_aux$'R')) {
     }
   }
   
+  if(n==0){
+    n<- 1
+  }
+  
   capture.end.num <-
     c(29, 35, 41, 47, 53, 59)[sapply(c(1, 2, 3, 4, 5, 6), function(x)
-      grepl(x, in.num))]
+      grepl(x, n))]
 
     marker_string <-
       tidyr::replace_na(unlist(recap_aux[a, 24:capture.end.num]), "")
@@ -3527,7 +3570,7 @@ for (a in 1:nrow(cap.data_aux$'R')) {
   
   release.end.num <-
     c(65, 71, 77, 83, 89, 95)[sapply(c(1, 2, 3, 4, 5, 6), function(x)
-      grepl(x, in.num))]
+      grepl(x, n))]
   
   marker_string <-
     tidyr::replace_na(unlist(recap_aux[a, 60:release.end.num]), "")
@@ -4008,7 +4051,7 @@ all_band_data <-
 
 
 # Join missing band numbers
-# na_animal_ring <- import.dfs$`reference-data` %>%
+# na_animal_ring <- import.dfs$`reference-data` %>%case
 #   dplyr::filter(is.na(`animal-ring-id`)) %>%
 #   dplyr::inner_join(
 #     .,
