@@ -60,11 +60,12 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
                 width = "300px"
               )
             ),
-            span(textOutput("wrn"), style = "color:red"),
+            span(textOutput("wrn2"), style = "color:red"),
             br(),
             actionButton("action", "Submit"),
             br(),
-            br()
+            br(),
+            strong(textOutput("wrn1"))
           ),
         ), 
         nav_panel(strong("Manual edit"), 
@@ -173,13 +174,19 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
         
 
         
-        output$wrn <- renderText({
-          "Warning: all manual edits will be applied before bulk edits."
+        output$wrn1 <- renderText({
+          HTML(paste("Please note, all manual edits will be applied before bulk edits."))
+        })
+        
+        output$wrn2 <- renderText({
+          if (decision() == "correct" & value.choice() == "") {
+            paste("Warning: '", invalid.value, "' will be replaced with NA values.")
+          }
         })
         
         
         observe({
-          if (decision() %in% c("replace","correct") &
+          if (decision() == "replace" &
               value.choice() == "" ) {
             shinyjs::disable("action")
           }
