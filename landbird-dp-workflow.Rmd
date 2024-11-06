@@ -87,7 +87,8 @@ fs::dir_create(names(which(!fs::dir_exists(
     "data-raw",
     "data-processed/bander_portal",
     "data-processed/movebank",
-    "data-processed/to_archive"
+    "data-processed/to_archive",
+    "data-processed/data_packages/"
   )
 ))))
 
@@ -304,7 +305,7 @@ if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames))
   }
 
 
-  filter.df.app(species.col, date.col, species, min.date, max.date)
+  filter.df.app(raw.data.list, species.col, date.col, species, min.date, max.date)
 
 
 # Apply filters
@@ -1195,7 +1196,7 @@ raw.data.list %>% purrr::map(
 
 ```
 
-### Export
+### Export files
 
 #### Provide inputs
 
@@ -1543,6 +1544,332 @@ commit <-
   FWSAkRDRtools::commit.files(project = project,
                local.folder = path,
                recursive = TRUE)
+
+
+```
+
+# Create data packages
+
+### Provide inputs
+
+```{r}
+# Provide a directory path for data file(s) to import
+data.path <- "data-processed/to_archive/"
+
+# Provide a directory path to write files
+processed.data.path <- "data-processed/data_packages/Eielson_data_package_2024/"
+
+# Provide versioning format, if applicable
+vers.suffix <- "_v"
+
+# Provide suffix for data files (i.e. year if filtering data)
+data.suffix <- "_2024"
+
+# Provide the relevant information (if applicable)
+missing_values<- c(NA)
+species.col <- "SpeciesCode"
+date.col <- "Date"
+date.format <-  "%m/%d/%Y"
+time.col <- "CaptureTime_2400"
+time.format <- "%H:%M"
+
+```
+
+### Import data
+
+```{r}
+
+data.list <- importer(
+  path = data.path,
+  multiple = TRUE,
+  graphics = TRUE,
+  column.format = list(
+    c(column = date.col, format = date.format),
+    c(column = time.col, format = time.format)
+  )
+)
+
+metadata.list<- importer(
+  path = data.path,
+  multiple = TRUE,
+  graphics = TRUE,
+  column.format = list(
+    c(column = date.col, format = date.format),
+    c(column = time.col, format = time.format)
+  )
+)
+
+```
+
+### Filter data
+
+```{r}
+
+aou_code <- read.csv("reference/IBP-AOS-LIST23.csv", na = "")
+
+## Translate species names/codes (if neccessary)
+# 
+# data.list <- data.list %>%
+#   purrr::map(
+#     .f = ~ .x %>%
+#       dplyr::rename_with(., ~gsub('\\.', '', .x)) %>%
+#       dplyr::inner_join(
+#         .,
+#         aou_code[, c("COMMONNAME", "SPEC")],
+#         by = c("CommonName" = "COMMONNAME"),
+#         keep = FALSE,
+#         relationship = "many-to-many"
+#       ) %>%
+#       dplyr::mutate("SpeciesCode" = `SPEC`) %>%
+#       dplyr::select(-"SPEC")
+#   )
+
+# Check species names/codes
+data.list %>%
+  purrr::map(.f = ~ .x %>%
+               dplyr::filter(!.data[[species.col]] %in% aou_code$SPEC))
+
+
+if(any(c(species.col, date.col) %in% unlist(purrr::map(data.list, colnames)))) {
+  # Make filter selections
+  if (species.col %in% unlist(purrr::map(data.list, colnames))) {
+    species <- unique(unlist(sapply(data.list, "[", species.col)))
+  } else {
+    species<- character(0)
+  }
+  
+  if (date.col %in% unlist(purrr::map(data.list, colnames))) {
+    date.ranges <- data.list %>% purrr::map(
+      .f = ~ .x %>%
+        dplyr::select(all_of(date.col)) %>%
+        dplyr::filter(.data[[date.col]] != "") %>%
+        dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+      
+      %>%
+        append(list(
+          "Min" = min(.[[date.col]]), "Max" = max(.[[date.col]])
+        ))
+    )
+    
+    dates.df <- data.list %>% purrr::map(
+      .f = ~ .x %>%
+        dplyr::select(all_of(date.col)) %>%
+        dplyr::filter(.data[[date.col]] != "") %>%
+        dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+    ) %>%
+      dplyr::bind_rows(., .id = "id")
+    
+    min.date <- min(do.call("c", lapply(date.ranges, "[[", "Min")))
+    max.date <- max(do.call("c", lapply(date.ranges, "[[", "Max")))
+    
+  } else {
+    min.date <- as.Date("0001-01-01")
+    max.date <- as.Date("0001-01-01")
+  }
+
+
+  filter.df.app(data.list, species.col, date.col, species, min.date, max.date)
+
+
+# Apply filters
+  id.var <- dplyr::last(make.names(c(unique(
+    unlist(purrr::map(data.list, colnames))
+  ), ".id"), unique = TRUE))
+  
+  data.list <- data.list %>%
+    purrr::map(.f = ~ .x %>%
+                 tibble::rowid_to_column(var = id.var))
+  
+  other.data.list <- data.list
+  
+  if (length(species) != 0) {
+    data.list <- data.list %>%
+      purrr::map(.f = ~ .x %>%
+                   dplyr::filter(if_any(
+                     matches(species.col), ~ .data[[species.col]] %in% selected.species
+                   )))
+  }
+  
+  
+  if (min.date != "0001-01-01" |
+      max.date != "0001-01-01") {
+    data.list <- data.list %>%
+      purrr::map(
+        .f = ~ .x %>%
+          dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), as.Date, format = date.format) %>%
+          dplyr::filter(if_any(
+            matches(date.col),
+            ~ data.table::between(.data[[date.col]], min(selected.dates), max(selected.dates), NAbounds =
+                                    FALSE)
+          ))
+      )
+  }
+  
+  rm.row <-  purrr::map(data.list, id.var)
+  
+  other.data.list <- lapply(seq_along(rm.row), function(i) {
+    if (rlang::is_empty(rm.row[[i]]) == FALSE) {
+      other.data.list[[i]] %>%
+        dplyr::slice(-rm.row[[i]])
+    } else {
+      other.data.list[[i]]
+    }
+  }) %>%
+    purrr::set_names(names(data.list))
+  
+    data.list <- purrr::map(data.list, ~ (.x %>% dplyr::select(-tidyselect::any_of(id.var))))
+    
+      other.data.list <- purrr::map(other.data.list, ~ (.x %>% dplyr::select(-tidyselect::any_of(id.var))))
+   
+
+# Remove empty dataframes
+  data.list <- data.list %>%
+    purrr::discard(., ~ nrow(.) == 0) %>%
+    purrr::map(.f = ~ .x %>%
+                 dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
+  
+  
+  other.data.list <- other.data.list %>%
+    purrr::discard(., ~ nrow(.) == 0) %>%
+    purrr::map(.f = ~ .x %>%
+                 dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
+  
+}
+
+```
+
+### Merge data
+
+```{r}
+
+if(length(data.list)>1) {
+  # Make data frame selections
+  merge.df.app(data.list)
+  
+  # Execute forced rbind
+  if (is.null(selected.df) == FALSE) {
+    data.list <-  c(list(merged_data = data.table::rbindlist(data.list[names(data.list) %in% selected.df], fill = TRUE)),
+                        data.list[!names(data.list) %in% selected.df])
+  }
+  
+  data.list <- data.list %>%
+    purrr::map(
+      .f = ~ .x %>%
+        dplyr::mutate_if(is.character, ~ dplyr::na_if(., "")) %>%
+        dplyr::mutate_if(is.character, ~ dplyr::na_if(., "NULL")) %>%
+        dplyr::mutate_if(is.character, ~ dplyr::na_if(., missing_values))
+    )
+}
+
+```
+
+### Translate dictionaries
+
+```{r}
+
+dxnry.list <- list()
+
+for (x in 1:length(metadata.list)) {
+  if(is.data.frame(metadata.list[[x]])){
+     dxnry.list[[x]] <- metadata.list[[x]]
+     
+  } else if (names(metadata.list[[x]]) == "data") {
+    temp <-
+      mdJSONdictio::extract.mdJSON(metadata.list[[x]], record.type = "dictionaries")
+    
+    names <- character(0)
+    temp3 <- list()
+    
+    for (y in 1:length(temp[["data"]])) {
+      temp2 <- list()
+      
+      temp2[["data"]][[1]] <- temp[["data"]][[y]]
+      
+      temp3[[y]] <- mdJSONdictio::build.table(temp2)
+      
+      names <- c(names, rjson::fromJSON(temp2[["data"]][[1]][["attributes"]][["json"]])[["dataDictionary"]][["citation"]][["title"]])
+      
+    }
+    
+    names(temp3) <- names
+    
+    dxnry.list[[x]] <- temp3
+    
+  }
+}
+
+names(dxnry.list)<- names(metadata.list)
+
+```
+
+### Export files
+
+```{r}
+
+fs::dir_create(names(which(!fs::dir_exists(processed.data.path))))
+  
+for(a in 1:length(data.list)) {
+  write.csv(
+    data.list[[a]],
+    paste0(
+      gsub("/$", "", processed.data.path),
+      "/",
+      gsub(paste0("(", vers.suffix, ").*"), "", names(data.list[a])),
+      "_",
+      gsub("^[^A-Za-z0-9]|[^A-Za-z0-9]$", "", data.suffix),
+      ".csv"
+    ),
+    na = "",
+    row.names = FALSE
+  )
+}
+
+for(a in 1:length(dxnry.list)) {
+  for(b in 1:length(dxnry.list[[a]])){
+  write.csv(
+    dxnry.list[[a]][[b]],
+    paste0(
+      gsub("/$", "", processed.data.path),
+      "/",
+      names(dxnry.list[[a]][b]),
+      "_",
+      format(Sys.time(), '%Y%m%d'),
+      ".csv"
+    ),
+    na = "",
+    row.names = FALSE
+  )
+  }
+}
+
+
+
+
+file.create(paste0(processed.data.path, "README.txt"), overwrite = TRUE)
+
+sink(paste0(processed.data.path,"README.txt"))
+cat(paste0("\nThis folder contains the following:\n\n"))
+
+dirs <- list.dirs(processed.data.path,
+                  recursive = TRUE,
+                  full.names = FALSE)
+
+for(a in 1:length(dirs)) {
+  files <- basename(fs::dir_info(
+    paste0(processed.data.path, dirs[a]),
+    recurse = FALSE,
+    type = "file"
+  )$path)
+  files<- files[!files =="README.txt"]
+  
+  if (length(files != 0)) {
+   cat(paste0(dirs[a], "\n"), paste0(files, sep = "\n"))
+    cat("\n")
+  }
+  
+}
+
+closeAllConnections()
 
 
 ```
