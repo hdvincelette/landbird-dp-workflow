@@ -1,6 +1,6 @@
 
 
-filter.df.app <- function(species.col, date.col, species, min.date, max.date) {
+filter.df.app <- function(data.list, species.col, date.col, species, min.date, max.date) {
   if (missing(species.col) |
       species.col == "") {
     species.col = ".ERROR"
@@ -76,7 +76,7 @@ filter.df.app <- function(species.col, date.col, species, min.date, max.date) {
         
         selected.nrow <- reactive({
           as.data.frame(lapply(
-            raw.data.list %>%
+            data.list %>%
               purrr::map(
                 .f = ~ .x %>%
                   dplyr::filter(if_any(
