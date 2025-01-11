@@ -53,20 +53,20 @@ devtools::load_all()
 
 theme.selection<- shinythemes::shinytheme("simplex")
 
-# # Install GitHub packages
-# ## Uninstall packages (if re-installing)
+# Install GitHub packages
+## Uninstall packages (if re-installing)
 # remove.packages("FWSAkRDRtools")
 # remove.packages("mdJSONdictio")
 # .rs.restartR()
-# 
-# ## Set GitHub download file method (optional)
+
+## Set GitHub download file method (optional)
 # options(download.file.method = "wininet")
-# 
-# ## Install FWSAkRDRtools from GitHub
-# devtools::install_github("hdvincelette/FWSAkRDRtools")
-# 
-# ## Install mdJSONdictio from GitHub
-# devtools::install_github("hdvincelette/mdJSONdictio")
+
+## Install FWSAkRDRtools from GitHub
+devtools::install_github("hdvincelette/FWSAkRDRtools")
+
+## Install mdJSONdictio from GitHub
+devtools::install_github("hdvincelette/mdJSONdictio")
 
 
 ```
@@ -105,9 +105,9 @@ Paste the names of the project folder, data dictionary(ies), and data entry temp
 ```{r include=FALSE}
 
 # Provide the relevent information
-RDR.keyword <- "JBER"
+RDR.keyword <- "Eareckson"
 
-data.keyword <- "banding"
+data.keyword <- "survey"
 data.subfolder <- "data/final_data"
 
 template.keyword <- NA
@@ -115,11 +115,6 @@ template.subfolder <- NA
 
 dictionary.keyword <- "mdeditor"
 dictionary.subfolder <- "metadata"
-
-# Provide a directory path to save files
-data.download.path <- "downloads/data"
-template.download.path <- "downloads/template"
-dxnry.download.path <- "downloads/dictionaries"
 
 ```
 
@@ -152,36 +147,52 @@ if(length(project.folder)>1) {
   )
 }
 
+
 keywords <- c(data.keyword, 
               template.keyword, 
               dictionary.keyword)
 subfolders <- c(data.subfolder, 
                 template.subfolder, 
                 dictionary.subfolder)
-download.paths <- c(data.download.path,
-                    template.download.path,
-                    dxnry.download.path)
 
 for(x in seq_along(keywords)) {
   if (length(keywords[x]) != 0) {
-    if (is.na(keywords[x])==FALSE) {
+    if (is.na(keywords[x]) == FALSE) {
       
-      FWSAkRDRtools::download.files(
-        pattern = keywords[x],
-        project = project.folder,
-        subfolder.path = subfolders[x],
-        local.path = download.paths[x],
-        main = TRUE,
-        incoming = TRUE,
-        recursive = TRUE
+      select.download.app(
+        path = paste0(
+          "//ifw7ro-file.fws.doi.net/datamgt/mbm/",
+          project.folder,
+          "/",
+          subfolders[x]
+        ),
+        pattern = keywords[x]
       )
       
+      if (download.dir$root == "R Project") {
+        root.dir <- dirname(rstudioapi::documentPath())
+      } else {
+        root.dir <- shinyFiles::getVolumes()()[which(stringr::str_detect(fs::path_home(), shinyFiles::getVolumes()()))]
+      }
+      
+      download.path <- paste0(root.dir, paste(unlist(download.dir[["path"]]), collapse = "/"))
+      
+      
+      for (y in selected.files) {
+        file.path <- file.paths[which(basename(file.paths) %in% y)]
+        downloader::download(
+          url = paste0("File:", file.path),
+          destfile = file.path(download.path, basename(file.path)),
+          method = "auto",
+          mode = "wb",
+          quiet = FALSE
+        )
+      }
+
     }
   }
 }
 
-
-utils::browseURL(data.download.path)
 
 ```
 
@@ -222,19 +233,25 @@ time.format <- "%H:%M"
 
 ```{r}
 
+select.import.app(path = raw.data.path, multiple = TRUE)
+
 raw.data.list <- importer(
   path = raw.data.path,
-  multiple = TRUE,
-  graphics = TRUE,
+  files = selected.files,
   column.format = list(
     c(column = date.col, format = date.format),
     c(column = time.col, format = time.format)
   )
 )
 
+data.filenames<- tools::file_path_sans_ext(selected.files)
+
+select.import.app(path = dictionary.path, multiple = FALSE)
+
 ref.dictionary <- importer(path = dictionary.path,
-                                multiple = FALSE,
-                                graphics = TRUE)
+                            files = selected.files)[[1]]
+
+dxnry.filename<- tools::file_path_sans_ext(selected.files)
 
 ```
 
@@ -260,17 +277,19 @@ aou_code <- read.csv("reference/IBP-AOS-LIST23.csv", na = "")
 #       dplyr::mutate("SpeciesCode" = `SPEC`) %>%
 #       dplyr::select(-"SPEC")
 #   )
-
-# Check species names/codes
-raw.data.list %>%
-  purrr::map(.f = ~ .x %>%
-               dplyr::filter(!.data[[species.col]] %in% aou_code$SPEC))
+# 
+# # Check species names/codes
+# raw.data.list %>%
+#   purrr::map(.f = ~ .x %>%
+#                dplyr::filter(!.data[[species.col]] %in% aou_code$SPEC))
 
 
 if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames)))) {
   # Make filter selections
   if (species.col %in% unlist(purrr::map(raw.data.list, colnames))) {
-    species <- unique(unlist(sapply(raw.data.list, "[", species.col)))
+    species <- unique(purrr::map(raw.data.list, ~ .x %>%
+                                   purrr::pluck(species.col)) %>%
+                        unlist(.))
   } else {
     species<- character(0)
   }
@@ -278,18 +297,19 @@ if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames))
   if (date.col %in% unlist(purrr::map(raw.data.list, colnames))) {
     date.ranges <- raw.data.list %>% purrr::map(
       .f = ~ .x %>%
-        dplyr::select(all_of(date.col)) %>%
+        dplyr::mutate({{date.col}} := ifelse(!date.col %in% names(.), "", .data[[date.col]])) %>%
+        dplyr::select(any_of(date.col)) %>%
         dplyr::filter(.data[[date.col]] != "") %>%
-        dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
-      
-      %>%
+        dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format)) %>%
         append(list(
           "Min" = min(.[[date.col]]), "Max" = max(.[[date.col]])
         ))
     )
     
+  
     dates.df <- raw.data.list %>% purrr::map(
       .f = ~ .x %>%
+        dplyr::mutate({{date.col}} := ifelse(!date.col %in% names(.), "", .data[[date.col]])) %>%
         dplyr::select(all_of(date.col)) %>%
         dplyr::filter(.data[[date.col]] != "") %>%
         dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
@@ -303,6 +323,8 @@ if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames))
     min.date <- as.Date("0001-01-01")
     max.date <- as.Date("0001-01-01")
   }
+  
+  
 
 
   filter.df.app(raw.data.list, species.col, date.col, species, min.date, max.date)
@@ -312,6 +334,7 @@ if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames))
   id.var <- dplyr::last(make.names(c(unique(
     unlist(purrr::map(raw.data.list, colnames))
   ), ".id"), unique = TRUE))
+  
   
   raw.data.list <- raw.data.list %>%
     purrr::map(.f = ~ .x %>%
@@ -360,16 +383,16 @@ if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames))
    
 
 # Remove empty dataframes
-  raw.data.list <- raw.data.list %>%
-    purrr::discard(., ~ nrow(.) == 0) %>%
-    purrr::map(.f = ~ .x %>%
-                 dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
-  
-  
-  other.data.list <- other.data.list %>%
-    purrr::discard(., ~ nrow(.) == 0) %>%
-    purrr::map(.f = ~ .x %>%
-                 dplyr::mutate({{date.col}} := format(.data[[date.col]], format = date.format)))
+      test <- raw.data.list %>%
+        purrr::discard(., ~ nrow(.) == 0) %>%
+        purrr::map(.f = ~ .x %>%
+                           dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), format, format = date.format))
+                     
+      
+      other.data.list <- other.data.list %>%
+        purrr::discard(., ~ nrow(.) == 0) %>%
+         purrr::map(.f = ~ .x %>%
+                           dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), format, format = date.format))
   
 }
 ```
@@ -499,7 +522,7 @@ for (a in 1:length(raw.data.list)) {
       
       variable <- domainItem_value.table$Variable[b]
       
-      select.value.app(variable, invalid.values, ref.dxnry)
+      add.value.app(variable, invalid.values, ref.dxnry)
       
       #!!# temporary patch
       if ("" %in% selected.values) {
@@ -572,17 +595,11 @@ for (a in 1:length(warning.list)) {
     warn.table %>% dplyr::filter(Category == "codeName")
   
   if (nrow(codeName.warn) != 0) {
-    codeName.choice <- utils::select.list(
-      c(codeName.warn$Variable),
-      multiple = TRUE,
-      graphics = TRUE,
-      title = cat(
-        paste0(
-          "\nSome variables in the data file '",
-          names(raw.data.list[a]),
-          "' were not found in the data dictionary.\nSelect which, if any, to add to the data dictionary.\n"
-        )
-      )
+ 
+    add.codeName.app(
+      data = as.data.frame(raw.data.list[[a]]),
+      filename = names(raw.data.list[a]),
+      missing.variables = codeName.warn$Variable
     )
     
     if (length(codeName.choice)!=0) {
@@ -622,9 +639,16 @@ for (a in 1:length(warning.list)) {
     }
   }
   
+
   # domainItem_value
   domainItem_value.table <-
     warn.table %>% dplyr::filter(Category == "domainItem_value")
+  
+  if (class(ref.dictionary) == "list") {
+    ref.dxnry <- mdJSONdictio::build.table(input.dxnry)
+  } else {
+    assign("ref.dxnry", input.dxnry)
+  }
   
   if (nrow(domainItem_value.table) != 0) {
     for (b in 1:nrow(domainItem_value.table)) {
@@ -639,21 +663,27 @@ for (a in 1:length(warning.list)) {
           strip.white = TRUE
         )
       
-      domainItem.choice <-
-        utils::select.list(
-          c(domainItem.vector),
-          multiple = TRUE,
-          graphics = TRUE,
-          title = cat(
-            paste0(
-              "\nThe attribute '",
-              domainItem_value.table$Variable[b] ,
-              "' in the data file '",
-              names(raw.data.list[a]),
-              "' contains entry values not found in the data dictionary.\nSelect which, if any, to add to the domain item list in the data dictionary.\n"
-            )
-          )
-        )
+      # domainItem.choice <-
+      #   utils::select.list(
+      #     c(domainItem.vector),
+      #     multiple = TRUE,
+      #     graphics = TRUE,
+      #     title = cat(
+      #       paste0(
+      #         "\nThe attribute '",
+      #         domainItem_value.table$Variable[b] ,
+      #         "' in the data file '",
+      #         names(raw.data.list[a]),
+      #         "' contains entry values not found in the data dictionary.\nSelect which, if any, to add to the domain item list in the data dictionary.\n"
+      #       )
+      #     )
+      #   )
+      
+      
+      add.domainItem.app(
+        domainItem_value.table$Variable[b],
+        domainItem.vector,
+        ref.dxnry)
       
       if (length(domainItem.choice)!=0) {
         for (c in 1:length(domainItem.choice)) {
@@ -1208,7 +1238,7 @@ download.path <- "downloads/data"
 processed.data.path <- "data-processed/to_archive/"
 
 # Do you want to merge the data with an authoritative file?
-auth.merge <- TRUE
+auth.merge <- FALSE
 
 # Provide versioning format (when merging with an authoritative file)
 vers.suffix <- "_v"
@@ -1219,179 +1249,107 @@ vers.suffix <- "_v"
 
 ```{r}
 
+# Rejoin filtered data
+raw.data.list <-
+  split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
+  purrr::map(dplyr::bind_rows)
+
+
 if (auth.merge == TRUE) {
-  # Import authoritative data file
-  auth.data <- importer(
-    path = download.path,
-    multiple = FALSE,
-    graphics = TRUE,
-    column.format = list(
-      c(column = date.col, format = date.format),
-      c(column = time.col, format = time.format)
-    )
-  )
-  
-  # Rejoin filtered data
-  # raw.data.list <-
-  #   split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
-  #   purrr::map(dplyr::bind_rows)
-  
   # Select files to merge
-  if(length(raw.data.list)>1) {
-    raw.data.choice <- utils::select.list(
-      c(names(raw.data.list)),
-      multiple = TRUE,
-      graphics = TRUE,
-      title = cat(paste0(
-        "\nSelect one or more data files to merge.\n"
-      ))
-    )
+  if (length(raw.data.list) > 1) {
+    # Make data frame selections
+    merge.df.app(raw.data.list)
     
-    raw.data.list <- raw.data.list %>% purrr::keep(names(raw.data.list) %in% raw.data.choice)
-  }
-  
-  add.data <- dplyr::bind_rows(raw.data.list)
-  
-  
-  # Create new columns
-  new.cols <- add.data %>%
-    dplyr::mutate_if(is.character, ~ dplyr::na_if(., c(""))) %>%
-    purrr::discard(., ~ all(is.na(.))) %>%
-    colnames(.)[!colnames(.) %in% colnames(auth.data)] %>%
-    colnames()
-  
-  if (length(new.cols) != 0) {
-    col.choice <- utils::select.list(
-      c(new.cols),
-      multiple = TRUE,
-      graphics = TRUE,
-      title = cat(
-        paste0(
-          "\nOne or more columns do not exist in the authoritative data file.\nSelect which if any to add\nNote, unselected columns will not be archived.\n"
-        )
-      )
-    )
+    # Execute forced rbind
+    if (is.null(selected.df) == FALSE) {
+      add.data <-  data.table::rbindlist(raw.data.list[names(raw.data.list) %in% selected.df], fill = TRUE) %>%
+        as.data.frame(.) %>%
+        dplyr::mutate_if(is.character, ~ dplyr::na_if(., "")) %>%
+        dplyr::mutate_if(is.character, ~ dplyr::na_if(., "NULL")) %>%
+        dplyr::mutate_if(is.character, ~ dplyr::na_if(., missing_values))
+      
+    }
+    
+    # Import authoritative data file
+    select.import.app(path = download.path, multiple = FALSE)
+    
+    auth.data <- importer(path = download.path,
+                          files = selected.files,
+                          column.format = list(
+                            c(column = date.col, format = date.format),
+                            c(column = time.col, format = time.format)
+                          )) %>%
+      .[[1]] %>% as.data.frame(.)
+    
+    auth.filename <- tools::file_path_sans_ext(selected.files)
+    
+    
+    # Add missing columns
+    missing.cols <- add.data %>%
+      dplyr::mutate_if(is.character, ~ dplyr::na_if(., c(""))) %>%
+      purrr::discard(., ~ all(is.na(.))) %>%
+      colnames(.)[!colnames(.) %in% colnames(auth.data)] %>%
+      colnames()
+    
+    if(length(missing.cols)!=0) {
+      add.column.app(missing.cols, add.data)
+    }
+    
+
     if (length(col.choice) != 0) {
       for (a in col.choice) {
-        loc.choice <- utils::select.list(
-          c(colnames(auth.data)), 
-          multiple = FALSE, 
-          graphics = TRUE,
-          title = cat(
-          paste0(
-            "\nInsert '",
-            a,
-            "' before which existing column?\nEnter 0 to add after the last column.\n"
-          )
-        ))
-        if (loc.choice != 0) {
-          before <- loc.choice
-        } else {
-          before <- NULL
+        existing.cols <- colnames(auth.data)
+        place.column.app(a, existing.cols)
+        
+        print(last)
+        print(loc.choice)
+        
+        if (last == TRUE) {
+          auth.data <- auth.data %>% tibble::add_column(!!a := NA, .before = NULL)
+        } else if (loc.choice != "") {
+          auth.data <- auth.data %>% tibble::add_column(!!a := NA, .before = loc.choice)
         }
-        auth.data <- auth.data %>% tibble::add_column(!!a := NA, .before = before)
+        
       }
     }
+    
+    # Merge data
+    new.data <- auth.data %>%
+      merge(add.data, all = TRUE, sort = FALSE) %>%
+      dplyr::select(colnames(auth.data))
+    
+    
+    #!!!# Evaluate changes
+    test <- summary(arsenal::comparedf(
+      auth.data %>% dplyr::mutate(across(
+        where(is.character), ~ dplyr::na_if(.x, "")
+      )),
+      new.data %>% dplyr::mutate(across(
+        where(is.character), ~ dplyr::na_if(.x, "")
+      ))
+    ))
+    
+    test[["diffs.table"]]
+    
+    
+    # Versioning
+    download.file.app(auth.filename, new.data)
+    
+    
+    
+    
+    write.csv(
+      new.data,
+      paste0(processed.data.path, new.data.name, ".csv"),
+      na = "",
+      row.names = FALSE
+    )
+    
   }
-  
-  # Merge data
-  new.data <- auth.data %>%
-    merge(as.data.frame(add.data), all = TRUE, sort = FALSE) %>%
-    dplyr::select(colnames(auth.data))
-  
-  
-  #!!!# Evaluate changes
-  test <- summary(arsenal::comparedf(
-    auth.data %>% dplyr::mutate(across(
-      where(is.character), ~ dplyr::na_if(.x, "")
-    )),
-    new.data %>% dplyr::mutate(across(
-      where(is.character), ~ dplyr::na_if(.x, "")
-    ))
-  ))
-  
-  test[["diffs.table"]]
-  
-} else if (auth.merge == FALSE) {
-  # Rejoin filtered data
-  # raw.data.list <-
-  #   split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
-  #   purrr::map(dplyr::bind_rows)
-  
-  # Select files to merge
-  raw.data.choice <- utils::select.list(
-    c(names(raw.data.list)),
-    multiple = TRUE,
-    graphics = TRUE,
-    title = cat(paste0(
-      "\nSelect one or more data files to combine.\n"
-    ))
-  )
-  
-  
-  raw.data.list <- raw.data.list %>% purrr::keep(names(raw.data.list) %in% raw.data.choice)
-  
-  new.data <- dplyr::bind_rows(raw.data.list)
-  
 }
 
-```
 
-```{r}
-
-  # Versioning
-  # detect.vers <- suppressWarnings(as.numeric(ifelse(
-  #   grepl(paste0("\\", vers.suffix), auth.data.name, ignore.case = TRUE),
-  #   sub(
-  #     paste0(".*\\", vers.suffix),
-  #     "",
-  #     auth.data.name,
-  #     ignore.case = TRUE
-  #   ),
-  #   ""
-  # )))
-  
-  # if (is.na(detect.vers) == FALSE) {
-  #   message(cat(
-  #     paste0(
-  #       "Provide a version number for the new authoritative data file.\nThe detected current version is '",
-  #       detect.vers,
-  #       "'."
-  #     )
-  #   ))
-  # } else {
-    message(cat(
-      paste0(
-        "Provide a version number for the new authoritative data file.\n"
-      )
-    ))
-  # }
-  
-  new.vers <-
-    noquote(as.character(readline(prompt = )))
-  
-  if (new.vers != "") {
-    new.vers <- paste0(vers.suffix, new.vers)
-  }
-  
-  message(cat(paste0("\nProvide a name for the data file.\n")))
-  
-  new.data.name <- noquote(as.character(readline(prompt =)))
-  
-  new.data.name <-  sub(" ", "_", new.data.name)
-  
-  new.data.name<- gsub('^[[:punct:]]|[[:punct:]]$', '', new.data.name)
-
-  new.data.name <- paste0(new.data.name, new.vers)
-  
-
-
-write.csv(
-  new.data,
-  paste0(processed.data.path, new.data.name, ".csv"),
-  na = "",
-  row.names = FALSE
-)
 
 ```
 
@@ -1492,18 +1450,18 @@ if(class(ref.dictionary) == "list") {
   if ("mdEditor file" %in% export.choice) {
     message(cat(
       paste0(
-        "\nProvide a name for the mdjson file."
-        # \nThe current file name is '",
-        # gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE) ,
-        # "'.\n"
+        "\nProvide a name for the mdjson file.
+        \nThe current file name is '",
+        gsub("\\_mdeditor.*", "", dxnry.filename, ignore.case = TRUE),
+        "'.\n"
       )
     ))
     
     file.name <- noquote(as.character(readline(prompt = )))
     
-    # if (file.name == "") {
-    #   file.name <-  gsub("\\_mdeditor.*", "", dictionary.choice, ignore.case = TRUE)
-    # }
+    if (file.name == "") {
+      file.name <-  gsub("\\_mdeditor.*", "", dxnry.filename, ignore.case = TRUE)
+    }
     
     file.name <-  sub(" ", "_", file.name)
     file.name <- gsub('^[[:punct:]]|[[:punct:]]$', '', file.name)
@@ -2060,7 +2018,7 @@ data.list <- data.list %>%
 ```{r}
 
 # Provide directory path for the authoritative data file
-download.path <- "downloads/"
+download.path <- "data-processed/to_archive/"
 
 # Provide a directory path to write processed files
 processed.data.path <- "data-processed/to_archive/"
@@ -2148,12 +2106,13 @@ cap.data <- cap.data %>%
       "Day" = "DayCollected",
       "BanderID" = "Collector"
     )
-  ) %>%
-  tidyr::unite("Feather",
-               c("FeatherType", "FeatherType1")[c("FeatherType", "FeatherType1") %in% names(cap.data)],
-               remove = TRUE,
-               na.rm = TRUE) %>%
-  dplyr::mutate_at("Feather", ~ dplyr::na_if(., ""))
+  ) 
+# %>%
+# tidyr::unite("Feather",
+#              c("FeatherType", "FeatherType1")[c("FeatherType", "FeatherType1") %in% names(cap.data)],
+#              remove = TRUE,
+#              na.rm = TRUE) %>%
+# dplyr::mutate_at("Feather", ~ dplyr::na_if(., ""))
 
 # Pivot sample columns
 
@@ -2236,32 +2195,32 @@ if(auth.merge==TRUE) {
     dplyr::select(colnames(auth.data))
 
   # Versioning
-  detect.vers <- suppressWarnings(as.numeric(ifelse(
-    grepl(paste0("\\", vers.suffix), auth.data.name, ignore.case = TRUE),
-    sub(
-      paste0(".*\\", vers.suffix),
-      "",
-      auth.data.name,
-      ignore.case = TRUE
-    ),
-    ""
-  )))
+  # detect.vers <- suppressWarnings(as.numeric(ifelse(
+  #   grepl(paste0("\\", vers.suffix), auth.data.name, ignore.case = TRUE),
+  #   sub(
+  #     paste0(".*\\", vers.suffix),
+  #     "",
+  #     auth.data.name,
+  #     ignore.case = TRUE
+  #   ),
+  #   ""
+  # )))
   
-  if (is.na(detect.vers) == FALSE) {
-    message(cat(
-      paste0(
-        "Provide a version number for the new authoritative data file.\nThe detected current version is '",
-        detect.vers,
-        "'."
-      )
-    ))
-  } else {
+  # if (is.na(detect.vers) == FALSE) {
+  #   message(cat(
+  #     paste0(
+  #       "Provide a version number for the new authoritative data file.\nThe detected current version is '",
+  #       detect.vers,
+  #       "'."
+  #     )
+  #   ))
+  # } else {
     message(cat(
       paste0(
         "Provide a version number for the new authoritative data file.\nA current version was not detected."
       )
     ))
-  }
+  # }
   
   new.vers <-
     noquote(as.character(readline(prompt = )))

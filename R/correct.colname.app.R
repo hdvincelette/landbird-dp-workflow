@@ -1,4 +1,3 @@
-# Only display dictionary attribute selection if available
 
 correct.colname.app <- function(data, invalid.col, unused.cols) {
   runGadget(

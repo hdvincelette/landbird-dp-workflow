@@ -16,12 +16,12 @@ select.value.app <- function(variable, invalid.values, ref.dxnry) {
           h5(strong(
             paste0("\nThe variable '",
                    variable,
-                   "' contains entry values not found in the data dictionary.\n"
+                   "' contains entry values not found in the data dictionary"
             )
           )),
           shinyWidgets::prettyCheckboxGroup(
             "selected.values",
-            h5("Select values to correct in the data."),
+            h5("Select values to correct in the data"),
             choices =  invalid.values,
             outline = TRUE,
             status = "warning"

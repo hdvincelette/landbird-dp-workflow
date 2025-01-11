@@ -15,7 +15,7 @@ merge.df.app <- function(data.list) {
             width = 12,
             shinyWidgets::checkboxGroupButtons(
               "selected.df",
-              h5(strong("Select one or more to combine.")),
+              h5(strong("Select tables to combine.")),
               choices =  names(data.list),
               selected = names(data.list),
               direction = "vertical",
