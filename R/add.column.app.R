@@ -15,7 +15,7 @@ add.column.app <- function(missing.cols, add.data) {
             width = 12,
             shinyWidgets::pickerInput(
               "col.choice",
-              h5(strong("Select columns to include in the authoritative file.")),
+              h5(strong("Select columns to include in the new file")),
               choices =  missing.cols,
               multiple = TRUE,
               options = shinyWidgets::pickerOptions(actionsBox = TRUE)),

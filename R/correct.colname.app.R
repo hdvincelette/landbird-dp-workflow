@@ -17,12 +17,12 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
               paste0(
                 "The variable '",
                 invalid.col,
-                "' is not listed in the data dictionary."
+                "' is not listed in the data dictionary"
               )
             )),
             shinyWidgets::radioGroupButtons(
               "decision",
-              h5(strong("Choose an option.")),
+              h5(strong("Choose an option")),
               choices =  c("keep", "remove", "replace", "rename"),
               direction = "vertical",
               width = "200px",

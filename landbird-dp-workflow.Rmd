@@ -294,13 +294,15 @@ if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames))
     species<- character(0)
   }
   
+  
   if (date.col %in% unlist(purrr::map(raw.data.list, colnames))) {
     date.ranges <- raw.data.list %>% purrr::map(
       .f = ~ .x %>%
-        dplyr::mutate({{date.col}} := ifelse(!date.col %in% names(.), "", .data[[date.col]])) %>%
+        dplyr::mutate("{{date.col}}" := ifelse(!date.col %in% names(.), "", {{date.col}})) %>%
         dplyr::select(any_of(date.col)) %>%
         dplyr::filter(.data[[date.col]] != "") %>%
-        dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format)) %>%
+        dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), as.Date, format = date.format) %>%
+        # dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format)) %>%
         append(list(
           "Min" = min(.[[date.col]]), "Max" = max(.[[date.col]])
         ))
@@ -377,13 +379,17 @@ if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames))
   }) %>%
     purrr::set_names(names(raw.data.list))
   
-    raw.data.list <- purrr::map(raw.data.list, ~ (.x %>% dplyr::select(-tidyselect::any_of(id.var))))
-    
-      other.data.list <- purrr::map(other.data.list, ~ (.x %>% dplyr::select(-tidyselect::any_of(id.var))))
+  raw.data.list <-
+    purrr::map(raw.data.list, ~ (.x %>%
+                                   dplyr::select(-tidyselect::any_of(id.var))))
+  
+  other.data.list <- 
+    purrr::map(other.data.list, ~ (.x %>% 
+                                     dplyr::select(-tidyselect::any_of(id.var))))
    
 
 # Remove empty dataframes
-      test <- raw.data.list %>%
+      raw.data.list <- raw.data.list %>%
         purrr::discard(., ~ nrow(.) == 0) %>%
         purrr::map(.f = ~ .x %>%
                            dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), format, format = date.format))
@@ -663,23 +669,6 @@ for (a in 1:length(warning.list)) {
           strip.white = TRUE
         )
       
-      # domainItem.choice <-
-      #   utils::select.list(
-      #     c(domainItem.vector),
-      #     multiple = TRUE,
-      #     graphics = TRUE,
-      #     title = cat(
-      #       paste0(
-      #         "\nThe attribute '",
-      #         domainItem_value.table$Variable[b] ,
-      #         "' in the data file '",
-      #         names(raw.data.list[a]),
-      #         "' contains entry values not found in the data dictionary.\nSelect which, if any, to add to the domain item list in the data dictionary.\n"
-      #       )
-      #     )
-      #   )
-      
-      
       add.domainItem.app(
         domainItem_value.table$Variable[b],
         domainItem.vector,
@@ -720,6 +709,10 @@ for (a in 1:length(warning.list)) {
   dataType.table <-
     warn.table %>% dplyr::filter(Category == "dataType_RDatatype")
   
+   dataType.vector <- get0("dataType.vector", envir = asNamespace("mdJSONdictio"))
+   
+   datatype.rules <- get0("datatype.rules", envir = asNamespace("mdJSONdictio"))
+  
   if (nrow(dataType.table) != 0) {
     for (b in 1:nrow(dataType.table)) {
       detected.dataType <-
@@ -737,34 +730,22 @@ for (a in 1:length(warning.list)) {
                gregexpr("\\(.*?\\)", dataType.table$Message[b])
              )[[1]])[2]
       
-      dataType.choice <-
-        utils::select.list(
-          c("yes", "no"),
-          multiple = FALSE,
-          graphics = TRUE,
-          title = cat(
-            paste0(
-              "\nThe attribute '",
-              dataType.table$Variable[b] ,
-              "' in the data file '",
-              names(raw.data.list[a]),
-              "' has entry values with a different dataType (",
-              detected.dataType,
-              ") than indicated in the dictionary (",
-              dxnry.dataType,
-              ").\nWould you like to update the dataType in the dictionary?\n"
-            )
-          )
-        )
+      correct.dataType.app(
+        variable = dataType.table$Variable[b],
+        dxnry.dataType = dxnry.dataType,
+        detected.dataType = detected.dataType,
+        data = raw.data.list[[a]],
+        filename = names(raw.data.list[a])
+      )
       
-      if ("yes" %in% dataType.choice) {
+       if ("update" %in% dataType.choice) {
         input.dxnry <-
           mdJSONdictio::modify.mdJSON(
             x = input.dxnry,
             how = "update_attribute",
             attribute_codeName = dataType.table$Variable[b],
             attribute_allowNull = NULL,
-            attribute_dataType = detected.dataType,
+            attribute_dataType = dataType.choice,
             attribute_definition = NULL,
             attribute_units = NULL,
             attribute_unitsResolution = NULL,
@@ -1235,7 +1216,7 @@ raw.data.list %>% purrr::map(
 download.path <- "downloads/data"
 
 # Provide a directory path to write processed files
-processed.data.path <- "data-processed/to_archive/"
+# processed.data.path <- "data-processed/to_archive/"
 
 # Do you want to merge the data with an authoritative file?
 auth.merge <- FALSE
@@ -1270,6 +1251,10 @@ if (auth.merge == TRUE) {
         dplyr::mutate_if(is.character, ~ dplyr::na_if(., missing_values))
       
     }
+  } else {
+     add.data <-  data.table::rbindlist(raw.data.list, fill = TRUE)
+  }
+  
     
     # Import authoritative data file
     select.import.app(path = download.path, multiple = FALSE)
@@ -1289,7 +1274,7 @@ if (auth.merge == TRUE) {
     missing.cols <- add.data %>%
       dplyr::mutate_if(is.character, ~ dplyr::na_if(., c(""))) %>%
       purrr::discard(., ~ all(is.na(.))) %>%
-      colnames(.)[!colnames(.) %in% colnames(auth.data)] %>%
+      dplyr::select(colnames(.)[!colnames(.) %in% colnames(auth.data)]) %>%
       colnames()
     
     if(length(missing.cols)!=0) {
@@ -1301,9 +1286,6 @@ if (auth.merge == TRUE) {
       for (a in col.choice) {
         existing.cols <- colnames(auth.data)
         place.column.app(a, existing.cols)
-        
-        print(last)
-        print(loc.choice)
         
         if (last == TRUE) {
           auth.data <- auth.data %>% tibble::add_column(!!a := NA, .before = NULL)
@@ -1321,17 +1303,35 @@ if (auth.merge == TRUE) {
     
     
     #!!!# Evaluate changes
-    test <- summary(arsenal::comparedf(
-      auth.data %>% dplyr::mutate(across(
-        where(is.character), ~ dplyr::na_if(.x, "")
-      )),
-      new.data %>% dplyr::mutate(across(
-        where(is.character), ~ dplyr::na_if(.x, "")
-      ))
-    ))
+    old <- auth.data %>% 
+      dplyr::mutate(across(where(is.character), ~ dplyr::na_if(.x, "")))
     
-    test[["diffs.table"]]
+    new <- new.data %>% 
+      dplyr::mutate(across(where(is.character), ~ dplyr::na_if(.x, "")))
     
+
+#     compare.stats<- dataCompareR::locateMismatches(old, new)
+#     
+#     compare.stats<- dataCompareR::rCompare(old, new)
+#     compare.stats<- summary(compare.stats)
+
+        
+    compare.stats<- arsenal::comparedf(new, old)
+    compare.stats<- summary(compare.stats)
+    
+    comparison<- compareDF::compare_df(new, old, c("OccurenceID"))
+    
+    compareDF::create_output_table(
+      comparison,
+      file_name = "data-processed/comparison/temp.xlsx",
+      output_type = "xlsx",
+      limit = max(nrow(new), nrow(old))
+    ) 
+    
+    compare.df<- openxlsx::read.xlsx("data-processed/comparison/temp.xlsx")
+
+    compare.dfs.app(new, old, compare.df, compare.stats)
+
     
     # Versioning
     download.file.app(auth.filename, new.data)
@@ -1347,7 +1347,6 @@ if (auth.merge == TRUE) {
     )
     
   }
-}
 
 
 

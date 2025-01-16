@@ -16,7 +16,7 @@ place.column.app <- function(new.col, existing.cols) {
           shinyWidgets::pickerInput(
             "loc.choice",
             h5(strong(
-              paste0("Insert '", new.col, "' before which existing column?")
+              paste0("Insert '", new.col, "' before which column?")
             )),
             selected = NULL,
             choices =  existing.cols,

@@ -30,7 +30,7 @@ filter.df.app <- function(data.list, species.col, date.col, species, min.date, m
           if(length(species) != 0){
             shinyWidgets::pickerInput(
               "selected.species",
-              h5(strong("Select one or more species.")),
+              h5(strong("Select one or more species")),
               choices =  species,
               selected = species,
               multiple = TRUE,
@@ -41,7 +41,7 @@ filter.df.app <- function(data.list, species.col, date.col, species, min.date, m
              max.date != "0001-01-01"){
             dateRangeInput(
               "selected.dates",
-              h5(strong("Select a date range.")),
+              h5(strong("Select a date range")),
               start = min.date,
               end = max.date,
               min = min.date,

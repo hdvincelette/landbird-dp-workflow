@@ -1,7 +1,7 @@
 
 
 
-select.value.app <- function(variable, invalid.values, ref.dxnry) {
+add.value.app <- function(variable, invalid.values, ref.dxnry) {
   runGadget(
     app = shinyApp(
       ui <- bootstrapPage(
