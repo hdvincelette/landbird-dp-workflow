@@ -2,11 +2,13 @@
 add.column.app <- function(missing.cols, add.data) {
   runGadget(
     app = shinyApp(
-      ui <- bootstrapPage(
+      ui <- 
+        # page(
+        bootstrapPage(
         tags$head(tags$style(HTML("pre { overflow: auto; word-wrap: normal; }"))),
         theme = theme.selection,
         shinyjs::useShinyjs(),
-        input_dark_mode(id = "dark_mode", mode = "light"),
+        # input_dark_mode(id = "dark_mode", mode = "light"),
         shinyjs::useShinyjs(),
         br(),
         navset_tab(nav_panel(
@@ -48,7 +50,9 @@ add.column.app <- function(missing.cols, add.data) {
                                        DT::DTOutput('col.view', height = "375px"))
                       ))))
         
-        )), 
+        )
+        # )
+      ), 
       
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
@@ -64,7 +68,10 @@ add.column.app <- function(missing.cols, add.data) {
           pageLength = 100,
           searchHighlight = TRUE,
           columnDefs = list(list(width = "500px", className = 'dt-left', targets = "_all")),
-          scrollX = TRUE
+          scrollX = TRUE,
+          language = list(
+            search = "<i class='glyphicon glyphicon-search'></i>"
+          )
         ))
         
         output$col.summary =

@@ -1,15 +1,18 @@
 
 
 
-add.value.app <- function(variable, invalid.values, ref.dxnry) {
+choose.value.app <- function(variable, invalid.values, ref.dxnry) {
   runGadget(
     app = shinyApp(
-      ui <- bootstrapPage(
+      ui <- page(
+        bootstrapPage(
         tags$head(tags$style(HTML("pre { overflow: auto; word-wrap: normal; }"))),
         theme = theme.selection,
         shinyjs::useShinyjs(),
-        input_dark_mode(id = "dark_mode", mode = "light"),
+        # input_dark_mode(id = "dark_mode", mode = "light"),
         shinyjs::useShinyjs(),
+        br(),
+        column(width = 12, uiOutput("dfmsg")), 
         br(),
         column(
           width = 12,
@@ -19,12 +22,10 @@ add.value.app <- function(variable, invalid.values, ref.dxnry) {
                    "' contains entry values not found in the data dictionary"
             )
           )),
-          shinyWidgets::prettyCheckboxGroup(
+          checkboxGroupInput(
             "selected.values",
             h5("Select values to correct in the data"),
-            choices =  invalid.values,
-            outline = TRUE,
-            status = "warning"
+            choices =  invalid.values
           ),
           actionButton("action", "Submit"),
           br(),
@@ -34,13 +35,35 @@ add.value.app <- function(variable, invalid.values, ref.dxnry) {
           htmlOutput("defs"),
           br(),
           h5(strong("Entry values")),
-          DT::DTOutput('domainItems', height = "375px")
+          tags$style(
+            HTML(
+              ".dataTables_wrapper .dataTables_length,
+                                         .dataTables_wrapper .dataTables_filter,
+                                         .dataTables_wrapper .dataTables_info,
+                                         .dataTables_wrapper .dataTables_processing,
+                                         .dataTables_wrapper .dataTables_paginate {
+                                           color:#ffffff;
+                                         }
+                                         thead {
+                                           color:#ffffff;
+                                         }
+                                         tbody {
+                                           color:#ffffff;
+                                         }"
+              
+            )
+          ), 
+          DT::DTOutput('domainItems')
         ),
         
-      ), 
+      )), 
       
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
+        
+        output$dfmsg <- renderUI(
+          HTML(paste("<em>",names(raw.data.list[a]),"</em>"))
+        )
         
         selected.values <- reactive(input$selected.values)
         

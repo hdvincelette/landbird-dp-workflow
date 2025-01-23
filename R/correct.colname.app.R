@@ -2,12 +2,15 @@
 correct.colname.app <- function(data, invalid.col, unused.cols) {
   runGadget(
     app = shinyApp(
-      ui <- bootstrapPage(
+      ui <- 
+        bootstrapPage(
         tags$head(tags$style(HTML("pre { overflow: auto; word-wrap: normal; }"))),
         theme = theme.selection,
         shinyjs::useShinyjs(),
-        input_dark_mode(id = "dark_mode", mode = "light"),
+        # input_dark_mode(id = "dark_mode", mode = "light"),
         shinyjs::useShinyjs(),
+        br(),
+        column(width = 12, uiOutput("dfmsg")), 
         br(),
         navset_tab(nav_panel(
           strong("Choice"),
@@ -57,8 +60,7 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
             br(),
             span(textOutput("wrn"), style = "color:red"),
             br()
-          )
-        ),
+        )),
         nav_panel(strong("Review"), 
                   navset_card_pill(
                     full_screen = TRUE,
@@ -72,6 +74,24 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
                               fillable = TRUE,
                               column(width = 12,
                                      br(),
+                                     tags$style(
+                                       HTML(
+                                         ".dataTables_wrapper .dataTables_length,
+                                         .dataTables_wrapper .dataTables_filter,
+                                         .dataTables_wrapper .dataTables_info,
+                                         .dataTables_wrapper .dataTables_processing,
+                                         .dataTables_wrapper .dataTables_paginate {
+                                           color:#ffffff;
+                                         }
+                                         thead {
+                                           color:#ffffff;
+                                         }
+                                         tbody {
+                                           color:#ffffff;
+                                         }"
+                                         
+                                       )
+                                     ), 
                                      DT::DTOutput('col.view', height = "375px"))
                     )))
         
@@ -79,6 +99,10 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
       
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
+        
+        output$dfmsg <- renderUI(
+          HTML(paste("<em>",names(raw.data.list[a]),"</em>"))
+        )
         
         output$col.view = DT::renderDataTable({
           data %>% dplyr::select(tidyselect::all_of(invalid.col))
@@ -88,7 +112,10 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
           pageLength = 100,
           searchHighlight = TRUE,
           columnDefs = list(list(width = "500px", className = 'dt-left', targets = "_all")),
-          scrollX = TRUE
+          scrollX = TRUE,
+          language = list(
+            search = "<i class='glyphicon glyphicon-search'></i>"
+          )
         ))
         
         output$col.summary =
@@ -118,7 +145,7 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
         
         output$wrn <- renderText({
           if (col.choice() %in%  colnames(data) & decision() %in% "rename") {
-            paste0("Error: '", col.choice(), "' is already present in the data.")
+            paste0("Error: '", col.choice(), "' is already present in the data")
           }
         })
         

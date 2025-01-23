@@ -1,98 +1,180 @@
 
-select.import.app <- function(path, pattern, multiple) {
-  if (missing(path)) {
-    path = getwd()
+select.import.app <- function(dir, ext, multiple) {
+  if (missing(dir)) {
+    dir = "/*"
+  } else {
+    dir = paste0(gsub("/$","",dir),"/*")
   }
-  if (missing(pattern)) {
-    pattern = NULL
-  } else{
-    pattern = paste0(pattern, collapse = "|")
-  }
+  if (missing(ext)) {
+    ext = ".*"
+  } 
   if (missing(multiple)) {
     multiple = TRUE
   } 
   
-  files <-
-    sort(list.files(
-      path = path,
-      pattern = pattern,
-      full.names = FALSE,
-      recursive = FALSE
-    ))
-  
-  files <- files[grepl(".xlsx$|.xls$|.csv$|.json$|.gpx$|.kml$", files)]
-  
-  if (length(files >= 1)) {
-    runGadget(
-      app = shinyApp(
-        ui <- bootstrapPage(
+  runGadget(
+    app = shinyApp(
+      ui <-
+        fluidPage(
+        bootstrapPage(
           theme = theme.selection,
           shinyjs::useShinyjs(),
           br(),
           column(
             width = 12,
-            conditionalPanel(
-              condition = "output.multiple==true",
-              shinyWidgets::prettyCheckboxGroup(
-              "selected.files",
-              h5(strong("Select file(s) to import.")),
-              choices =  files,
-              shape = "square"
-            )),
-            conditionalPanel(
-              condition = "output.multiple == false",
-              shinyWidgets::prettyRadioButtons(
-                "selected.files",
-                h5(strong("Select a file to import.")),
-                choices =  files,
-                shape = "square",
-                status = "default"
-              )),
-            actionButton("action", "Submit", width = "100px"),
-            dipsaus::actionButtonStyled("reset", "Reset", width = "100px", type =
-                                          "primary"),
+            h4(strong("Select a file to import")),
+            htmlOutput("ext"),
             br(),
-            br()
-            
-          )
+            textInput("path", ""),
+            div(
+              style = "display: inline-block; vertical-align:center; horizontal-align:center",
+              class = "row-fluid",
+              actionButton("browse", "Browse files", width = "150px"),
+              actionButton("action", "Import", width = "150px")
+            ),
+            br(),
+            br(),
+              tags$style(
+                HTML(
+                  ".dataTables_wrapper .dataTables_length,
+              .dataTables_wrapper .dataTables_filter,
+              .dataTables_wrapper .dataTables_info,
+              .dataTables_wrapper .dataTables_processing,
+              .dataTables_wrapper .dataTables_paginate {
+                                        color:#ffffff;
+                                         }
+                                         thead {
+                                           color:#ffffff;
+                                         }
+                                         tbody {
+                                           color:#ffffff;
+                                         }"
+                  
+                )
+              ),
+            htmlOutput("msg2"),
+            DT::DTOutput('content.df', height = "200px"),
+            br(),
+            htmlOutput("wrn")
+            ),
+)
         ),
+      
+      server <- function(input, output, session) {
         
-        server <- function(input, output, session) {
+        pattern <- reactive(input$pattern)
+        path <- reactive(input$path)
+        
+        shinyjs::hide("path")
+        
+        output$ext <- renderUI({
+          str <-
+            paste0(ext, collapse = ", ")
           
-          output$multiple <- reactive({
-            multiple
-          })
+          if (length(ext) > 1 || ext != ".*") {
+            HTML(paste0("Accepted formats: ", str))
+          }
+        })
+        
+        
+        content <- reactive({
+          strsplit(path(), split = ",", fixed = TRUE)[[1]] %>%
+            .[seq_along(.) %in%
+                which(stringr::str_detect(., stringr::regex(paste(ext, collapse = "|"), 
+                                                            ignore_case = T)))] %>%
+            fs::file_info() %>%
+            dplyr::select(path, size, permissions, modification_time) %>%
+            tibble::add_column(filename = basename(.$path), .after = 1) %>%
+            dplyr::mutate(path = dirname(.$path)) %>%
+            dplyr::mutate(permissions = as.character(fs::fs_perms(permissions)))
+        })
+
+        observe({
+          if (input$browse == 0)
+            return()
           
-          outputOptions(output, 'multiple', suspendWhenHidden=FALSE)
+          output$content.df = DT::renderDataTable({
+            content()
+          }
+          , rownames = FALSE, options = list(
+            dom = 't',
+            rowCallback = htmlwidgets::JS("function(r,d) {$(r).attr('height', '30px')}"),
+            lengthMenu = c(100, 200),
+            pageLength = 100,
+            columnDefs = list(list(
+              width = "20px",
+              className = 'dt-left',
+              targets = "_all"
+            )),
+            scrollX = TRUE
+          )
+          )
+        })
+        
+        output$msg2 <- renderUI({
+          if (input$browse != 0) {
+            HTML(paste("<b>Files: </b>"))
+          }
+          
+        })
+        
+        
+        output$wrn <- renderUI({
+          invalid.paths <- strsplit(path(), 
+                                    split = ",", fixed = TRUE)[[1]] %>%
+            .[seq_along(.) %in%
+                which(stringr::str_detect(., stringr::regex(paste(ext, collapse = "|"), ignore_case = T)) == FALSE)] %>%
+            basename(.)
             
-          observeEvent(input$action, stopApp())
+          if (input$browse != 0 & 
+              length(invalid.paths) >=1) {
+            str <-
+              paste0(invalid.paths, collapse = "<br>")
+            
+            HTML(
+              paste0(
+                "<em>The following files are an incompatible format:<br>",
+                str,
+                "</em>",
+                collapse="<br>"
+              )
+            )
+            
+            
+          }
+        })
+      
+        observeEvent(input$path, {
+          if (nrow(content()) == 0) {
+            shinyjs::disable("action")
+          } else {
+            shinyjs::enable("action")
+          }
+        })
+        
+        
+        observeEvent(input$action, stopApp())
+        
+        observe({
+          if (input$browse == 0)
+            return()
+  
+          updateTextInput(session,
+                          "path",
+                          value = utils::choose.files(multi = multiple, default = dir))
           
-          decision <- reactive(input$decision)
-          
-          selected.files <- reactive(input$selected.files)
-          
-          observeEvent(input$reset, {
-            shinyjs::reset("selected.files")
-          })
-          
-          observe({
-            my_global_env <- globalenv()
-            my_global_env$selected.files <- input$selected.files
-          })
-        }
-      ),
-      viewer = paneViewer(minHeight  = 500)
-    )
-  } else {
-    selected.files <- character(0)
-    message(cat(
-      paste0(
-        "No compatible files found at '",
-        path,
-        "'.\nSupported formats include xlsx, .xls, csv, json, gpx, and kml."
-      )
-    ))
-  }
+        })
+        
+        
+        observe({
+          my_global_env <- globalenv()
+          my_global_env$selected.files <- content()
+        })
+      }
+    ),
+    viewer = paneViewer(minHeight  = 500)
+  )
+  
 }
 
 

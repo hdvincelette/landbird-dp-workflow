@@ -5,12 +5,15 @@
 correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
   runGadget(
     app = shinyApp(
-      ui <- bootstrapPage(
+      ui <- 
+        bootstrapPage(
         tags$head(tags$style(HTML("pre { overflow: auto; word-wrap: normal; }"))),
         theme = theme.selection,
         shinyjs::useShinyjs(),
-        input_dark_mode(id = "dark_mode", mode = "light"),
+        # input_dark_mode(id = "dark_mode", mode = "light"),
         shinyjs::useShinyjs(),
+        br(),
+        column(width = 12, uiOutput("dfmsg")),
         br(),
         navset_tab(nav_panel(
           strong("Bulk edit"),
@@ -22,12 +25,12 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
                 invalid.value,
                 "' is an invalid entry for '",
                 variable,
-                "'."
+                "'"
               )
             )),
             shinyWidgets::radioGroupButtons(
               "decision",
-              h5(strong("Choose an option.")),
+              h5(strong("Choose an option")),
               choices =  c("keep", "correct","replace"),
               direction = "vertical",
               width = "200px",
@@ -65,7 +68,7 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
             actionButton("action", "Submit"),
             br(),
             br(),
-            strong(textOutput("wrn1"))
+            textOutput("wrn1")
           ),
         ), 
         nav_panel(strong("Manual edit"), 
@@ -74,11 +77,7 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
                     br(),
                     tags$head(tags$style(
                       HTML(
-                        "#refresh {
-                        color: #696969;
-                        background-color: white;
-                        box-shadow: 3px 3px 3px 3px white;
-                        }
+                        "
                         #DataTables_Table_0_filter {
                         float: left;
                         }
@@ -97,10 +96,26 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
                        }
                        table.dataTable tbody tr:hover, table.dataTable tbody tr:hover td {
                        background-color: #c4dfcc !important;
+                        }
+                        .dataTables_wrapper .dataTables_length,
+                        .dataTables_wrapper .dataTables_filter,
+                        .dataTables_wrapper .dataTables_filter label,
+                        .dataTables_wrapper .dataTables_info,
+                        .dataTables_wrapper .dataTables_processing,
+                        .dataTables_wrapper .dataTables_paginate {color:#ffffff;}
+                                         thead {color:#ffffff;}
+                                         tbody {color:#ffffff;}
+                        #refresh{
+                        color: white;
+                        background-image: none;
+                        background-color: grey;
+                        -webkit-box-shadow: 0px;
+                        box-shadow: 0px;
+                        border:0px;
                         }"
                       )
                     )), 
-                    DT::DTOutput('df', height = "350px"),
+                    DT::DTOutput('df',  height = "325px"),
                     br(),
                     shinyWidgets::actionBttn(
                       'refresh',
@@ -115,6 +130,10 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
       
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
+        
+        output$dfmsg <- renderUI(
+          HTML(paste("<em>",names(raw.data.list[a]),"</em>"))
+        )
       
         decision <- reactive(input$decision)
         value.choice <- reactive(input$value.choice)
@@ -131,13 +150,18 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
         data
         }, rownames = TRUE, 
         class = "display nowrap",
-        editable = list(target = "cell", disable = list(columns =c(which(colnames(input.data)!=variable)))),
+        editable = list(target = "cell"
+                        # , disable = list(columns =c(which(colnames(input.data)!=variable)))
+                        ),
         options = list(
           dom = 'ft',
           pageLength = nrow(data),
           autoWidth = TRUE,
           searchHighlight = TRUE,
-          scrollX = TRUE
+          scrollX = TRUE,
+          language = list(
+            search = "<i class='glyphicon glyphicon-search'></i>"
+          )
         ))
         
         proxy<- DT::dataTableProxy("df")
@@ -175,12 +199,12 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
 
         
         output$wrn1 <- renderText({
-          HTML(paste("Please note, all manual edits will be applied before bulk edits."))
+          HTML(paste("Please note, all manual edits will be applied before bulk edits"))
         })
         
         output$wrn2 <- renderText({
           if (decision() == "correct" & value.choice() == "") {
-            paste("Warning: '", invalid.value, "' will be replaced with NA values.")
+            paste("Warning: '", invalid.value, "' will be replaced with NA values")
           }
         })
         

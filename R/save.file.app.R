@@ -1,13 +1,15 @@
 save.file.app <- function(auth.filename, new.data) {
   runGadget(
     app = shinyApp(
-      ui <- bootstrapPage(
+      ui <- 
+        page(
+          bootstrapPage(
         tags$head(tags$style(
           HTML("pre { overflow: auto; word-wrap: normal; }")
         )),
         theme = theme.selection,
         shinyjs::useShinyjs(),
-        input_dark_mode(id = "dark_mode", mode = "light"),
+        # input_dark_mode(id = "dark_mode", mode = "light"),
         shinyjs::useShinyjs(),
         br(),
         navset_tab(nav_panel(
@@ -51,7 +53,7 @@ save.file.app <- function(auth.filename, new.data) {
                  h5(strong("")), 
                  DT::DTOutput('df', height = "350px"))
         ))
-      ), 
+      )), 
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
         

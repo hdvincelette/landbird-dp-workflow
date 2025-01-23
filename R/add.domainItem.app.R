@@ -3,11 +3,13 @@
 add.domainItem.app <- function(variable, invalid.values, ref.dxnry) {
   runGadget(
     app = shinyApp(
-      ui <- bootstrapPage(
+      ui <- 
+        page(
+          bootstrapPage(
         tags$head(tags$style(HTML("pre { overflow: auto; word-wrap: normal; }"))),
         theme = theme.selection,
         shinyjs::useShinyjs(),
-        input_dark_mode(id = "dark_mode", mode = "light"),
+        # input_dark_mode(id = "dark_mode", mode = "light"),
         shinyjs::useShinyjs(),
         br(),
         column(
@@ -18,12 +20,10 @@ add.domainItem.app <- function(variable, invalid.values, ref.dxnry) {
                    "' contains entry values not found in the data dictionary"
             )
           )),
-          shinyWidgets::prettyCheckboxGroup(
+          checkboxGroupInput(
             "domainItem.choice",
             h5("Select values to add to the dictionary"),
-            choices =  invalid.values,
-            outline = TRUE,
-            status = "warning"
+            choices =  invalid.values
           ),
           actionButton("action", "Submit"),
           br(),
@@ -33,10 +33,28 @@ add.domainItem.app <- function(variable, invalid.values, ref.dxnry) {
           htmlOutput("defs"),
           br(),
           h5(strong("Entry values")),
+          tags$style(
+            HTML(
+              ".dataTables_wrapper .dataTables_length,
+              .dataTables_wrapper .dataTables_filter,
+              .dataTables_wrapper .dataTables_info,
+              .dataTables_wrapper .dataTables_processing,
+              .dataTables_wrapper .dataTables_paginate {
+                                        color:#ffffff;
+                                         }
+                                         thead {
+                                           color:#ffffff;
+                                         }
+                                         tbody {
+                                           color:#ffffff;
+                                         }"
+              
+            )
+          ),
           DT::DTOutput('domainItems', height = "375px")
         ),
         
-      ), 
+      )), 
       
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
@@ -61,8 +79,7 @@ add.domainItem.app <- function(variable, invalid.values, ref.dxnry) {
             dplyr::filter(codeName == domainItem_value.table$Variable[b],
                           domainItem_value != "dataField") %>%
             dplyr::select("domainItem_value", "definition")
-        }, rownames = FALSE, 
-        options = list(
+        }, rownames = FALSE, options = list(
           dom = 't',
           lengthChange = FALSE,
           autoWidth = FALSE,
@@ -70,7 +87,8 @@ add.domainItem.app <- function(variable, invalid.values, ref.dxnry) {
             "function(thead, data, start, end, display){",
             "  $(thead).remove();",
             "}"
-          )
+          ),
+          language = list(search = "<i class='glyphicon glyphicon-search'></i>")
         ))
         
         observe({

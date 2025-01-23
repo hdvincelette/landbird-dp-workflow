@@ -4,9 +4,10 @@
 merge.df.app <- function(data.list) {
   runGadget(
     app = shinyApp(
-      ui <- bootstrapPage(
+      ui <- 
+        bootstrapPage(
         theme = theme.selection,
-        input_dark_mode(id = "dark_mode", mode = "light"),
+        # input_dark_mode(id = "dark_mode", mode = "light"),
         shinyjs::useShinyjs(),
         br(),
         navset_tab(nav_panel(
@@ -30,11 +31,31 @@ merge.df.app <- function(data.list) {
           strong("Compare"), 
           column(width = 12, 
                  h5(strong("Multi-class variables.")), 
+                 tags$style(
+                   HTML(
+                     ".dataTables_wrapper .dataTables_length,
+                     .dataTables_wrapper .dataTables_filter,
+                     .dataTables_wrapper .dataTables_info,
+                     .dataTables_wrapper .dataTables_processing,
+                     .dataTables_wrapper .dataTables_paginate {
+                       color:#ffffff;
+                     }
+                     thead {
+                       color:#ffffff;
+                     }
+                     tbody {
+                       color:#ffffff;
+                     }"
+                     
+                   )
+                 ), 
                  DT::DTOutput('col.compare',
                               height = "375px"
                  ))
-        ))
-      ),
+        )
+        )
+      )
+      ,
       
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
@@ -61,7 +82,10 @@ merge.df.app <- function(data.list) {
           searchHighlight = TRUE,
           autoWidth = TRUE,
           columnDefs = list(list(width = "150px", targets = "_all")),
-          scrollX = TRUE
+          scrollX = TRUE,
+          language = list(
+            search = "<i class='glyphicon glyphicon-search'></i>"
+          )
         ))
         
         

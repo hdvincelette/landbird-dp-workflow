@@ -3,11 +3,12 @@
 add.codeName.app <- function(data, filename, missing.variables) {
   runGadget(
     app = shinyApp(
-      ui <- bootstrapPage(
+      ui <- 
+        bootstrapPage(
         tags$head(tags$style(HTML("pre { overflow: auto; word-wrap: normal; }"))),
         theme = theme.selection,
         shinyjs::useShinyjs(),
-        input_dark_mode(id = "dark_mode", mode = "light"),
+        # input_dark_mode(id = "dark_mode", mode = "light"),
         shinyjs::useShinyjs(),
         br(),
         navset_tab(nav_panel(
@@ -21,12 +22,10 @@ add.codeName.app <- function(data, filename, missing.variables) {
                 "' contains variables not found in the data dictionary"
               )
             )),
-            shinyWidgets::prettyCheckboxGroup(
+            checkboxGroupInput(
               "codeName.choice",
               h5("Select variables to add to the dictionary"),
-              choices =  missing.variables,
-              outline = TRUE,
-              status = "warning"
+              choices =  missing.variables
             ),
             actionButton("action", "Submit"),
             br(),
@@ -62,7 +61,21 @@ add.codeName.app <- function(data, filename, missing.variables) {
                        }
                        table.dataTable tbody tr:hover, table.dataTable tbody tr:hover td {
                        background-color: #c4dfcc !important;
-                        }"
+                        }
+                        .dataTables_wrapper .dataTables_length,
+                                         .dataTables_wrapper .dataTables_filter,
+                                         .dataTables_wrapper .dataTables_filter label,
+                                         .dataTables_wrapper .dataTables_info,
+                                         .dataTables_wrapper .dataTables_processing,
+                                         .dataTables_wrapper .dataTables_paginate {
+                                           color:#ffffff;
+                                         }
+                                         thead {
+                                           color:#ffffff;
+                                         }
+                                         tbody {
+                                           color:#ffffff;
+                                         }"
                       )
                     )),
                     DT::DTOutput('df', height = "350px")
@@ -84,7 +97,10 @@ add.codeName.app <- function(data, filename, missing.variables) {
           pageLength = nrow(data),
           autoWidth = TRUE,
           searchHighlight = TRUE,
-          scrollX = TRUE
+          scrollX = TRUE,
+          language = list(
+            search = "<i class='glyphicon glyphicon-search'></i>"
+          )
         ))
       
       

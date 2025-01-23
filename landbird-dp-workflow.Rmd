@@ -51,7 +51,7 @@ setwd(dirname(rstudioapi::documentPath()))
 rstudioapi::filesPaneNavigate(getwd())
 devtools::load_all()
 
-theme.selection<- shinythemes::shinytheme("simplex")
+theme.selection<- shinythemes::shinytheme("superhero")
 
 # Install GitHub packages
 ## Uninstall packages (if re-installing)
@@ -107,24 +107,15 @@ Paste the names of the project folder, data dictionary(ies), and data entry temp
 # Provide the relevent information
 RDR.keyword <- "Eareckson"
 
-data.keyword <- "survey"
-data.subfolder <- "data/final_data"
-
-template.keyword <- NA
-template.subfolder <- NA
-
-dictionary.keyword <- "mdeditor"
-dictionary.subfolder <- "metadata"
-
 ```
 
 Now run the following code chunk.
 
 ```{r include=FALSE, results=FALSE}
 
+
 if(dir.exists(paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/"))==FALSE) {
   stop("Check the VPN connection and try again.")
-  
 }
 
 project.folder <- dir(
@@ -147,51 +138,28 @@ if(length(project.folder)>1) {
   )
 }
 
+select.download.app(
+  dir = paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/", project.folder),
+  ext = ".*",
+  multiple = TRUE
+)
 
-keywords <- c(data.keyword, 
-              template.keyword, 
-              dictionary.keyword)
-subfolders <- c(data.subfolder, 
-                template.subfolder, 
-                dictionary.subfolder)
-
-for(x in seq_along(keywords)) {
-  if (length(keywords[x]) != 0) {
-    if (is.na(keywords[x]) == FALSE) {
-      
-      select.download.app(
-        path = paste0(
-          "//ifw7ro-file.fws.doi.net/datamgt/mbm/",
-          project.folder,
-          "/",
-          subfolders[x]
-        ),
-        pattern = keywords[x]
-      )
-      
-      if (download.dir$root == "R Project") {
-        root.dir <- dirname(rstudioapi::documentPath())
-      } else {
-        root.dir <- shinyFiles::getVolumes()()[which(stringr::str_detect(fs::path_home(), shinyFiles::getVolumes()()))]
-      }
-      
-      download.path <- paste0(root.dir, paste(unlist(download.dir[["path"]]), collapse = "/"))
-      
-      
-      for (y in selected.files) {
-        file.path <- file.paths[which(basename(file.paths) %in% y)]
-        downloader::download(
-          url = paste0("File:", file.path),
-          destfile = file.path(download.path, basename(file.path)),
-          method = "auto",
-          mode = "wb",
-          quiet = FALSE
-        )
-      }
-
-    }
-  }
+for (y in 1:nrow(selected.files)) {
+  downloader::download(
+    url =
+      paste0(
+        "File://",
+        gsub("^[[:punct:][:space:]]+", "", selected.files$path[y]),
+        "/",
+        selected.files$filename[1]
+      ),
+    destfile = file.path(selected.dir, selected.files$filename[y]),
+    method = "auto",
+    mode = "wb",
+    quiet = FALSE
+  )
 }
+
 
 
 ```
@@ -215,9 +183,6 @@ Before beginning, make sure all entered data and data dictionary(ies) are saved 
 ### Provide inputs
 
 ```{r}
-# Provide directory paths for the data file(s) and dictionary
-raw.data.path <- "data-raw/"
-dictionary.path <- "downloads/dictionaries"
 
 # Provide the relevant information (if applicable)
 missing_values<- c(NA)
@@ -233,25 +198,31 @@ time.format <- "%H:%M"
 
 ```{r}
 
-select.import.app(path = raw.data.path, multiple = TRUE)
+
+select.import.app(dir = paste0(dirname(rstudioapi::documentPath()),"/data-raw"), 
+                  ext = c("txt", "csv", "xls*"),
+                  multiple = TRUE)
 
 raw.data.list <- importer(
-  path = raw.data.path,
-  files = selected.files,
+  path = selected.files$path[1],
+  files = selected.files$filename,
   column.format = list(
     c(column = date.col, format = date.format),
     c(column = time.col, format = time.format)
   )
 )
 
-data.filenames<- tools::file_path_sans_ext(selected.files)
+data.filenames<- tools::file_path_sans_ext(selected.files$filename)
 
-select.import.app(path = dictionary.path, multiple = FALSE)
+select.import.app(dir = paste0(dirname(rstudioapi::documentPath()),
+                               "/downloads/dictionaries"),
+                  ext = c("json","csv", "xls*"), 
+                  multiple = FALSE)
 
-ref.dictionary <- importer(path = dictionary.path,
-                            files = selected.files)[[1]]
+ref.dictionary <- importer(path = selected.files$path[1],
+                            files = selected.files$filename)[[1]]
 
-dxnry.filename<- tools::file_path_sans_ext(selected.files)
+dxnry.filename<- tools::file_path_sans_ext(selected.files$filename)
 
 ```
 
@@ -528,7 +499,7 @@ for (a in 1:length(raw.data.list)) {
       
       variable <- domainItem_value.table$Variable[b]
       
-      add.value.app(variable, invalid.values, ref.dxnry)
+      choose.value.app(variable, invalid.values, ref.dxnry)
       
       #!!# temporary patch
       if ("" %in% selected.values) {

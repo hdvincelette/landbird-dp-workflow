@@ -21,7 +21,8 @@ filter.df.app <- function(data.list, species.col, date.col, species, min.date, m
   
   runGadget(
     app = shinyApp(
-      ui <- bootstrapPage(
+      ui <- 
+        bootstrapPage(
         theme = theme.selection,
         shinyjs::useShinyjs(),
         br(),

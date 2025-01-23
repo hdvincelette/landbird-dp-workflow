@@ -7,13 +7,14 @@ correct.dataType.app<- function(variable,
                                 data){
   runGadget(
     app = shinyApp(
-      ui <- bootstrapPage(
+      ui <- 
+        bootstrapPage(
         tags$head(tags$style(
           HTML("pre { overflow: auto; word-wrap: normal; }")
         )),
         theme = theme.selection,
         shinyjs::useShinyjs(),
-        input_dark_mode(id = "dark_mode", mode = "light"),
+        # input_dark_mode(id = "dark_mode", mode = "light"),
         shinyjs::useShinyjs(),
         br(),
         navset_tab(
@@ -28,7 +29,7 @@ correct.dataType.app<- function(variable,
               )),
               uiOutput("msg"),
               br(),
-              shinyWidgets::radioGroupButtons(
+              radioButtons(
                 "decision",
                 h5("Choose an option"),
                 choices =  c("keep", "update"),
@@ -73,6 +74,24 @@ correct.dataType.app<- function(variable,
                                 fillable = TRUE,
                                 column(width = 12,
                                        br(),
+                                       tags$style(
+                                         HTML(
+                                          ".dataTables_wrapper .dataTables_length,
+                                         .dataTables_wrapper .dataTables_filter,
+                                         .dataTables_wrapper .dataTables_info,
+                                         .dataTables_wrapper .dataTables_processing,
+                                         .dataTables_wrapper .dataTables_paginate {
+                                           color:#ffffff;
+                                         }
+                                         thead {
+                                           color:#ffffff;
+                                         }
+                                         tbody {
+                                           color:#ffffff;
+                                         }"
+                                           
+                                         )
+                                       ),
                                        DT::DTOutput('col.view', height = "375px"))
                       )))
           )
@@ -93,6 +112,9 @@ correct.dataType.app<- function(variable,
             "function(thead, data, start, end, display){",
             "  $(thead).remove();",
             "}"
+          ),
+          language = list(
+            search = "<i class='glyphicon glyphicon-search'></i>"
           )
         ))
         

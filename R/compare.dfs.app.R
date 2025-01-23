@@ -3,15 +3,15 @@ compare.dfs.app <- function(df1, df2, compare.df, compare.stats) {
   runGadget(
     app = shinyApp(
       ui <- 
+        page(
         bootstrapPage(
         tags$head(tags$style(
           HTML("pre { overflow: auto; word-wrap: normal; }")
         )),
-        # theme = theme.selection,
+        theme = theme.selection,
         shinyjs::useShinyjs(),
-        input_dark_mode(id = "dark_mode", mode = "light"),
-        shinyjs::useShinyjs(),
-        page_fixed(
+        br(),
+        # input_dark_mode(id = "dark_mode", mode = "light"),
         column(width = 12, navset_tab(
           nav_panel(strong("View")),
           nav_panel(
