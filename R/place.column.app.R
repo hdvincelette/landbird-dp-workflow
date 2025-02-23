@@ -2,7 +2,7 @@
 place.column.app <- function(new.col, existing.cols) {
   runGadget(
     app = shinyApp(
-      ui <- page(bootstrapPage(
+      ui <- bootstrapPage(
         tags$head(tags$style(
           HTML("pre { overflow: auto; word-wrap: normal; }")
         )),
@@ -38,7 +38,7 @@ place.column.app <- function(new.col, existing.cols) {
           br()
         )
         
-      )), 
+      ), 
       
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
