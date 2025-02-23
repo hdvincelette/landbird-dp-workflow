@@ -18,7 +18,6 @@ merge.df.app <- function(data.list) {
               "selected.df",
               h5(strong("Select tables to combine.")),
               choices =  names(data.list),
-              selected = names(data.list),
               direction = "vertical",
               checkIcon = list(yes = icon("ok", lib = "glyphicon"))
             ),
@@ -77,8 +76,8 @@ merge.df.app <- function(data.list) {
             tibble::tibble(variable = character())
           }
         }, rownames = FALSE, options = list(
-          lengthMenu = c(5, 10, 25, 50, 100),
-          pageLength = 100,
+          dom = 'ft',
+          pageLength = nrow(data),
           searchHighlight = TRUE,
           autoWidth = TRUE,
           columnDefs = list(list(width = "150px", targets = "_all")),
