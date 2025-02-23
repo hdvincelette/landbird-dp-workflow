@@ -66,7 +66,7 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
                     full_screen = TRUE,
                     nav_panel(
                       fillable = TRUE,
-                      strong("Summarize"),
+                      strong("Summary"),
                       column(width = 12,
                              br(),
                              tableOutput("col.summary"))), 
@@ -92,7 +92,7 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
                                          
                                        )
                                      ), 
-                                     DT::DTOutput('col.view', height = "375px"))
+                                     DT::DTOutput('col.view', height = "350px"))
                     )))
         
         )), 
@@ -108,8 +108,8 @@ correct.colname.app <- function(data, invalid.col, unused.cols) {
           data %>% dplyr::select(tidyselect::all_of(invalid.col))
         }, rownames = FALSE, options = list(
           rowCallback = htmlwidgets::JS("function(r,d) {$(r).attr('height', '30px')}"),
-          lengthMenu = c(5, 10, 25, 50, 100),
-          pageLength = 100,
+          dom = 'ft',
+          pageLength = nrow(data),
           searchHighlight = TRUE,
           columnDefs = list(list(width = "500px", className = 'dt-left', targets = "_all")),
           scrollX = TRUE,
