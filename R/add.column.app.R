@@ -3,13 +3,46 @@ add.column.app <- function(missing.cols, add.data) {
   runGadget(
     app = shinyApp(
       ui <- 
-        # page(
         bootstrapPage(
         tags$head(tags$style(HTML("pre { overflow: auto; word-wrap: normal; }"))),
         theme = theme.selection,
         shinyjs::useShinyjs(),
         # input_dark_mode(id = "dark_mode", mode = "light"),
         shinyjs::useShinyjs(),
+        tags$style(
+          HTML(
+            "table.dataTable tbody tr.selected td,
+                       table.dataTable tbody tr.selected td,
+                       table.dataTable tbody td.selected {
+                       border-top-color: #bcbcbc !important;
+                       box-shadow: inset 0 0 0 9999px #bcbcbc !important;
+                       color: black;
+                       }
+                       table.dataTable tbody tr:active td {
+                       background-color: #bcbcbc !important;
+                       }
+                       :root {
+                       --dt-row-selected: transparent !important;
+                       }
+                       table.dataTable tbody tr:hover, table.dataTable tbody tr:hover td {
+                       background-color: #bcbcbc !important;
+                        }
+            .dataTables_wrapper .dataTables_length,
+                                         .dataTables_wrapper .dataTables_filter,
+                                         .dataTables_wrapper .dataTables_info,
+                                         .dataTables_wrapper .dataTables_processing,
+                                         .dataTables_wrapper .dataTables_paginate {
+                                           color:#ffffff;
+                                         }
+                                         thead {
+                                           color:#ffffff;
+                                         }
+                                         tbody {
+                                           color:#ffffff;
+                                         }"
+            
+          )
+        ),
         br(),
         navset_tab(nav_panel(
           strong("Select"),
@@ -47,11 +80,10 @@ add.column.app <- function(missing.cols, add.data) {
                                 fillable = TRUE,
                                 column(width = 12,
                                        br(),
-                                       DT::DTOutput('col.view', height = "375px"))
+                                       DT::DTOutput('col.view', height = "325px"))
                       ))))
         
         )
-        # )
       ), 
       
       server <- function(input, output, session) {
@@ -63,11 +95,10 @@ add.column.app <- function(missing.cols, add.data) {
         output$col.view = DT::renderDataTable({
           add.data %>% dplyr::select(tidyselect::all_of(selected.col()))
         }, rownames = FALSE, options = list(
-          rowCallback = htmlwidgets::JS("function(r,d) {$(r).attr('height', '30px')}"),
-          lengthMenu = c(5, 10, 25, 50, 100),
-          pageLength = 100,
+          dom = 'ft',
+          pageLength = nrow(data),
           searchHighlight = TRUE,
-          columnDefs = list(list(width = "500px", className = 'dt-left', targets = "_all")),
+          columnDefs = list(list(width = "150px", targets = "_all")),
           scrollX = TRUE,
           language = list(
             search = "<i class='glyphicon glyphicon-search'></i>"
