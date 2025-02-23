@@ -54,19 +54,19 @@ devtools::load_all()
 theme.selection<- shinythemes::shinytheme("superhero")
 
 # Install GitHub packages
-## Uninstall packages (if re-installing)
+# # Uninstall packages (if re-installing)
 # remove.packages("FWSAkRDRtools")
 # remove.packages("mdJSONdictio")
 # .rs.restartR()
 
-## Set GitHub download file method (optional)
+# Set GitHub download file method (optional)
 # options(download.file.method = "wininet")
-
-## Install FWSAkRDRtools from GitHub
-devtools::install_github("hdvincelette/FWSAkRDRtools")
-
-## Install mdJSONdictio from GitHub
-devtools::install_github("hdvincelette/mdJSONdictio")
+# 
+# ## Install FWSAkRDRtools from GitHub
+# devtools::install_github("hdvincelette/FWSAkRDRtools")
+# 
+# ## Install mdJSONdictio from GitHub
+# devtools::install_github("hdvincelette/mdJSONdictio")
 
 
 ```
@@ -105,7 +105,7 @@ Paste the names of the project folder, data dictionary(ies), and data entry temp
 ```{r include=FALSE}
 
 # Provide the relevent information
-RDR.keyword <- "Eareckson"
+RDR.keyword <- "DOD_Shorebird_Migration"
 
 ```
 
@@ -139,9 +139,45 @@ if(length(project.folder)>1) {
 }
 
 select.download.app(
-  dir = paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/", project.folder),
+  from.dir = paste0(
+    "//ifw7ro-file.fws.doi.net/datamgt/mbm/",
+    project.folder,
+    "/data"
+  ),
+  to.dir = paste0(
+    dirname(rstudioapi::documentPath()),
+    "/downloads/data"
+  ),
   ext = ".*",
-  multiple = TRUE
+  multiple = TRUE,
+  type = "data"
+)
+
+for (y in 1:nrow(selected.files)) {
+  downloader::download(
+    url =
+      paste0(
+        "File://",
+        gsub("^[[:punct:][:space:]]+", "", selected.files$path[y]),
+        "/",
+        selected.files$filename[1]
+      ),
+    destfile = file.path(selected.dir, selected.files$filename[y]),
+    method = "auto",
+    mode = "wb",
+    quiet = FALSE
+  )
+}
+
+select.download.app(
+  from.dir = paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/", project.folder,"/metadata"),
+  to.dir = paste0(
+    dirname(rstudioapi::documentPath()),
+    "/downloads/dictionaries"
+  ),
+  ext = ".*",
+  multiple = TRUE,
+  type = "dictionary"
 )
 
 for (y in 1:nrow(selected.files)) {
@@ -191,6 +227,7 @@ date.col <- "Date"
 date.format <-  "%m/%d/%Y"
 time.col <- "CaptureTime_2400"
 time.format <- "%H:%M"
+na.if<- c("","-","—",".","NA")
 
 ```
 
@@ -201,7 +238,8 @@ time.format <- "%H:%M"
 
 select.import.app(dir = paste0(dirname(rstudioapi::documentPath()),"/data-raw"), 
                   ext = c("txt", "csv", "xls*"),
-                  multiple = TRUE)
+                  multiple = TRUE,
+                  type = "data")
 
 raw.data.list <- importer(
   path = selected.files$path[1],
@@ -212,12 +250,15 @@ raw.data.list <- importer(
   )
 )
 
+ref.data.list<- raw.data.list
+
 data.filenames<- tools::file_path_sans_ext(selected.files$filename)
 
 select.import.app(dir = paste0(dirname(rstudioapi::documentPath()),
                                "/downloads/dictionaries"),
                   ext = c("json","csv", "xls*"), 
-                  multiple = FALSE)
+                  multiple = FALSE,
+                  type = "dictionary")
 
 ref.dictionary <- importer(path = selected.files$path[1],
                             files = selected.files$filename)[[1]]
@@ -230,7 +271,16 @@ dxnry.filename<- tools::file_path_sans_ext(selected.files$filename)
 
 ```{r}
 
-aou_code <- read.csv("reference/IBP-AOS-LIST23.csv", na = "")
+aou_code <- read.csv(list.files("reference/IBPAOU", full.names = TRUE)
+                     , na = "")
+
+# Remove NA rows
+raw.data.list <- raw.data.list %>%
+  purrr::map(.f = ~ .x %>%
+               dplyr::mutate(dplyr::across(
+                 where(is.character), ~ ifelse(. %in% na.if, NA, .)
+               )) %>%
+               dplyr::filter(!dplyr::if_all(colnames(.), is.na)))
 
 ## Translate species names/codes (if neccessary)
 # 
@@ -806,10 +856,10 @@ for (x in 1:length(raw.data.list)) {
 raw.data.list <- raw.data.list %>%   purrr::map(
   .f = ~ .x %>%       dplyr::mutate(!!!setNames(
     rep(NA, length(setdiff(
-      "OccurenceID", colnames(.x)
-    ))), setdiff("OccurenceID", colnames(.x))
-  )) %>% dplyr::relocate("OccurenceID") %>%       dplyr::rowwise() %>%       dplyr::mutate_at(
-    "OccurenceID",
+      "OccurrenceID", colnames(.x)
+    ))), setdiff("OccurrenceID", colnames(.x))
+  )) %>% dplyr::relocate("OccurrenceID") %>%       dplyr::rowwise() %>%       dplyr::mutate_at(
+    "OccurrenceID",
     ~ ifelse(is.na(.) == TRUE ||
                . == "", uuid::UUIDgenerate(use.time = FALSE), .)
   )
@@ -886,7 +936,7 @@ sex_results <- importer(path = file.path,
 # Correct results table
 sex_results<- sex_results %>%
   dplyr::mutate_at("BandNumber", as.character) %>%
-  tidyr::drop_na("OccurenceID") %>%
+  tidyr::drop_na("OccurrenceID") %>%
   dplyr::filter(Sex %in% c("F","M"))
 
 
@@ -993,7 +1043,7 @@ for (x in 1:length(raw.data.list)) {
                                           , .)) %>%
     dplyr::select(tidyselect::any_of(
       c(
-        "OccurenceID",
+        "OccurrenceID",
         "BandNumberOut",
         "SpeciesCode",
         "BBLStatus",
@@ -1054,8 +1104,8 @@ for (x in 1:length(raw.data.list)) {
     dplyr::mutate(across(where(is.character), ~ dplyr::na_if(.x, ""))) %>%
     dplyr::left_join(
       .,
-      status_info[, c("OccurenceID", "temp:BBLStatus")],
-      by = c("OccurenceID" = "OccurenceID"),
+      status_info[, c("OccurrenceID", "temp:BBLStatus")],
+      by = c("OccurrenceID" = "OccurrenceID"),
       keep = FALSE,
       relationship = "one-to-one"
     ) %>%
@@ -1145,8 +1195,8 @@ for (x in 1:length(raw.data.list)) {
           ) %>%
           dplyr::mutate_at("BBLStatus", as.character)
         
-        input.data[match(invalid.entries.edit$OccurenceID,
-                         input.data$OccurenceID), "BBLStatus"] <-
+        input.data[match(invalid.entries.edit$OccurrenceID,
+                         input.data$OccurrenceID), "BBLStatus"] <-
           invalid.entries.edit$BBLStatus
       }
       
@@ -1168,9 +1218,11 @@ for (x in 1:length(raw.data.list)) {
 
 ```{r}
 
+
+
+
 raw.data.list %>% purrr::map(
   .f = ~ .x %>%
-    dplyr::mutate_if(is.character, list(~ dplyr::na_if(., "")))  %>%
     dplyr::select(tidyselect::where(~ any(is.na(
       .
     ))))
@@ -1183,17 +1235,10 @@ raw.data.list %>% purrr::map(
 #### Provide inputs
 
 ```{r}
-# Provide directory path for the authoritative data file
-download.path <- "downloads/data"
-
-# Provide a directory path to write processed files
-# processed.data.path <- "data-processed/to_archive/"
 
 # Do you want to merge the data with an authoritative file?
-auth.merge <- FALSE
+auth.merge <- TRUE
 
-# Provide versioning format (when merging with an authoritative file)
-vers.suffix <- "_v"
 
 ```
 
@@ -1223,103 +1268,200 @@ if (auth.merge == TRUE) {
       
     }
   } else {
-     add.data <-  data.table::rbindlist(raw.data.list, fill = TRUE)
+    add.data <-  data.table::rbindlist(raw.data.list, fill = TRUE)
   }
   
-    
-    # Import authoritative data file
-    select.import.app(path = download.path, multiple = FALSE)
-    
-    auth.data <- importer(path = download.path,
-                          files = selected.files,
-                          column.format = list(
-                            c(column = date.col, format = date.format),
-                            c(column = time.col, format = time.format)
-                          )) %>%
-      .[[1]] %>% as.data.frame(.)
-    
-    auth.filename <- tools::file_path_sans_ext(selected.files)
-    
-    
-    # Add missing columns
-    missing.cols <- add.data %>%
-      dplyr::mutate_if(is.character, ~ dplyr::na_if(., c(""))) %>%
-      purrr::discard(., ~ all(is.na(.))) %>%
-      dplyr::select(colnames(.)[!colnames(.) %in% colnames(auth.data)]) %>%
-      colnames()
-    
-    if(length(missing.cols)!=0) {
-      add.column.app(missing.cols, add.data)
-    }
-    
-
-    if (length(col.choice) != 0) {
-      for (a in col.choice) {
-        existing.cols <- colnames(auth.data)
-        place.column.app(a, existing.cols)
-        
-        if (last == TRUE) {
-          auth.data <- auth.data %>% tibble::add_column(!!a := NA, .before = NULL)
-        } else if (loc.choice != "") {
-          auth.data <- auth.data %>% tibble::add_column(!!a := NA, .before = loc.choice)
-        }
-        
-      }
-    }
-    
-    # Merge data
-    new.data <- auth.data %>%
-      merge(add.data, all = TRUE, sort = FALSE) %>%
-      dplyr::select(colnames(auth.data))
-    
-    
-    #!!!# Evaluate changes
-    old <- auth.data %>% 
-      dplyr::mutate(across(where(is.character), ~ dplyr::na_if(.x, "")))
-    
-    new <- new.data %>% 
-      dplyr::mutate(across(where(is.character), ~ dplyr::na_if(.x, "")))
-    
-
-#     compare.stats<- dataCompareR::locateMismatches(old, new)
-#     
-#     compare.stats<- dataCompareR::rCompare(old, new)
-#     compare.stats<- summary(compare.stats)
-
-        
-    compare.stats<- arsenal::comparedf(new, old)
-    compare.stats<- summary(compare.stats)
-    
-    comparison<- compareDF::compare_df(new, old, c("OccurenceID"))
-    
-    compareDF::create_output_table(
-      comparison,
-      file_name = "data-processed/comparison/temp.xlsx",
-      output_type = "xlsx",
-      limit = max(nrow(new), nrow(old))
-    ) 
-    
-    compare.df<- openxlsx::read.xlsx("data-processed/comparison/temp.xlsx")
-
-    compare.dfs.app(new, old, compare.df, compare.stats)
-
-    
-    # Versioning
-    download.file.app(auth.filename, new.data)
-    
-    
-    
-    
-    write.csv(
-      new.data,
-      paste0(processed.data.path, new.data.name, ".csv"),
-      na = "",
-      row.names = FALSE
-    )
-    
+  
+  # Import authoritative data file
+  select.import.app(
+    dir = paste0(dirname(rstudioapi::documentPath()), "/downloads/data"),
+    ext = c("txt", "csv", "xls*"),
+    multiple = FALSE
+  )
+  
+  auth.data <- importer(path = selected.files$path[1], files = selected.files$filename)[[1]]
+  
+  auth.filename <- tools::file_path_sans_ext(selected.files$filename)
+  
+  # Add missing columns
+  missing.cols <- add.data %>%
+    dplyr::mutate_if(is.character, ~ dplyr::na_if(., c(""))) %>%
+    purrr::discard(., ~ all(is.na(.))) %>%
+    dplyr::select(colnames(.)[!colnames(.) %in% colnames(auth.data)]) %>%
+    colnames()
+  
+  if (length(missing.cols) != 0) {
+    add.column.app(missing.cols, add.data)
   }
+  
+  
+  if (length(col.choice) != 0) {
+    for (a in col.choice) {
+      existing.cols <- colnames(auth.data)
+      place.column.app(a, existing.cols)
+      
+      if (last == TRUE) {
+        auth.data <- auth.data %>% tibble::add_column(!!a := NA, .before = NULL)
+      } else if (loc.choice != "") {
+        auth.data <- auth.data %>% tibble::add_column(!!a := NA, .before = loc.choice)
+      }
+      
+    }
+  }
+  
+  # Merge data
+  new.data <- auth.data %>%
+    merge(add.data, all = TRUE, sort = FALSE) %>%
+    dplyr::select(colnames(auth.data))
+  
+  
+  # Evaluate changes
+  old <- auth.data %>%
+    dplyr::mutate(across(where(is.character), ~ dplyr::na_if(.x, "")))
+  
+  new <- new.data %>%
+    dplyr::mutate(across(where(is.character), ~ dplyr::na_if(.x, "")))
+  
+  # # alt stats
+  # compare.stats<- dataCompareR::locateMismatches(old, new)
+  # compare.stats<- dataCompareR::rCompare(old, new)
+  # compare.stats<- summary(compare.stats)
+  
+  
+  compare.stats <- arsenal::comparedf(new, old)
+  compare.stats <- summary(compare.stats)
+  
+  comparison <- compareDF::compare_df(new, old, c("OccurrenceID"))
+  
+  compareDF::create_output_table(
+    comparison,
+    file_name = "data-processed/comparison/temp.xlsx",
+    output_type = "xlsx",
+    limit = max(nrow(new), nrow(old))
+  )
+  
+  compare.df <- openxlsx::read.xlsx("data-processed/comparison/temp.xlsx")
+  
+  compare.dfs.app(new, old, compare.df, compare.stats)
+  
+  
+  # Save files - versioning
+  save.file.app(
+    dir = paste0(
+      dirname(rstudioapi::documentPath()),
+      "/data-processed/to_archive"
+    ),
+    proposed.filename = paste0(auth.filename, " (1)"),
+    ref.filename = auth.filename
+  )
+  
+  write.csv(
+    new.data,
+    paste0(
+      selected.dir,
+      "\\",
+      tools::file_path_sans_ext(new.name),
+      ".csv"
+    ),
+    na = "",
+    row.names = FALSE
+  )
+  
+} else if (auth.merge == FALSE) {
+  
+  for (a in 1:length(raw.data.list)) {
+    assign("old.data", ref.data.list[[a]])
+    assign("new.data", raw.data.list[[a]])
+    
+    # Evaluate changes
+  old <- old.data %>%
+    dplyr::mutate(across(where(is.character), ~ dplyr::na_if(.x, "")))
+  
+  new <- new.data %>%
+    dplyr::mutate(across(where(is.character), ~ dplyr::na_if(.x, "")))
+  
+  # # alt stats
+  # compare.stats<- dataCompareR::locateMismatches(old, new)
+  # compare.stats<- dataCompareR::rCompare(old, new)
+  # compare.stats<- summary(compare.stats)
+  
+  compare.stats <- arsenal::comparedf(new, old)
+  compare.stats <- summary(compare.stats)
+  
+  comparison <- compareDF::compare_df(new, old, stop_on_error = FALSE)
+  
+  compareDF::create_output_table(
+    comparison,
+    file_name = "data-processed/comparison/temp.xlsx",
+    output_type = "xlsx",
+    limit = max(nrow(new), nrow(old))
+  )
+  
+  compare.df <- openxlsx::read.xlsx("data-processed/comparison/temp.xlsx")
+  
+  compare.dfs.app(new, old, compare.df, compare.stats)
+  
+  
+  # Save files - versioning
+  save.file.app(
+    dir = paste0(
+      dirname(rstudioapi::documentPath()),
+      "/data-processed/to_archive"
+    ),
+    proposed.filename = paste0(data.filenames[a], " (1)"),
+    ref.filename = data.filenames[a]
+  )
+  
+  write.csv(
+    new.data,
+    paste0(
+      selected.dir,
+      "\\",
+      tools::file_path_sans_ext(new.name),
+      ".csv"
+    ),
+    na = "",
+    row.names = FALSE
+  )
+  
+  }
+}
 
+# view<- raw.data.list[[1]]
+# unique(view$SpeciesCode)
 
+aou_code <- read.csv(list.files("reference/IBPAOU", full.names = TRUE)) %>%
+  tibble::add_row(SPEC = "BALO", COMMONNAME = "band lost") %>%
+    tibble::add_row(SPEC = "BADE", COMMONNAME = "band destroyed")
+                     
+split.col<- "SpeciesCode"
+proj.prefix<- c("Eielson","JBER")
+data.desc<- "Banding"
+
+split.dfs <- raw.data.list %>%
+  set_names(proj.prefix) %>%
+  purrr::map(.f = ~ .x %>%
+               dplyr::inner_join(
+                 .,
+                 aou_code[, c("COMMONNAME", "SPEC")],
+                 by = c("SpeciesCode" = "SPEC"),
+                 keep = FALSE,
+                 relationship = "many-to-many"
+                 ) %>%
+               split(.[["COMMONNAME"]]) %>%
+               purrr::map(., ~ .x %>%  dplyr::select(-"COMMONNAME"))) %>%
+  purrr::imap(., function(l, n) {
+    names(l) <- paste0(n, "_", gsub(" ", "_", names(l)))
+    return(l)
+    }) %>%
+  purrr::map(.f = ~ .x %>%
+      purrr::iwalk(., ~ write.csv(.x, 
+                                  file = paste0("data-processed/to_archive/",
+                                    .y, "_",data.desc,"_v1.csv"
+                                    ),
+                                   na = "",
+                                  row.names = FALSE)))
+  
 
 ```
 
@@ -1327,134 +1469,186 @@ if (auth.merge == TRUE) {
 
 ```{r}
 
-if(class(ref.dictionary) == "list") {
-  export.choice <- utils::select.list(
-    c("tabular dictionary", "mdjson dictionary", "mdEditor file"),
-    multiple = TRUE,
-    graphics = TRUE,
-    title = cat(paste0(
-      "\nWhich format(s) would you like to export?\n"
-    ))
-  )
-  
-  if ("tabular dictionary" %in% export.choice) {
-    message(cat(
-      paste0(
-        "\nProvide a name for the mdjson dictionary.\nThe mdjson record name is '",
-        input.dxnry[["data"]][[1]][["meta"]][["title"]],
-        "'.\n"
-      )
-    ))
+ if ("list" %in% class(ref.dictionary)) {
+   choose.format.app(
+     formats =  c("CSV", "json (dictionary record)", "json (mdEditor file)"),
+     filename = input.dxnry[["data"]][[1]][["meta"]][["title"]]
+   )
+   
+   for (a in selected.format) {
+     if (a == "CSV") {
+       save.file.app(
+         dir = paste0(
+           dirname(rstudioapi::documentPath()),
+           "/data-processed/to_archive"
+         ),
+         proposed.filename =  gsub(" ", "_", 
+                              input.dxnry[["data"]][[1]][["meta"]][["title"]]), 
+         ref.filename = input.dxnry[["data"]][[1]][["meta"]][["title"]],
+         format = a
+       )
+       
+        table.dxnry <- mdJSONdictio::build.table(input.dxnry)
     
-    dxnry.name <- noquote(as.character(readline(prompt =)))
-    
-    if (dxnry.name == "") {
-      dxnry.name <- input.dxnry[["data"]][[1]][["meta"]][["title"]]
-    }
-    
-    dxnry.name <-  sub(" ", "_", dxnry.name)
-    
-    dxnry.name <- strsplit(gsub("[[:punct:]]$", "", dxnry.name), " +")[[1]]
-    
-    table.dxnry <- mdJSONdictio::build.table(input.dxnry)
-    
-    
-    write.csv(
-      table.dxnry,
-      paste0(
-        processed.data.path,
-        dxnry.name,
-        "_",
-        format(
-          as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
-          '%Y%m%d-%H%M%S'
-        ),
-        ".csv"
-      ),
-      na = "",
-      row.names = FALSE
-    )
-    
-  }
-  
-  if ("mdjson dictionary" %in% export.choice) {
-    if (!"tabular dictionary" %in% export.choice) {
-      message(cat(
-        paste0(
-          "\nProvide a name for the mdjson dictionary.\nThe mdjson record name is '",
-          input.dxnry[["data"]][[1]][["meta"]][["title"]],
-          "'.\n"
+        write.csv(
+          table.dxnry,
+          paste0(
+            selected.dir, 
+            "\\",
+            new.name,
+            "_",
+            format(
+              as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
+              '%Y%m%d-%H%M%S'
+            ),
+            ".csv"
+          ),
+          na = "",
+          row.names = FALSE
         )
-      ))
-      
-      dxnry.name <- noquote(as.character(readline(prompt = )))
-      
-      if (dxnry.name == "") {
-        dxnry.name <- input.dxnry[["data"]][[1]][["meta"]][["title"]]
-      }
-      
-      dxnry.name <-  sub(" ", "_", dxnry.name)
-      
-      dxnry.name <- strsplit(gsub("[[:punct:]]$", "", dxnry.name), " +")[[1]]
-      
-    }
+       
+     } else if (a == "json (dictionary record)") {
+       save.file.app(
+         dir = paste0(
+           dirname(rstudioapi::documentPath()),
+           "/data-processed/to_archive"
+         ),
+         proposed.filename = gsub(" ", "_", 
+                             input.dxnry[["data"]][[1]][["meta"]][["title"]]),
+         ref.filename = input.dxnry[["data"]][[1]][["meta"]][["title"]],
+         format = a
+       )
+       
+       new.dxnry <- rjson::toJSON(x = input.dxnry)
+       
+       write(
+         x = new.dxnry,
+         file = paste0(
+            selected.dir, 
+            "\\",
+            new.name,
+           "_mdeditor-",
+           format(
+             as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
+             '%Y%m%d-%H%M%S'
+           ),
+           ".json"
+         )
+       )
+       
+     } else if (a == "json (mdEditor file)") {
+       save.file.app(
+         dir = paste0(
+           dirname(rstudioapi::documentPath()),
+           "/data-processed/to_archive"
+         ),
+         proposed.filename = gsub(
+           "[[:punct:]]$",
+           "",
+           stringr::str_extract(dxnry.filename, "[^\\d]+")
+         ),
+         ref.filename = dxnry.filename,
+         format = a
+       )
+       
+       if (stringr::str_detect(new.name, 
+                               stringr::regex('mdeditor', ignore_case = T)) 
+           == FALSE) {
+         new.name<- paste0(new.name, "_mdeditor")
+       }
+       
+       new.dxnry <- rjson::toJSON(x = ref.dictionary)
+       
+       write(x = new.dxnry,
+             file = paste0(
+               selected.dir,
+               "\\",
+               new.name,
+               "-",
+               format(
+                 as.POSIXct(ref.dictionary[["data"]][[record.num]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
+                 '%Y%m%d-%H%M%S'
+               ),
+               ".json"
+             ))
+       
+     }
+   }
+ } else {
+   choose.format.app(formats =  c("CSV", "json (dictionary record)"),
+                     filename = dxnry.filename)
+   
+   for (a in selected.format) {
+     if (a == "CSV") {
+       save.file.app(
+         dir = paste0(
+           dirname(rstudioapi::documentPath()),
+           "/data-processed/to_archive"
+         ),
+         proposed.filename = dxnry.filename,
+         ref.filename = dxnry.filename,
+         format = a
+       )
     
-    new.dxnry <- rjson::toJSON(x = input.dxnry)
-    
-    write(
-      x = new.dxnry,
-      file = paste0(
-        processed.data.path,
-        dxnry.name,
-        "_mdeditor-",
-        format(
-          as.POSIXct(input.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
-          '%Y%m%d-%H%M%S'
-        ),
-        ".json"
-      )
-    )
-    
-  }
-  
-  if ("mdEditor file" %in% export.choice) {
-    message(cat(
-      paste0(
-        "\nProvide a name for the mdjson file.
-        \nThe current file name is '",
-        gsub("\\_mdeditor.*", "", dxnry.filename, ignore.case = TRUE),
-        "'.\n"
-      )
-    ))
-    
-    file.name <- noquote(as.character(readline(prompt = )))
-    
-    if (file.name == "") {
-      file.name <-  gsub("\\_mdeditor.*", "", dxnry.filename, ignore.case = TRUE)
-    }
-    
-    file.name <-  sub(" ", "_", file.name)
-    file.name <- gsub('^[[:punct:]]|[[:punct:]]$', '', file.name)
-    
-    new.dxnry <- rjson::toJSON(x = ref.dictionary)
-    
-    write(
-      x = new.dxnry,
-      file = paste0(
-        processed.data.path,
-        file.name,
-        "_mdeditor-",
-        format(
-          as.POSIXct(ref.dictionary[["data"]][[record.num]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
-          '%Y%m%d-%H%M%S'
-        ),
-        ".json"
-      )
-    )
-    
-  }
-  
-}
+        write.csv(
+          input.dxnry,
+          paste0(
+            selected.dir, 
+            "\\",
+            new.name,
+            "_",
+            format(
+              as.POSIXct(lubridate::now(), tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
+              '%Y%m%d-%H%M%S'
+            ),
+            ".csv"
+          ),
+          na = "",
+          row.names = FALSE
+        )
+       
+     } else if (a == "json (dictionary record)") {
+       save.file.app(
+         dir = paste0(
+           dirname(rstudioapi::documentPath()),
+           "/data-processed/to_archive"
+         ),
+         proposed.filename = dxnry.filename,
+         ref.filename = dxnry.filename,
+         format = a
+       )
+       
+       json.dxnry <- 
+         mdJSONdictio::build.mdJSON(input.dxnry, 
+                                    title = gsub("-", " ",
+                                                 gsub("_", " ",
+                                                      dxnry.filename)))
+       new.dxnry <- rjson::toJSON(x = json.dxnry)
+       
+       write(
+         x = new.dxnry,
+         file = paste0(
+            selected.dir, 
+            "\\",
+            new.name,
+           "_mdeditor-",
+           format(
+             as.POSIXct(json.dxnry[["data"]][[1]][["attributes"]][["date-updated"]], tz = "UTC", "%Y-%m-%dT%H:%M:%OS"),
+             '%Y%m%d-%H%M%S'
+           ),
+           ".json"
+         )
+       )
+       
+     }
+   }
+   
+ }
+
+     
+ dxnry.name <-  sub(" ", "_", dxnry.name)
+ dxnry.name <- strsplit(gsub("[[:punct:]]$", "", dxnry.filename), " +")[[1]]
+ 
 
 ```
 
@@ -2133,7 +2327,7 @@ cap.data<- cap.data %>%
 
 
 # Add missing info
-## OccurenceID
+## OccurrenceID
 
 cap.data %>%
   dplyr::filter_at("SpeciesCode", is.na)
@@ -2245,7 +2439,7 @@ sex_results <- importer(path = file.path,
 # Correct results
 sex_results<- sex_results %>%
   dplyr::mutate_at("BandNumber", as.character) %>%
-  tidyr::drop_na("OccurenceID") %>%
+  tidyr::drop_na("OccurrenceID") %>%
   dplyr::filter(Sex %in% c("F","M"))
 
 
@@ -3114,7 +3308,7 @@ status_info <- cap.data %>%
                                           NA
                                         , .)) %>%
   dplyr::select(
-    "OccurenceID",
+    "OccurrenceID",
     "BandNumberOut",
     "SpeciesCode",
     "BBLStatus",
@@ -3169,8 +3363,8 @@ status_info <- cap.data %>%
 cap.data <- cap.data %>%
   dplyr::left_join(
     .,
-    status_info[, c("OccurenceID", "temp:BBLStatus")],
-    by = c("OccurenceID" = "OccurenceID"),
+    status_info[, c("OccurrenceID", "temp:BBLStatus")],
+    by = c("OccurrenceID" = "OccurrenceID"),
     keep = FALSE,
     relationship = "one-to-one"
   ) %>%
@@ -3258,8 +3452,8 @@ if (length(invalid.index) != 0) {
         ) %>%
         dplyr::mutate_at("BBLStatus", as.character)
       
-      cap.data[match(invalid.entries.edit$OccurenceID,
-                     cap.data$OccurenceID), "BBLStatus"] <-
+      cap.data[match(invalid.entries.edit$OccurrenceID,
+                     cap.data$OccurrenceID), "BBLStatus"] <-
         invalid.entries.edit$BBLStatus
     }
     
@@ -4133,9 +4327,9 @@ Run the following code to import location data from one or more studies into R. 
 ```{r warning=FALSE, include=FALSE, results=FALSE}
           
 # Import Movebank location and/or reference data
-df.loc <- get.move.data(
+import <- get.move.data(
   location = TRUE,
-  reference = FALSE,
+  reference = TRUE,
   remove_movebank_outliers <- FALSE,
   omit_derived_data <- FALSE
 )
@@ -4144,24 +4338,33 @@ Movebank_dictionary <- readxl::read_excel("reference/movebank/Migratory_Tracking
 
 load("reference/movebank/animal_id_key.RData")
 
-aou_code <- read.csv("reference/IBP-AOS-LIST23.csv", na = "")
+# download.file(url = "https://www.birdpop.org/docs/misc/IBPAOU.zip", destfile = file.path("reference", "IBPAOU.zip"))
+# 
+# path <- file.path("reference", "IBPAOU.zip")
+# utils::unzip(file.path("reference", "IBPAOU.zip"),
+#              exdir = file.path("reference", "IBPAOU"))
+# unlink(file.path("reference", "IBPAOU.zip"), recursive = TRUE)
 
-# Unlist dataframes (if necessary)
-if(any(sapply(import, function(x)
-  any(class(x) == "list")))==TRUE) {
-  import.dfs <- rrapply::rrapply(
-    import,
-    classes = "data.frame",
-    how = "flatten",
-    options = list(namesep = "-",
-                   simplify = FALSE)
-  )
-} else if (inherits(import, "data.frame") == TRUE) {
-  import.dfs <- list(import)
-  
-} else{
-  import.dfs <- import
-}
+aou_code <- read.csv(list.files("reference/IBPAOU", full.names = TRUE), na = "")
+
+
+
+# # Unlist dataframes (if necessary)
+# if(any(sapply(import, function(x)
+#   any(class(x) == "list")))==TRUE) {
+#   import.dfs <- rrapply::rrapply(
+#     import,
+#     classes = "data.frame",
+#     how = "flatten",
+#     options = list(namesep = "-",
+#                    simplify = FALSE)
+#   )
+# } else if (inherits(import, "data.frame") == TRUE) {
+#   import.dfs <- list(import)
+#   
+# } else{
+#   import.dfs <- import
+# }
 
 
 ```
@@ -4176,9 +4379,16 @@ for(x in 1:length(import.dfs)) {
     colnames(dplyr::select(import.dfs[[x]], matches("location")))
   for (a in loc.cols) {
     if ("sfc_POINT" %in% class(import.dfs[[x]][[a]])) {
-      names <- names(unlist(import.dfs[[x]][[a]][1]))
+      import.dfs[[x]][[a]] <- sf::st_cast(import.dfs[[x]][[a]], to = "POINT")
+            
+      names <- names(unlist(import.dfs[[x]][[a]]))
+      names<- stringi::stri_remove_empty(names, na_empty = TRUE)
+      if (rlang::is_empty(names) == TRUE) {
+        names <- c(gsub("location", "long", a), 
+                   gsub("location", "lat", a))}
       names <- sapply(names, function(x)
         sub(pattern = "^argos_", replacement = "argos:", x), USE.NAMES = FALSE)
+      
       suppressWarnings(
         import.dfs[[x]] <-  import.dfs[[x]] %>%
           tibble::add_column(
