@@ -4,7 +4,7 @@
 choose.value.app <- function(variable, invalid.values, ref.dxnry) {
   runGadget(
     app = shinyApp(
-      ui <- page(
+      ui <-
         bootstrapPage(
         tags$head(tags$style(HTML("pre { overflow: auto; word-wrap: normal; }"))),
         theme = theme.selection,
@@ -22,7 +22,7 @@ choose.value.app <- function(variable, invalid.values, ref.dxnry) {
                    "' contains entry values not found in the data dictionary"
             )
           )),
-          checkboxGroupInput(
+         checkboxGroupInput(
             "selected.values",
             h5("Select values to correct in the data"),
             choices =  invalid.values
@@ -49,14 +49,16 @@ choose.value.app <- function(variable, invalid.values, ref.dxnry) {
                                          }
                                          tbody {
                                            color:#ffffff;
-                                         }"
+                                         }
+                                       .checkbox {
+                                       line-height: 20px;}"
               
             )
           ), 
           DT::DTOutput('domainItems')
         ),
         
-      )), 
+      ), 
       
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
