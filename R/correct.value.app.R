@@ -1,7 +1,5 @@
 
 
-# Only display domain Item selection if available
-
 correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
   runGadget(
     app = shinyApp(
@@ -84,18 +82,18 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
                        table.dataTable tbody tr.selected td,
                        table.dataTable tbody tr.selected td,
                        table.dataTable tbody td.selected {
-                       border-top-color: #c4dfcc !important;
-                       box-shadow: inset 0 0 0 9999px #c4dfcc !important;
+                       border-top-color: #bcbcbc !important;
+                       box-shadow: inset 0 0 0 9999px #bcbcbc !important;
                        color: black;
                        }
                        table.dataTable tbody tr:active td {
-                       background-color: #c4dfcc !important;
+                       background-color: #bcbcbc !important;
                        }
                        :root {
                        --dt-row-selected: transparent !important;
                        }
                        table.dataTable tbody tr:hover, table.dataTable tbody tr:hover td {
-                       background-color: #c4dfcc !important;
+                       background-color: #bcbcbc !important;
                         }
                         .dataTables_wrapper .dataTables_length,
                         .dataTables_wrapper .dataTables_filter,
@@ -115,7 +113,7 @@ correct.value.app <- function(variable, invalid.value, data, ref.dxnry) {
                         }"
                       )
                     )), 
-                    DT::DTOutput('df',  height = "325px"),
+                    DT::DTOutput('df',  height = "300px"),
                     br(),
                     shinyWidgets::actionBttn(
                       'refresh',
