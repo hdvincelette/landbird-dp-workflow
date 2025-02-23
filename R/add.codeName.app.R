@@ -1,5 +1,6 @@
 
 
+
 add.codeName.app <- function(data, filename, missing.variables) {
   runGadget(
     app = shinyApp(
@@ -22,15 +23,16 @@ add.codeName.app <- function(data, filename, missing.variables) {
                 "' contains variables not found in the data dictionary"
               )
             )),
-            checkboxGroupInput(
+             shinyWidgets::prettyCheckboxGroup(
               "codeName.choice",
               h5("Select variables to add to the dictionary"),
-              choices =  missing.variables
+              choices =  missing.variables,
+              status = "default"
             ),
             actionButton("action", "Submit"),
             br(),
             br(),
-          ),
+          )
         ), 
         nav_panel(strong("Review"), 
                   column(
@@ -38,29 +40,24 @@ add.codeName.app <- function(data, filename, missing.variables) {
                     br(),
                     tags$head(tags$style(
                       HTML(
-                        "#refresh {
-                        color: #696969;
-                        background-color: white;
-                        box-shadow: 3px 3px 3px 3px white;
-                        }
-                        #DataTables_Table_0_filter {
+                        "#DataTables_Table_0_filter {
                         float: left;
                         }
                        table.dataTable tbody tr.selected td,
                        table.dataTable tbody tr.selected td,
                        table.dataTable tbody td.selected {
-                       border-top-color: #c4dfcc !important;
-                       box-shadow: inset 0 0 0 9999px #c4dfcc !important;
+                       border-top-color: #bcbcbc !important;
+                       box-shadow: inset 0 0 0 9999px #bcbcbc !important;
                        color: black;
                        }
                        table.dataTable tbody tr:active td {
-                       background-color: #c4dfcc !important;
+                       background-color: #bcbcbc !important;
                        }
                        :root {
                        --dt-row-selected: transparent !important;
                        }
                        table.dataTable tbody tr:hover, table.dataTable tbody tr:hover td {
-                       background-color: #c4dfcc !important;
+                       background-color: #bcbcbc !important;
                         }
                         .dataTables_wrapper .dataTables_length,
                                          .dataTables_wrapper .dataTables_filter,
@@ -76,6 +73,7 @@ add.codeName.app <- function(data, filename, missing.variables) {
                                          tbody {
                                            color:#ffffff;
                                          }"
+                        
                       )
                     )),
                     DT::DTOutput('df', height = "350px")
