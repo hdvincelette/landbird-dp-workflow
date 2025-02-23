@@ -1,5 +1,5 @@
 
-select.import.app <- function(dir, ext, multiple) {
+select.import.app <- function(dir, ext, multiple, type) {
   if (missing(dir)) {
     dir = "/*"
   } else {
@@ -11,6 +11,11 @@ select.import.app <- function(dir, ext, multiple) {
   if (missing(multiple)) {
     multiple = TRUE
   } 
+  if (missing(type)) {
+    type = ""
+  } else{
+    type<- paste0(" ",type)
+  }
   
   runGadget(
     app = shinyApp(
@@ -22,7 +27,7 @@ select.import.app <- function(dir, ext, multiple) {
           br(),
           column(
             width = 12,
-            h4(strong("Select a file to import")),
+            h4(strong(paste0("Select a", type ," file to import"))),
             htmlOutput("ext"),
             br(),
             textInput("path", ""),
@@ -36,11 +41,27 @@ select.import.app <- function(dir, ext, multiple) {
             br(),
               tags$style(
                 HTML(
-                  ".dataTables_wrapper .dataTables_length,
-              .dataTables_wrapper .dataTables_filter,
-              .dataTables_wrapper .dataTables_info,
-              .dataTables_wrapper .dataTables_processing,
-              .dataTables_wrapper .dataTables_paginate {
+                  "table.dataTable tbody tr.selected td,
+                       table.dataTable tbody tr.selected td,
+                       table.dataTable tbody td.selected {
+                       border-top-color: #bcbcbc !important;
+                       box-shadow: inset 0 0 0 9999px #bcbcbc !important;
+                       color: black;
+                       }
+                       table.dataTable tbody tr:active td {
+                       background-color: #bcbcbc !important;
+                       }
+                       :root {
+                       --dt-row-selected: transparent !important;
+                       }
+                       table.dataTable tbody tr:hover, table.dataTable tbody tr:hover td {
+                       background-color: #bcbcbc !important;
+                        }
+                      .dataTables_wrapper .dataTables_length,
+                      .dataTables_wrapper .dataTables_filter,
+                      .dataTables_wrapper .dataTables_info,
+                      .dataTables_wrapper .dataTables_processing,
+                      .dataTables_wrapper .dataTables_paginate {
                                         color:#ffffff;
                                          }
                                          thead {
@@ -52,10 +73,10 @@ select.import.app <- function(dir, ext, multiple) {
                   
                 )
               ),
-            htmlOutput("msg2"),
-            DT::DTOutput('content.df', height = "200px"),
+            htmlOutput("wrn"),
             br(),
-            htmlOutput("wrn")
+            htmlOutput("msg2"),
+            DT::DTOutput('content.df', height = "250px")
             ),
 )
         ),
@@ -95,25 +116,22 @@ select.import.app <- function(dir, ext, multiple) {
           
           output$content.df = DT::renderDataTable({
             content()
-          }
-          , rownames = FALSE, options = list(
-            dom = 't',
-            rowCallback = htmlwidgets::JS("function(r,d) {$(r).attr('height', '30px')}"),
-            lengthMenu = c(100, 200),
-            pageLength = 100,
-            columnDefs = list(list(
-              width = "20px",
-              className = 'dt-left',
-              targets = "_all"
-            )),
-            scrollX = TRUE
+          }, rownames = FALSE, options = list(
+            dom = 'ft',
+            pageLength = nrow(data),
+            searchHighlight = TRUE,
+            columnDefs = list(list(width = "150px", targets = "_all")),
+            scrollX = TRUE,
+            language = list(
+              search = "<i class='glyphicon glyphicon-search'></i>"
+            )
           )
           )
         })
         
         output$msg2 <- renderUI({
           if (input$browse != 0) {
-            HTML(paste("<b>Files: </b>"))
+            HTML(paste("<b>Selected files: </b>"))
           }
           
         })
@@ -133,9 +151,9 @@ select.import.app <- function(dir, ext, multiple) {
             
             HTML(
               paste0(
-                "<em>The following files are an incompatible format:<br>",
+                "<em><font size='2px'color='#bcbcbc'>The following files are an incompatible format:<br>",
                 str,
-                "</em>",
+                "</em></font>",
                 collapse="<br>"
               )
             )
