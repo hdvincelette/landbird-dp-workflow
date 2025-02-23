@@ -4,7 +4,6 @@ add.domainItem.app <- function(variable, invalid.values, ref.dxnry) {
   runGadget(
     app = shinyApp(
       ui <- 
-        page(
           bootstrapPage(
         tags$head(tags$style(HTML("pre { overflow: auto; word-wrap: normal; }"))),
         theme = theme.selection,
@@ -47,14 +46,16 @@ add.domainItem.app <- function(variable, invalid.values, ref.dxnry) {
                                          }
                                          tbody {
                                            color:#ffffff;
-                                         }"
+                                         }
+                                      .checkbox {
+                                       line-height: 20px;}"
               
             )
           ),
           DT::DTOutput('domainItems', height = "375px")
         ),
         
-      )), 
+      ), 
       
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
