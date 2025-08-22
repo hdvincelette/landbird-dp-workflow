@@ -3,7 +3,7 @@ compare.dfs.app <- function(new.df, old.df, compare.df, compare.stats) {
   runGadget(
     app = shinyApp(
       ui <- 
-        # page(
+        page(
         bootstrapPage(
         tags$head(tags$style(
           HTML("pre { overflow: auto; word-wrap: normal; }")
@@ -36,7 +36,8 @@ compare.dfs.app <- function(new.df, old.df, compare.df, compare.stats) {
                         .dataTables_wrapper .dataTables_processing,
                         .dataTables_wrapper .dataTables_paginate {color:#ffffff;}
                                          thead {color:#ffffff;}
-                                         tbody {color:#ffffff;}"
+                                         tbody {color:#ffffff;}
+            .nav-tabs .nav-item .nav-link:hover {color:#77a9a1;}"
             
           )
         ),
@@ -45,10 +46,14 @@ compare.dfs.app <- function(new.df, old.df, compare.df, compare.stats) {
           nav_panel(strong("View"),
                     br(),
                     h5(em("New:")),
-                    DT::DTOutput('df1', height = "300px"),
+                    DT::DTOutput('df1'
+                                 , height = "300px"
+                                 ),
                     br(),
                     h5(em("Old:")),
-                    DT::DTOutput('df2', height = "300px"),
+                    DT::DTOutput('df2'
+                                 , height = "300px"
+                                 ),
                     br(),
                     actionButton("action", "Done"),
                     br(),
@@ -79,7 +84,7 @@ compare.dfs.app <- function(new.df, old.df, compare.df, compare.stats) {
             br(),
           )
         ))
-      # )
+      )
       ),
       server <- function(input, output, session) {
         observeEvent(input$action, stopApp())
@@ -89,7 +94,7 @@ compare.dfs.app <- function(new.df, old.df, compare.df, compare.stats) {
         },  rownames = FALSE, options = list(
           rowCallback = htmlwidgets::JS("function(r,d) {$(r).attr('height', '30px')}"),
           dom = 'ft',
-          pageLength = nrow(data),
+          pageLength = nrow(new.df),
           searchHighlight = TRUE,
           autoWidth = TRUE,
           columnDefs = list(list(width = "150px", targets = "_all")),
@@ -104,7 +109,7 @@ compare.dfs.app <- function(new.df, old.df, compare.df, compare.stats) {
         }, rownames = FALSE, options = list(
           rowCallback = htmlwidgets::JS("function(r,d) {$(r).attr('height', '30px')}"),
           dom = 'ft',
-          pageLength = nrow(data),
+          pageLength = nrow(old.df),
           searchHighlight = TRUE,
           autoWidth = TRUE,
           columnDefs = list(list(width = "150px", targets = "_all")),
@@ -173,3 +178,4 @@ compare.dfs.app <- function(new.df, old.df, compare.df, compare.stats) {
     viewer = paneViewer(minHeight = 500)
   )
 }
+

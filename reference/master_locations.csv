@@ -1,0 +1,221 @@
+Country,StateProvince,City,Area,PlotID,PlotName,Latitude_dec,Longitude_dec
+USA,AK,Anchorage,,UTME,Utility Meadow,61.174625,-150.041585
+USA,AK,Anchorage,,CLME,Clithroe Meadow,61.175196,-150.035961
+USA,AK,Anchorage,,AIME,Airport Meadow,61.170296,-150.048482
+USA,AK,Anchorage,JBER,AMCO,Ammo Country ,61.306845,-149.786518
+USA,AK,Anchorage,JBER,BABO,Basher Bog,61.160718,-149.743592
+USA,AK,Anchorage,JBER,BELA,Beebe Lake,61.295093,-149.796394
+USA,AK,Anchorage,JBER,BLPO,Blackpoll Pond,,
+USA,AK,Anchorage,JBER,CLSO,Clunie Lake South,61.345536,-149.61552
+USA,AK,Anchorage,JBER,DENA,Dena'ina road,,
+USA,AK,Anchorage,JBER,ERF,Eagle River Flats,,
+USA,AK,Anchorage,JBER,FILA,Fish Lake,,
+USA,AK,Anchorage,JBER,FTLA,Fish Triangle Lakes,61.270778,-149.80986
+USA,AK,Anchorage,JBER,GRLA,,,
+USA,AK,Anchorage,JBER,HILA,Hillberg Lake,61.274658,-149.83183
+USA,AK,Anchorage,JBER,LSLA,Lower Sixmile Lake,61.289103,-149.806066
+USA,AK,Anchorage,JBER,MCMA,McVeigh Marsh,61.244036,-149.664576
+USA,AK,Anchorage,JBER,OLNO,Otter Lake North,61.288114,-149.732074
+USA,AK,Anchorage,JBER,OLSL,Otter Lake Slough,61.286158,-149.747806
+USA,AK,Anchorage,JBER,OLSO,Otter Lake South,61.284202,-149.749317
+USA,AK,Anchorage,JBER,SPLA,Spring Lake,61.282546,-149.814995
+USA,AK,Anchorage,JBER,SPLA2,Spring Lake 2,61.285968,-149.813414
+USA,AK,Anchorage,JBER,USLA,Upper Sixmile Lake,61.283412,-149.773226
+USA,AK,Anchorage,JBER,WEPO,Web Pond,61.374368,-149.612636
+USA,AK,Anchorage,,1,Potter Marsh,61.06136975,-149.8001317
+USA,AK,Anchorage,,25,Ship Creek East,,
+USA,AK,Anchorage,JBER,262,SW of Elephant Cage,,
+USA,AK,Anchorage,JBER,550,West of Eagle River Flats,,
+USA,AK,Anchorage,,556,Ship Creek West,,
+USA,AK,Anchorage,JBER,564,West of Runway,61.24545,-149.870642
+USA,AK,Anchorage,JbeR,600,Dishno Pond,,
+USA,AK,Anchorage,JBER,607,Entrance,61.234291,-149.775673
+USA,AK,Anchorage,JBER,652,McVeigh Marsh,,
+USA,AK,Anchorage,,694,btwn 35th & 37th,,
+USA,AK,Anchorage,,782,Walden Lake,,
+USA,AK,Anchorage,,790,Ship Creek and Vandenberg,,
+USA,AK,Anchorage,,834,Bunker Hill Bivouac,,
+USA,AK,Anchorage,,871,Thompson Lake,,
+USA,AK,Anchorage,JBER,983,Eagle River Flats South,61.297858,-149.707031
+USA,AK,Anchorage,,999,,,
+USA,AK,Anchorage,,1044,South of Lake Kiowa,,
+USA,AK,Anchorage,JBER,1109,Web Pond,,
+USA,AK,Anchorage,,1141,Gwen Lake and Lake Kiowa,,
+USA,AK,Anchorage,JBER,1153,SW of Triangle Lake,,
+USA,AK,Anchorage,JBER,1159,Otter Lake,61.2872318,-149.7261314
+USA,AK,Anchorage,,1251,East of Muldoon,,
+USA,AK,Anchorage,JBER,1302,Triangle & Fish Lakes,,
+USA,AK,Anchorage,,1318,Chain Lakes,,
+USA,AK,Anchorage,JBER,1362,Sixmile Lake,61.28667,-149.79289
+USA,AK,Anchorage,JBER,1363,Spring Lake,61.282546,-149.814995
+USA,AK,Anchorage,JBER,1385,Clunie Lake,61.34692671,-149.6133549
+USA,AK,Anchorage,JBER,1415,Main Gate,,
+USA,AK,Anchorage,JBER,1547,S of Elephant Cage,,
+USA,AK,Anchorage,JBER,1683,Beebe Lake,61.29573115,-149.7969367
+USA,AK,Anchorage,,1694,Green Lake,,
+USA,AK,Anchorage,JBER,1709,Eagle River Flats East,,
+USA,AK,Anchorage,JBER,1712,S of Web Pond,,
+USA,AK,Anchorage,JBER,1722,N of Ammo Dump,,
+USA,AK,Anchorage,JBER,1921,Hillberg Lake,61.269583,-149.805968
+USA,AK,Anchorage,JBER,1973,E of Ammo Dump,,
+USA,AK,Anchorage,JBER,1159-E,Otter Lake East,61.28809,-149.73019
+USA,AK,Anchorage,JBER,1159-N,Otter Lake North,61.288114,-149.732074
+USA,AK,Anchorage,JBER,1159-S,Otter Lake South,61.284202,-149.749317
+USA,AK,Anchorage,JBER,1159-W,Otter Lake West (Slough),61.28365,-149.75183
+USA,AK,Anchorage,JBER,1362-L,Lower Sixmile Lake,61.289103,-149.806066
+USA,AK,Anchorage,JBER,1362-U,Upper Sixmile Lake,61.28358144,-149.772707
+USA,AK,Anchorage,JBER,1363-2,Spring Lake 2,61.285968,-149.813414
+USA,AK,Anchorage,,ALPO,Alder Pond,60.80824,-148.948917
+USA,AK,Anchorage,,CAES,Campbell Creek Estuary,61.129945,-149.964333
+USA,AK,Anchorage,,CALA,Canoe Lake,61.558756,-149.189843
+USA,AK,Anchorage,,CHPO,Chain Ponds,61.374399,-149.592099
+USA,AK,Anchorage,,CLIT,Clithroe Center,61.176028,-150.036261
+USA,AK,Anchorage,JBER,CLNO,Clunie Lake North,61.361474,-149.604629
+USA,AK,Anchorage,,COAS,Anchorage Coastal Wildlife Refuge,61.175027,-150.047982
+USA,AK,Anchorage,,COCR,Cottonwood Creek,61.548824,-149.508176
+USA,AK,Anchorage,JBER,DIPO,Dishno Pond,61.233869,-149.649852
+USA,AK,Anchorage,,DVDR,,,
+USA,AK,Anchorage,,ELMO,Elmore,61.16825695,-149.806472
+USA,AK,Anchorage,,EQBO,Earthquake Bog,,
+USA,AK,Anchorage,,EQPA,Earthquake Park,61.19294,-149.98192
+USA,AK,Anchorage,,FABI,,,
+USA,AK,Anchorage,,FAIC,,,
+USA,AK,Anchorage,,FIRD1,Fireweed Road 1,61.565146,-149.314111
+USA,AK,Anchorage,,FIRD2,Fireweed Road 2,61.567341,-149.331682
+USA,AK,Anchorage,,FTRO,,,
+USA,AK,Anchorage,,GIMA,Girdwood Marsh,60.940141,-149.178588
+USA,AK,Anchorage,,GOVI,Golden View,61.08172076,-149.7744288
+USA,AK,Anchorage,,GULA,Gull Lake,61.541167,-148.949151
+USA,AK,Anchorage,,GWLA,Gwenn Lake,61.299111,-149.679207
+USA,AK,Anchorage,,HAMO,,,
+USA,AK,Anchorage,,IRLA,Irene Lake,61.561386,-149.190139
+USA,AK,Anchorage,,JAPA,Jade Park,61.13827631,-149.9812714
+USA,AK,Anchorage,JBER,,Joint Base Elmendorf-Richardson,,
+USA,AK,Anchorage,,JILA,Jim Lake,61.553188,-148.929553
+USA,AK,Anchorage,,JILA-E,Jim Lake East,61.555817,-148.936081
+USA,AK,Anchorage,,JILA-W,Jim Lake West ,61.550322,-148.916056
+USA,AK,Anchorage,,KELA,Kepler Lake,61.553302,-149.210222
+USA,AK,Anchorage,,KIPA,,,
+USA,AK,Anchorage,,KIPO,,,
+USA,AK,Anchorage,,KLLA,Klaire Lake,61.557468,-149.207973
+USA,AK,Anchorage,,MALA,Matanuska Lake,61.555129,-149.23132
+USA,AK,Anchorage,,MLKP,MLK Softball Complex,61.176728,-149.804094
+USA,AK,Anchorage,,MOFL,Moose Flats,60.811472,-148.938087
+USA,AK,Anchorage,,MULA,Mud Lake,61.564789,-148.946579
+USA,AK,Anchorage,,OCPA,Oceanveiw Bluff Park,61.091899,-149.867586
+USA,AK,Anchorage,,PLRO,,,
+USA,AK,Anchorage,,POMA,Potter Marsh ,61.06136975,-149.8001317
+USA,AK,Anchorage,,RASL,Rabbit Slough,61.536062,-149.220261
+USA,AK,Anchorage,,RASP,,,
+USA,AK,Anchorage,,RELA,Reflections Lake ,61.485808,-149.254657
+USA,AK,Anchorage,,ROBR,,,
+USA,AK,Anchorage,,SODR,Southport Drive,61.11566059,-149.9291736
+USA,AK,Anchorage,,STPA,Storck Park,61.08663,-149.75223
+USA,AK,Anchorage,,TRLA,Triangle Lake-Palmer,61.556286,-149.20951
+USA,AK,Anchorage,,WALA,Waldon Lake,61.347673,-149.630824
+USA,AK,Anchorage,,WLLA,West Long Lake,61.716515,-150.090408
+CAN,MAN,Churchill,,FEN,,,
+CAN,MAN,Churchill,,GOCR,,,
+CAN,MAN,Churchill,,RATR,,,
+CAN,MAN,Churchill,,SCRO,,,
+CAN,MAN,Churchill,,TWLA,,,
+USA,AK,Delta Junction,,BUFF,,,
+USA,AK,Delta Junction,,FOX,,,
+USA,AK,Delta Junction,,HANS,,,
+USA,AK,Delta Junction,,JAY,,,
+USA,AK,Delta Junction,,PHIL,,,
+USA,AK,Fairbanks,Fort Wainwright,104,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,107,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,108,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,203,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,205,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,208,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,209,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,303,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,305,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,309,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,403,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,405,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,406,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,505,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,1004,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,1007,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,1008,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,2003,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,2005,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,2007,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,2008,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,2009,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,3002,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,3003,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,3004,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,3005,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,3006,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,3009,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,4001,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,4002,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,4003,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,4004,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,4005,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,4006,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,5002,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,5003,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,5004,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,5005,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,5006,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,5007,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,6002,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,6003,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,6004,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,6005,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,6007,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,7002,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,7003,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,7004,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,8004,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,8005,Tanana Flats,,
+USA,AK,Fairbanks,Fort Wainwright,9005,Tanana Flats,,
+USA,AK,Nome,,34MI,34 MI,,
+USA,AK,Nome,,37MI,37 MI,,
+USA,AK,Nome,,,Barrel,,
+USA,AK,Nome,,,Feather,,
+USA,AK,Nome,,,Knob,,
+USA,AK,Nome,,,Tombstone,,
+USA,AK,Nome,,,Feather East,,
+USA,AK,Nome,,,Feather West,,
+USA,AK,Nome,,,Safety,,
+USA,AK,Nome,,,Steven,,
+CAN,NWT,Yellowknife,,YEHY,,,
+USA,AK,,Cape Krusenstern,SW037,,,
+USA,AK,,Eielson,28MP,,,
+USA,AK,,Eielson,CATH,,,
+USA,AK,,Eielson,GRASS,,,
+USA,AK,,Eielson,LADY,,,
+USA,AK,,Eielson,MANC,,,
+USA,AK,,Eielson,MULL_01,,,
+USA,AK,,Eielson,NOR13,,,
+USA,AK,,Eielson,NOR17,,,
+USA,AK,,Eielson,NOR2,,,
+USA,AK,,Eielson,PC14,,,
+USA,AK,,Eielson,PIP1,,,
+USA,AK,,Eielson,PIP13,,,
+USA,AK,,Eielson,PIP6,,,
+USA,AK,,Eielson,PIP9,,,
+USA,AK,,Eielson,RAN5,,,
+USA,AK,,Eielson,RAN6,,,
+USA,AK,,Eielson,RAN7,,,
+USA,AK,,Eielson,SEWA,,,
+USA,AK,,Eielson,SHRA,,,
+USA,AK,,Eielson,YTA,Yukon Training Area,,
+USA,WA,,Grays Harbor,,East Sand Island,,
+USA,AK,,James Bay,LOPO,,,
+USA,AK,,Kakagrak Hills,SW009,,,
+USA,AK,,Kanuti NWR,BOLA,,,
+USA,AK,,Kanuti NWR,DRPO,,,
+USA,AK,,Kanuti NWR,KALA,,,
+USA,AK,,Kanuti NWR,NAPO,,,
+USA,AK,,Kanuti NWR,QULA,,,
+USA,AK,,Kanuti NWR,SEPO,,,
+USA,AK,,Kanuti NWR,TALA,,,
+CAN,QUE,,Mingan,MING,,,
+USA,AK,,,MINTO,,,

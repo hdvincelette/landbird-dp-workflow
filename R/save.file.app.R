@@ -66,6 +66,13 @@ save.file.app <- function(dir, proposed.filename, ref.filename, format) {
         observe({
           if (input$browse == 0)
             return()
+          
+          updateTextInput(session,
+                          "path",
+                          value = rstudioapi::selectDirectory(path = dir)
+                            # utils::choose.dir(default = dir)
+                          
+                          )
         })
         
 
@@ -102,10 +109,6 @@ save.file.app <- function(dir, proposed.filename, ref.filename, format) {
         observe({
           if (input$browse == 0)
             return()
-          
-          updateTextInput(session,
-                          "path",
-                          value = utils::choose.dir(default = dir))
           
         })
         
