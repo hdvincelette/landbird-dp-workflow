@@ -1,11 +1,11 @@
 
 
 filter.df.app <- function(data.list, species.col, date.col, species, min.date, max.date) {
-  if (missing(species.col) |
+  if (missing(species.col) ||
       species.col == "") {
     species.col = ".ERROR"
   }
-  if (missing(date.col) |
+  if (missing(date.col) ||
       date.col == "") {
     date.col = ".ERROR"
   }
@@ -18,6 +18,7 @@ filter.df.app <- function(data.list, species.col, date.col, species, min.date, m
   if (missing(max.date)) {
     max.date = as.Date("0001-01-01")
   }
+  
   
   runGadget(
     app = shinyApp(
@@ -75,6 +76,7 @@ filter.df.app <- function(data.list, species.col, date.col, species, min.date, m
           shinyjs::reset("selected.dates")
         })
         
+        
         selected.nrow <- reactive({
           as.data.frame(lapply(
             data.list %>%
@@ -91,8 +93,11 @@ filter.df.app <- function(data.list, species.col, date.col, species, min.date, m
               ),
             nrow
           ))
-          
+
         })
+
+        
+        
         
         output$selected.nrow <- renderTable({
           selected.nrow()
