@@ -42,6 +42,7 @@ get.move.data <-
       )
     }
     
+    
     all.studies.df <-
       suppressWarnings(move2::movebank_download_study_info()) %>%
       dplyr::filter(i_am_owner == TRUE,
@@ -276,7 +277,8 @@ get.move.data <-
       study.id <-
         move2::movebank_get_study_id(study_id = study.choice.df$id[a])
       
-      message(cat(paste0(" '", study.name, "'...")))
+      
+    message(cat(paste0(" '", study.name, "'...")))
       
       
       ## Location data..
@@ -311,6 +313,7 @@ get.move.data <-
         # attributes.vars <-
         #   unique(attributes.vars)
         
+
         suppressWarnings(
           import.loc <- move2::movebank_retrieve(
             "event",
