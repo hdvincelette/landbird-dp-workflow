@@ -44,7 +44,7 @@ rm(list=ls())
 # Install CRAN packages
 if (!require("pacman"))
   install.packages("pacman")
-pacman::p_load("devtools", "move", "auk", "magrittr", "shiny","bslib")
+pacman::p_load("devtools", "move", "move2", "auk", "magrittr", "shiny", "bslib", "shinyWidgets", "dipsaus", "dataMaid", "pak", "remotes")
 
 # Load project
 setwd(dirname(rstudioapi::documentPath()))
@@ -64,7 +64,7 @@ theme.selection<- shinythemes::shinytheme("superhero")
 # 
 # ## Install FWSAkRDRtools from GitHub
 # devtools::install_github("hdvincelette/FWSAkRDRtools")
-# 
+ 
 # ## Install mdJSONdictio from GitHub
 # devtools::install_github("hdvincelette/mdJSONdictio")
 
@@ -107,7 +107,7 @@ Paste the names of the project folder, data dictionary(ies), and data entry temp
 ```{r include=FALSE}
 
 # Provide the relevent information
-RDR.keyword <- "Eielson"
+RDR.keyword <- "LRRS"
 
 ```
 
@@ -122,7 +122,7 @@ if(dir.exists(paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/"))==FALSE) {
 
 project.folder <- dir(
   path = paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/"),
-  pattern = paste0("^mbmlb.*", RDR.keyword),
+  pattern = paste0("^mbmlb.*", gsub(" ",".*",RDR.keyword)),
   full.names = FALSE,
   recursive = FALSE,
   ignore.case = TRUE
@@ -149,7 +149,7 @@ select.download.app(
     "/data"
   ),
   to.dir = paste0(
-    current.dir,
+    dirname(rstudioapi::documentPath()),
     "/downloads/data"
   ),
   ext = ".*",
@@ -176,7 +176,7 @@ for (y in 1:nrow(selected.files)) {
 select.download.app(
   from.dir = paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/", project.folder,"/metadata"),
   to.dir = paste0(
-    current.dir,
+    dirname(rstudioapi::documentPath()),
     "/downloads/dictionaries"
   ),
   ext = ".*",
@@ -219,6 +219,37 @@ Save the entered data file(s) in the "data-raw" sub-folder of this R project. Co
 ### Meld data
 
 ```{r}
+
+# # Extract Excel files from worksheet
+# # Import worksheet
+# select.import.app(dir = paste0(dirname(rstudioapi::documentPath()),"/data-raw"), 
+#                   ext = c("txt", "csv", "xls*"),
+#                   multiple = FALSE,
+#                   type = "data")
+# 
+# excel_file<- paste0(selected.files$path, "/" , selected.files$filename)
+# 
+# # Get all sheet names
+# sheets <- readxl::excel_sheets(excel_file)
+# 
+# # Loop through sheets and write CSVs
+# for (sheet in sheets) {
+#   df <- openxlsx::read.xlsx(excel_file, sheet = sheet,  startRow = 2)
+#   
+#   csv_path <- paste0(
+#     selected.files$path,
+#     "/",
+#     stringr::str_remove(tools::file_path_sans_ext(selected.files$filename), 
+#                         "^.*?_"),
+#     "_",
+#     sheet,
+#     ".csv"
+#   )
+#   
+#   write.csv(df, csv_path, row.names = FALSE, na = "")
+# }
+
+
 
 # import data files and dictionary
 select.import.app(dir = paste0(dirname(rstudioapi::documentPath()),"/data-raw"), 
@@ -320,8 +351,6 @@ for (a in 1:length(raw.data.list)) {
   
 }
 
-names(warning.list) <- names(raw.data.list)
-
 
 # converge repeat colnames
 
@@ -410,7 +439,7 @@ melded_df<- raw.data.list[[1]]
 
 write.table(
   melded_df,
-  paste0("data-processed/", "RUBL_melded_v1", ".txt"),
+  paste0("data-raw/", "OSFL_Nest_Visit_melded_v1", ".txt"),
   na = "",
   row.names = FALSE,
   quote = FALSE,
@@ -430,12 +459,12 @@ Before beginning, make sure all entered data and data dictionary(ies) are saved 
 
 # Provide the relevant information (if applicable)
 missing_values<- c(NA)
-species.col <- "SpeciesCode"
+# species.col <- "SpeciesCode"
 species.col <- "Species"
 date.col <- "Date"
 date.format <-  "%m/%d/%Y"
 time.col <- "CaptureTime_2400"
-time.col <- "Time"
+# time.col <- "Time"
 time.format <- "%H:%M"
 na.if<- c("","-","—",".","NA")
 
@@ -535,7 +564,8 @@ if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames))
         dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), as.Date, format = date.format) %>%
         # dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format)) %>%
         append(list(
-          "Min" = min(.[[date.col]]), "Max" = max(.[[date.col]])
+          "Min" = min(.[[date.col]], na.rm = TRUE),
+          "Max" = max(.[[date.col]], na.rm = TRUE)
         ))
     )
     
@@ -1067,12 +1097,18 @@ for (x in 1:length(raw.data.list)) {
 ### Add uuids
 
 ```{r}
-raw.data.list <- raw.data.list %>%   purrr::map(
-  .f = ~ .x %>%       dplyr::mutate(!!!setNames(
+raw.data.list <- raw.data.list %>%   
+  purrr::map(
+  .f = ~ .x %>%
+    dplyr::mutate(!!!setNames(
     rep(NA, length(setdiff(
       "OccurrenceID", colnames(.x)
     ))), setdiff("OccurrenceID", colnames(.x))
-  )) %>% dplyr::relocate("OccurrenceID") %>%       dplyr::rowwise() %>%       dplyr::mutate_at(
+  )) %>% 
+    dplyr::relocate("OccurrenceID") %>%
+    dplyr::filter(if_any(everything(), ~ !is.na(.))) %>%
+  dplyr::rowwise() %>%
+    dplyr::mutate_at(
     "OccurrenceID",
     ~ ifelse(is.na(.) == TRUE ||
                . == "", uuid::UUIDgenerate(use.time = FALSE), .)
@@ -1202,16 +1238,26 @@ raw.data.list <- raw.data.list %>%
 
 ```{r}
 
+entries <- list.files(
+      path = paste0(
+        dirname(rstudioapi::documentPath()),
+        "/reference/bander_portal/"
+      ),
+      full.names = TRUE,
+      recursive = FALSE
+    )
+ entries<- entries[!file.info(entries)$isdir]
+    
 ref_data <-
-  lapply(list.files(path = "reference/bander_portal/", full.names = TRUE),
-         readxl::read_excel)
+  lapply({
+    entries
+  }, readxl::read_excel)
 
+ 
 names(ref_data) <-
-  gsub(
-    list.files(path = "reference/bander_portal/"),
-    pattern = ".xlsx$",
-    replacement = ""
-  )
+  gsub(basename(entries),
+       pattern = ".xlsx$",
+       replacement = "")
 
 list2env(ref_data, globalenv())
 
@@ -1473,6 +1519,9 @@ raw.data.list %>% purrr::map(
 # Do you want to merge the data with an authoritative file?
 auth.merge <- FALSE
 
+# Do you want to split dataframes by date or species before exporting?
+filter.export<- FALSE
+
 
 ```
 
@@ -1484,6 +1533,131 @@ auth.merge <- FALSE
 raw.data.list <-
   split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
   purrr::map(dplyr::bind_rows)
+
+
+# Filter for export
+if(filter.export==TRUE){
+aou_code <- read.csv(list.files("reference/IBPAOU", full.names = TRUE)
+                     , na = "")
+
+
+if(any(c(species.col, date.col) %in% unlist(purrr::map(raw.data.list, colnames)))) {
+  # Make filter selections
+  if (species.col %in% unlist(purrr::map(raw.data.list, colnames))) {
+    species <- unique(purrr::map(raw.data.list, ~ .x %>%
+                                   purrr::pluck(species.col)) %>%
+                        unlist(.))
+  } else {
+    species<- character(0)
+  }
+  
+  
+  if (date.col %in% unlist(purrr::map(raw.data.list, colnames))) {
+    date.ranges <- raw.data.list %>% purrr::map(
+      .f = ~ .x %>%
+        dplyr::mutate("{{date.col}}" := ifelse(!date.col %in% names(.), "", {{date.col}})) %>%
+        dplyr::select(any_of(date.col)) %>%
+        dplyr::filter(.data[[date.col]] != "") %>%
+        dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), as.Date, format = date.format) %>%
+        # dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format)) %>%
+        append(list(
+          "Min" = min(.[[date.col]]), "Max" = max(.[[date.col]])
+        ))
+    )
+    
+  
+    dates.df <- raw.data.list %>% purrr::map(
+      .f = ~ .x %>%
+        dplyr::mutate({{date.col}} := ifelse(!date.col %in% names(.), "", .data[[date.col]])) %>%
+        dplyr::select(all_of(date.col)) %>%
+        dplyr::filter(.data[[date.col]] != "") %>%
+        dplyr::mutate({{date.col}} := as.Date(.data[[date.col]], format = date.format))
+    ) %>%
+      dplyr::bind_rows(., .id = "id")
+    
+    min.date <- min(do.call("c", lapply(date.ranges, "[[", "Min")))
+    max.date <- max(do.call("c", lapply(date.ranges, "[[", "Max")))
+    
+  } else {
+    min.date <- as.Date("0001-01-01")
+    max.date <- as.Date("0001-01-01")
+  }
+  
+  
+
+
+  filter.df.app(raw.data.list, species.col, date.col, species, min.date, max.date)
+
+
+# Apply filters
+  id.var <- dplyr::last(make.names(c(unique(
+    unlist(purrr::map(raw.data.list, colnames))
+  ), ".id"), unique = TRUE))
+  
+  
+  raw.data.list <- raw.data.list %>%
+    purrr::map(.f = ~ .x %>%
+                 tibble::rowid_to_column(var = id.var))
+  
+  other.data.list <- raw.data.list
+  
+  if (length(species) != 0) {
+    raw.data.list <- raw.data.list %>%
+      purrr::map(.f = ~ .x %>%
+                   dplyr::filter(if_any(
+                     matches(species.col), ~ .data[[species.col]] %in% selected.species
+                   )))
+  }
+  
+  
+  if (min.date != "0001-01-01" |
+      max.date != "0001-01-01") {
+    raw.data.list <- raw.data.list %>%
+      purrr::map(
+        .f = ~ .x %>%
+          dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), as.Date, format = date.format) %>%
+          dplyr::filter(if_any(
+            matches(date.col),
+            ~ data.table::between(.data[[date.col]], min(selected.dates), max(selected.dates), NAbounds =
+                                    FALSE)
+          ))
+      )
+  }
+  
+  rm.row <-  purrr::map(raw.data.list, id.var)
+  
+  other.data.list <- 
+    purrr::map2(other.data.list,
+                rm.row,
+                ~ .x %>% 
+                  dplyr::filter(!.data[[id.var]] %in% .y)) %>%
+    purrr::set_names(names(raw.data.list))
+                   
+  
+  raw.data.list <-
+    purrr::map(raw.data.list, ~ (.x %>%
+                                   dplyr::select(-tidyselect::any_of(id.var))))
+  
+  other.data.list <- 
+    purrr::map(other.data.list, ~ (.x %>% 
+                                     dplyr::select(-tidyselect::any_of(id.var))))
+   
+
+# Remove empty dataframes
+      raw.data.list <- raw.data.list %>%
+        purrr::discard(., ~ nrow(.) == 0) %>%
+        purrr::map(.f = ~ .x %>%
+                           dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), format, format = date.format))
+                     
+      
+      other.data.list <- other.data.list %>%
+        purrr::discard(., ~ nrow(.) == 0) %>%
+         purrr::map(.f = ~ .x %>%
+                           dplyr::mutate_at(dplyr::vars(tidyselect::any_of(date.col)), format, format = date.format))
+  
+}
+}
+
 
 
 if (auth.merge == TRUE) {
@@ -1508,7 +1682,7 @@ if (auth.merge == TRUE) {
   
   # Import authoritative data file
   select.import.app(
-    dir = paste0(current.dir, "/downloads/data"),
+    dir = paste0(dirname(rstudioapi::documentPath()), "/downloads/data"),
     ext = c("txt", "csv", "xls*"),
     multiple = FALSE
   )
@@ -1584,7 +1758,7 @@ if (auth.merge == TRUE) {
   # Save files - versioning
   save.file.app(
     dir = paste0(
-      current.dir,
+      dirname(rstudioapi::documentPath()),
       "/data-processed/to_archive"
     ),
     proposed.filename = paste0(auth.filename, " (1)"),
@@ -1671,45 +1845,51 @@ if (auth.merge == TRUE) {
 }
 
 
+raw.data.list <-
+  split(c(raw.data.list, other.data.list), c(names(raw.data.list), names(other.data.list))) %>%
+  purrr::map(dplyr::bind_rows)
+
+other.data.list<- c()
 
 ```
 
 ```{r}
+  
 
 # Split into species-specific files
-# unique(raw.data.list[[1]]$SpeciesCode)
-# 
-# aou_code <- read.csv(list.files("reference/IBPAOU", full.names = TRUE)) %>%
-#   tibble::add_row(SPEC = "BALO", COMMONNAME = "band lost") %>%
-#     tibble::add_row(SPEC = "BADE", COMMONNAME = "band destroyed")
-#                      
-# split.col<- "SpeciesCode"
-# proj.prefix<- c("Eielson","JBER")
-# data.desc<- "Banding"
-# 
-# split.dfs <- raw.data.list %>%
-#   set_names(proj.prefix) %>%
-#   purrr::map(.f = ~ .x %>%
-#                dplyr::inner_join(
-#                  .,
-#                  aou_code[, c("COMMONNAME", "SPEC")],
-#                  by = c("SpeciesCode" = "SPEC"),
-#                  keep = FALSE,
-#                  relationship = "many-to-many"
-#                  ) %>%
-#                split(.[["COMMONNAME"]]) %>%
-#                purrr::map(., ~ .x %>%  dplyr::select(-"COMMONNAME"))) %>%
-#   purrr::imap(., function(l, n) {
-#     names(l) <- paste0(n, "_", gsub(" ", "_", names(l)))
-#     return(l)
-#     }) %>%
-#   purrr::map(.f = ~ .x %>%
-#       purrr::iwalk(., ~ write.csv(.x, 
-#                                   file = paste0("data-processed/to_archive/",
-#                                     .y, "_",data.desc,"_v1.csv"
-#                                     ),
-#                                    na = "",
-#                                   row.names = FALSE)))
+unique(raw.data.list[[1]]$SpeciesCode)
+
+aou_code <- read.csv(list.files("reference/IBPAOU", full.names = TRUE)) %>%
+  tibble::add_row(SPEC = "BALO", COMMONNAME = "band lost") %>%
+    tibble::add_row(SPEC = "BADE", COMMONNAME = "band destroyed")
+
+split.col<- "SpeciesCode"
+proj.prefix<- c("DOD_Shorebird_Migration")
+data.desc<- "Banding"
+
+split.dfs <- raw.data.list %>%
+  set_names(proj.prefix) %>%
+  purrr::map(.f = ~ .x %>%
+               dplyr::inner_join(
+                 .,
+                 aou_code[, c("COMMONNAME", "SPEC")],
+                 by = c("SpeciesCode" = "SPEC"),
+                 keep = FALSE,
+                 relationship = "many-to-many"
+                 ) %>%
+               split(.[["COMMONNAME"]]) %>%
+               purrr::map(., ~ .x %>%  dplyr::select(-"COMMONNAME"))) %>%
+  purrr::imap(., function(l, n) {
+    names(l) <- paste0(n, "_", gsub(" ", "_", names(l)))
+    return(l)
+    }) %>%
+  purrr::map(.f = ~ .x %>%
+      purrr::iwalk(., ~ write.csv(.x,
+                                  file = paste0("data-processed/to_archive/",
+                                    .y, "_",data.desc,"_v1.csv"
+                                    ),
+                                   na = "",
+                                  row.names = FALSE)))
   
 
 ```
@@ -1903,22 +2083,48 @@ if (auth.merge == TRUE) {
 
 # Archive in the Regional Data Repository
 
+### Provide inputs
+
 ```{r}
-project = "Yakutat"
+project = "Tree Swallow"
+program = "mbm"
 
 ```
+
+### Commit files
 
 ```{r}
 
 
 path<- rstudioapi::selectDirectory(path = current.dir)
 
-project<- FWSAkRDRtools::find.projects(pattern = project)
+if(dir.exists(paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/"))==FALSE) {
+  stop("Check the VPN connection and try again.")
+}
+
+project<- FWSAkRDRtools::find.projects(pattern = project,
+                                       program = program)
+
+
+if(length(project)>1) {
+  folder.choice <- utils::menu(
+    c(project),
+    graphics = TRUE,
+    title = cat(
+      paste0(
+        "\nMore than one project folder was found.\nSelect one to access.\n"
+      )
+    )
+  )
+  project<- project[folder.choice]
+}
 
 commit <-
-  FWSAkRDRtools::commit.files(project = project,
-               local.path = path,
-               recursive = TRUE)
+  FWSAkRDRtools::commit.files(
+    project = project,
+    local.path = path,
+    recursive = TRUE
+  )
 
 
 ```
@@ -2288,6 +2494,8 @@ data.list <- importer(
   )
 )
 
+data.list<- raw.data.list
+
 
 data.filenames<- tools::file_path_sans_ext(selected.files$filename)
 
@@ -2541,8 +2749,6 @@ cap.data<- cap.data %>%
 
 
 # Add missing info
-## OccurrenceID
-
 cap.data %>%
   dplyr::filter_at("SpeciesCode", is.na)
 
@@ -2550,12 +2756,13 @@ cap.data %>%
   dplyr::filter(if_all(c("StateProvince", "City", "Area"), is.na))
 
 
+# Sample storage & status
 cap.data<- cap.data %>%
   dplyr::mutate(
     "StorageMethod" = "frozen",
-    "StorageLocation" = "Alaska MBM",
+    "StorageLocation" = "",
     "SampleStatus" = NA,
-    "Contact" = NA,
+    "Contact" = "REBathrick",
     "Notes" = NA
   )
 
@@ -2595,15 +2802,34 @@ if(length(selected.files)==1) {
 }
 
 # Remove inventoried data
-  dplyr::inner_join(cap.data,
-                    auth.data,
-                    by = c("BandNumber",
-                           "YearCollected"))
+view<- dplyr::inner_join(
+  auth.data,
+  cap.data,
+  by = c("BandNumber", "YearCollected", "SampleTissue"),
+  relationship = "many-to-many"
+)
+
+view<- dplyr::anti_join(
+  cap.data,
+  auth.data,
+  by = c("BandNumber", "YearCollected", "SampleTissue")
+)
+
 
 new.data <- auth.data %>%
-  merge(cap.data, all = TRUE) %>%
+  merge(cap.data %>% dplyr::select(-OccurrenceID), all = TRUE) %>%
   dplyr::select(colnames(auth.data))
 
+```
+
+#### Add uuids
+
+```{r}
+new.data <- new.data %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate_at("OccurrenceID",
+                   ~ ifelse(is.na(.) == TRUE ||
+                              . == "", uuid::UUIDgenerate(use.time = FALSE), .))
 ```
 
 #### Update sample status
@@ -2733,16 +2959,26 @@ master_contacts <-
     na.strings = ""
   )
 
+entries <- list.files(
+      path = paste0(
+        dirname(rstudioapi::documentPath()),
+        "/reference/bander_portal/"
+      ),
+      full.names = TRUE,
+      recursive = FALSE
+    )
+ entries<- entries[!file.info(entries)$isdir]
+    
 ref_data <-
-  lapply(list.files(path = "reference/bander_portal/", full.names = TRUE),
-         readxl::read_excel)
+  lapply({
+    entries
+  }, readxl::read_excel)
 
+ 
 names(ref_data) <-
-  gsub(
-    list.files(path = "reference/bander_portal/"),
-    pattern = ".xlsx$",
-    replacement = ""
-  )
+  gsub(basename(entries),
+       pattern = ".xlsx$",
+       replacement = "")
 
 list2env(ref_data, globalenv())
 
@@ -2763,7 +2999,8 @@ miss_cols <- setdiff(c(
 ),
 colnames(cap.data))
 
-cap.data[, (miss_cols) := as.character(NA)]
+
+cap.data[miss_cols] <- NA
 
 ```
 
@@ -2845,7 +3082,7 @@ cap.data <- cap.data %>%
     ~ as.character(.) %>% dplyr::recode(
       .,
       "Eielson" = "EIEL",
-      "Delta Junction" = "DELTA",
+      "Delta Junction" = "DELTAJCT",
       "Eareckson" = "EARECK",
       "Beluga" = "BELUGA",
       "King Salmon" = "KING",
@@ -2853,14 +3090,15 @@ cap.data <- cap.data %>%
       "Shemya" = "EARECK",
       "Anchorage" = "ANC",
       "Chicken" = "CHICKEN",
-      "Fort Yukon" = "FORTYUK"
+      "Fort Yukon" = "FORTYUK",
+      "Yukon Delta" = "YKDELTA"
     )
   ) %>%
    dplyr::mutate(LocationID = dplyr::coalesce(!!!rlang::syms(loc.cols)))
 
 BBL_locations <- c(
   "EIEL",
-  "DELTA",
+  "DELTAJCT",
   "EARECK",
   "BELUGA",
   "KING",
@@ -2869,7 +3107,8 @@ BBL_locations <- c(
   "JBER",
   "OTTER",
   "CHICKEN",
-  "FORTYUK"
+  "FORTYUK",
+  "YKDELTA"
 )
 
 #!!# remove loc nums that correspond to the same locations
@@ -2936,25 +3175,27 @@ cap.data <- cap.data %>%
   )
 
 # Bander/Scribe ID
-cap.data <- cap.data %>%
-  dplyr::mutate_at(
-    c("BanderID", "ScribeID"),
-    ~ as.character(.) %>% plyr::mapvalues(
-      .,
-      from = master_contacts$FWSCode_FMLast,
-      to = master_contacts$FWSCode_FML,
-      warn_missing = FALSE
-    )
-  ) %>%
-  dplyr::mutate_at(
-    c("BanderID", "ScribeID"),
-    ~ plyr::mapvalues(
-      .,
-      from = master_contacts$FWSCode_FLast,
-      to = master_contacts$FWSCode_FL,
-      warn_missing = FALSE
-    )
-  )
+# cap.data <- cap.data %>%
+#   dplyr::mutate_at(
+#     c("BanderID", "ScribeID"),
+#     ~ as.character(.) %>% plyr::mapvalues(
+#       .,
+#       from = master_contacts$FWSCode_FMLast,
+#       to = master_contacts$FWSCode_FML,
+#       warn_missing = FALSE
+#     )
+#   ) %>%
+#   dplyr::mutate_at(
+#     c("BanderID", "ScribeID"),
+#     ~ plyr::mapvalues(
+#       .,
+#       from = master_contacts$FWSCode_FLast,
+#       to = master_contacts$FWSCode_FL,
+#       warn_missing = FALSE
+#     )
+#   )
+
+
 
 # Sex
 cap.data <- cap.data %>%
@@ -3009,11 +3250,6 @@ leg_cols <- leg_cols[leg_cols %in% colnames(cap.data)]
 
 color_cols<- paste0(leg_cols,"_colorband")
 
-
-# test <- cap.data %>%
-#   dplyr::filter_at(leg_cols, dplyr::any_vars(stringr::str_detect(., stringr::regex("-", ignore_case =
-#                                                                                      TRUE))))
-
 my_colors <-
   c(
     "Bk",
@@ -3053,6 +3289,11 @@ BBL_colors <-
     "White",
     "Yellow"
   )
+
+
+# test <- cap.data %>%
+#   dplyr::filter_at(leg_cols, dplyr::any_vars(stringr::str_detect(., stringr::regex("-", ignore_case =
+#                                                                                      TRUE))))
 
 cap.data <-  cap.data %>%
   dplyr::mutate_if(is.logical, as.factor) %>%
@@ -3103,107 +3344,109 @@ cap.data <-  cap.data %>%
               ))
 
 
-# ## Flag code colors by species - new/retained/replaced
-# flag_info <- cap.data %>%
-#   dplyr::filter(dplyr::if_any(c(leg_cols),
-#                               ~ stringr::str_detect(., "69")))  %>%
-#   dplyr::rowwise() %>%
-#   dplyr::mutate(
-#     FlagCodeChange = ifelse(FlagCodeIn != FlagCodeOut, 1, 0),
-#     FlagIn = ifelse(is.na(FlagCodeIn) == FALSE, 1, 0),
-#     FlagOut = ifelse(is.na(FlagCodeOut) == FALSE, 1, 0)
-#   ) %>%
-#   dplyr::select(any_of(c(
-#     "SpeciesCode", "FlagIn", "FlagOut", "FlagCodeChange"
-#   ))) %>%
-#   dplyr::distinct() %>%
-#   dplyr::mutate_all(as.character) %>%
-#   dplyr::mutate_at("FlagCodeChange", ~ replace(., is.na(.), 0))
-# 
-# BBL_ref <- bander_portal_lookups$code[bander_portal_lookups$field ==
-#                                         "Marker color"]
-# BBL_ref<- BBL_ref[!grepl("/", BBL_ref)]
-# 
-# cap.data[, "FlagCodeIn_color"] <- NA
-# cap.data[, "FlagCodeOut_color"] <- NA
-# 
-# if(nrow(flag_info)!=0) {
-#   for (b in 1:nrow(flag_info)) {
-#     flag_status <-
-#       ifelse(flag_info$FlagIn[b] == 0,
-#              "received a new",
-#              "were recaptured with a")
-#     
-#     flag_status <-
-#       ifelse(flag_info$FlagCodeChange[b] == 0,
-#              flag_status,
-#              "received a replacement")
-#     
-#     flag_status.2 <-
-#       ifelse(flag_info$FlagCodeChange[b] == 0, "", "original ")
-#     
-#     
-#     flag.choice <- 0
-#     while (flag.choice == 0) {
-#       flag.choice <-
-#         utils::menu(c(BBL_ref), title = cat(
-#           paste0(
-#             "\nOne or more ",
-#             flag_info$SpeciesCode[b] ,
-#             " ",
-#             flag_status,
-#             " flag.\nWhat is the ",
-#             flag_status.2 ,
-#             "flag code color?\n"
-#           )
-#         ))
-#     }
-#     
-#     if (flag_info$FlagIn[b] == 0) {
-#       ### new
-#       cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
-#                                    is.na(cap.data$FlagCodeIn) &
-#                                    !is.na(cap.data$FlagCodeOut)] <-
-#         BBL_ref[flag.choice]
-#     } else {
-#       if (flag_info$FlagCodeChange[b] == 1) {
-#         flag.choice.2 <- 0
-#         while (flag.choice.2 == 0) {
-#           flag.choice.2 <-
-#             utils::menu(c(BBL_ref), title = cat(paste0(
-#               "\nWhat is the new flag code color?\n"
-#             )))
-#         }
-#         
-#         ### replaced
-#         cap.data$FlagCodeIn_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
-#                                     !is.na(cap.data$FlagCodeIn) &
-#                                     cap.data$FlagCodeIn != cap.data$FlagCodeOut &
-#                                     !is.na(cap.data$FlagCodeOut)] <-
-#           BBL_ref[flag.choice]
-#         
-#         cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
-#                                      !is.na(cap.data$FlagCodeIn) &
-#                                      cap.data$FlagCodeIn != cap.data$FlagCodeOut &
-#                                      !is.na(cap.data$FlagCodeOut)] <-
-#           BBL_ref[flag.choice.2]
-#         
-#       } else {
-#         ### retained
-#         cap.data$FlagCodeIn_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
-#                                     !is.na(cap.data$FlagCodeIn) &
-#                                     cap.data$FlagCodeIn == cap.data$FlagCodeOut] <-
-#           BBL_ref[flag.choice]
-#         
-#         cap.data$FlagCodeOut_color[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
-#                                      !is.na(cap.data$FlagCodeIn) &
-#                                      cap.data$FlagCodeIn == cap.data$FlagCodeOut] <-
-#           BBL_ref[flag.choice]
-#       }
-#       
-#     }
-#   }
-# }
+## Flag code colors by species - new/retained/replaced
+flag_info <- cap.data %>%
+  dplyr::filter(dplyr::if_any(c(leg_cols),
+                              ~ stringr::str_detect(., "69")))  %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate(
+    FlagCodeChange = ifelse(FlagCodeIn != FlagCodeOut, 1, 0),
+    FlagIn = ifelse(is.na(FlagCodeIn) == FALSE, 1, 0),
+    FlagOut = ifelse(is.na(FlagCodeOut) == FALSE, 1, 0)
+  ) %>%
+  dplyr::select(any_of(c(
+    "SpeciesCode", "FlagIn", "FlagOut", "FlagCodeChange"
+  ))) %>%
+  dplyr::distinct() %>%
+  dplyr::mutate_all(as.character) %>%
+  dplyr::mutate_at("FlagCodeChange", ~ replace(., is.na(.), 0))
+
+BBL_ref <- bander_portal_lookups$code[bander_portal_lookups$field ==
+                                        "Marker color"]
+BBL_ref<- BBL_ref[!grepl("/", BBL_ref)]
+
+cap.data[, "FlagCodeColorIn"] <- NA
+cap.data[, "FlagCodeColorOut"] <- NA
+
+if(nrow(flag_info)!=0) {
+  for (b in 1:nrow(flag_info)) {
+    flag_status <-
+      ifelse(flag_info$FlagIn[b] == 0,
+             "received a new",
+             "were recaptured with a")
+
+    flag_status <-
+      ifelse(flag_info$FlagCodeChange[b] == 0,
+             flag_status,
+             "received a replacement")
+
+    flag_status.2 <-
+      ifelse(flag_info$FlagCodeChange[b] == 0, "", "original ")
+
+
+    flag.choice <- 0
+    while (flag.choice == 0) {
+      flag.choice <-
+        utils::menu(c(BBL_ref), title = cat(
+          paste0(
+            "\nOne or more ",
+            flag_info$SpeciesCode[b] ,
+            " ",
+            flag_status,
+            " flag.\nWhat is the ",
+            flag_status.2 ,
+            "flag code color?\n"
+          )
+        ))
+    }
+
+    if (flag_info$FlagIn[b] == 0) {
+      ### new
+      cap.data$FlagCodeColorOut[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                   is.na(cap.data$FlagCodeIn) &
+                                   !is.na(cap.data$FlagCodeOut)] <-
+        BBL_ref[flag.choice]
+    } else {
+      if (flag_info$FlagCodeChange[b] == 1) {
+        flag.choice.2 <- 0
+        while (flag.choice.2 == 0) {
+          flag.choice.2 <-
+            utils::menu(c(BBL_ref), title = cat(paste0(
+              "\nWhat is the new flag code color?\n"
+            )))
+        }
+
+        ### replaced
+        cap.data$FlagCodeColorIn[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                    !is.na(cap.data$FlagCodeIn) &
+                                    cap.data$FlagCodeIn != cap.data$FlagCodeOut &
+                                    !is.na(cap.data$FlagCodeOut)] <-
+          BBL_ref[flag.choice]
+
+        cap.data$FlagCodeColorOut[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                     !is.na(cap.data$FlagCodeIn) &
+                                     cap.data$FlagCodeIn != cap.data$FlagCodeOut &
+                                     !is.na(cap.data$FlagCodeOut)] <-
+          BBL_ref[flag.choice.2]
+
+      } else {
+        ### retained
+        cap.data$FlagCodeColorIn[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                    !is.na(cap.data$FlagCodeIn) &
+                                    cap.data$FlagCodeIn == cap.data$FlagCodeOut] <-
+          BBL_ref[flag.choice]
+
+        cap.data$FlagCodeColorOut[cap.data$SpeciesCode == flag_info$SpeciesCode[b] &
+                                     !is.na(cap.data$FlagCodeIn) &
+                                     cap.data$FlagCodeIn == cap.data$FlagCodeOut] <-
+          BBL_ref[flag.choice]
+      }
+
+    }
+  }
+}
+
+
 
 
 # Tags
@@ -3772,8 +4015,10 @@ if (length(time.num) != 0) {
 
               
 ## Bander ID/Scribe ID
-for (a in c("BanderID", "ScribeID")) {
-  invalid_code.num <- which(nchar(unique(cap.data[[a]])) > 3)
+for (a in intersect(c("BanderID", "ScribeID"), colnames(cap.data))) {
+  
+  codes <- as.character(unique(cap.data[[a]]))
+  invalid_code.num<- which(!is.na(codes) & nchar(codes) > 3)
   
   for (b in invalid_code.num) {
     message(cat(
@@ -3801,7 +4046,7 @@ for (a in c("BanderID", "ScribeID")) {
 # Check bands are issued under permit
 browseURL("https://www.pwrc.usgs.gov/bbl/Bander_portal/login/page0.php")
 
-band_inventory<- read.csv("reference/bander_portal/BInv4Bandit_24111.csv")
+band_inventory<- read.csv("reference/bander_portal/inventory/BInv4Bandit_24111.csv")
 
 cap.data %>%
   dplyr::filter(!BandNumberOut %in% band_inventory$BAND.NUMBER)
@@ -3944,7 +4189,7 @@ recap_aux_ref<- capture_cols %>% dplyr::filter(BBL_template=="recap_aux")
 
 
 ## Fill banding - no aux
-if(nrow(cap.data_no_aux$'1')>1) {
+if(nrow(cap.data_no_aux$'1')>0) {
   auto.match.num <-
     which(
       band_no_aux_ref$BBL_col %in% colnames(band_no_aux) &
@@ -3969,7 +4214,7 @@ if(nrow(cap.data_no_aux$'1')>1) {
 }
 
 ## Fill recaptures - no aux
-if(nrow(cap.data_no_aux$'R')>1) {
+if(nrow(cap.data_no_aux$'R')>0) {
 auto.match.num <-
   which(recap_no_aux_ref$BBL_col %in% colnames(recap_no_aux) &
           !is.na(recap_no_aux_ref$my_col))
@@ -3989,7 +4234,7 @@ recap_no_aux[["Banded Leg"]]<- banded_legs
 }
 
 ## Fill banding - aux
-if(nrow(cap.data_aux$'1')>1) {
+if(nrow(cap.data_aux$'1')>0) {
   auto.match.num <-
     which(band_aux_ref$BBL_col %in% colnames(band_aux) &
             !is.na(band_aux_ref$my_col))
@@ -4098,7 +4343,7 @@ if(nrow(cap.data_aux$'1')>1) {
 }
 
 ## Fill recaptures - aux
-if(nrow(cap.data_aux$'R')>1) {
+if(nrow(cap.data_aux$'R')>0) {
   auto.match.num <-
     which(recap_aux_ref$BBL_col %in% colnames(recap_aux) &
             !is.na(recap_aux_ref$my_col))
@@ -4512,7 +4757,7 @@ file.rename(
 
 # Movebank download
 
-### Provide inputs
+### Add credentials
 
 Verify the stored login credentials are correct, and add/remove credentials as needed.
 
@@ -4523,7 +4768,7 @@ keyring::key_list()
 
 # Add login credentials
 move2::movebank_store_credentials(username = "mbmlandbirds",
-                                  password = "",
+                                  password = "AKmove2018!",
                                   key_name = "movebank")
 
 # Remove login credentials
@@ -4534,11 +4779,29 @@ move2::movebank_remove_credentials(key_name = getOption("move2_movebank_key_name
 
 *Optional: If you want to import Movebank data from a secondary account, paste the associated service name listed in the key list (e.g., "myOtherAccount") and run the following code. Note the account with the service name "movebank" is the default, so you only need to run this code if you want to access a different account. Restart R or execute* `options("move2_movebank_key_name" = "movebank")` *to* *return to the default account. See* `vignette("movebank", package="move2")` *for more details.*
 
+### Provide inputs
+
 ```{r}
 
 keyring::key_list()
 
 options("move2_movebank_key_name" = "movebank")
+
+collection.species <- "Upland_Sandpiper"
+
+
+# View archived species
+if(dir.exists(paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/"))==FALSE) {
+  stop("Check the VPN connection and try again.")
+}
+
+dir(
+  path = "//ifw7ro-file.fws.doi.net/datamgt/mbm/mbmlb_008_Migratory_Tracking_Collection/data/final_data",
+  pattern = "movebank",
+  full.names = FALSE,
+  recursive = FALSE,
+  ignore.case = TRUE
+)
 
 ```
 
@@ -4556,7 +4819,7 @@ import <- get.move.data(
   omit_derived_data <- FALSE
 )
 
-save(import, file = "reference/movebank/import.RData")
+# save(import, file = "reference/movebank/import.RData")
 
 Movebank_dictionary <- readxl::read_excel("reference/movebank/Migratory_Tracking_data_dictionary.xlsx", na = "")
 
@@ -4571,9 +4834,34 @@ Movebank_dictionary <- readxl::read_excel("reference/movebank/Migratory_Tracking
 
 aou_code <- read.csv(list.files("reference/IBPAOU", full.names = TRUE), na = "")
 
-import.dfs <- import
+study.name<- names(import[grep(gsub("[ _-]+", ".*", collection.species),
+            names(import),
+            ignore.case = TRUE)])
 
-# Unlist dataframes (if necessary)
+
+import.dfs <- list(
+  "new-location-data" =
+    purrr::imap_dfr(
+      import[study.name],
+      ~ .x[[grep("location-data", names(.))]] %>%
+        dplyr::mutate(study_name = .y) %>%
+        dplyr::relocate(study_name, .before = dplyr::starts_with("study"))
+    ),
+
+  "new-reference-data" =
+    purrr::imap_dfr(
+      import[study.name],
+      ~ .x[[grep("reference-data", names(.))]] %>%
+        dplyr::mutate(study_name = .y) %>%
+        dplyr::relocate(study_name, .before = dplyr::starts_with("study"))
+    )
+)
+
+ref.idx<- grep("new-reference-data", names(import.dfs))
+loc.idx<- grep("new-location-data", names(import.dfs))
+
+# Unlist dataframes 
+# (only necessary for location & reference downloads of multiple studies)
 # if(any(sapply(import, function(x)
 #   any(class(x) == "list")))==TRUE) {
 #   import.dfs <- rrapply::rrapply(
@@ -4590,6 +4878,64 @@ import.dfs <- import
 #   import.dfs <- import
 # }
 
+
+# Import archived tracking collection (if applicable)
+if(dir.exists(paste0("//ifw7ro-file.fws.doi.net/datamgt/mbm/"))==FALSE) {
+  stop("Check the VPN connection and try again.")
+}
+
+collection.folder <- dir(
+  path = "//ifw7ro-file.fws.doi.net/datamgt/mbm/mbmlb_008_Migratory_Tracking_Collection/data/final_data",
+  pattern = paste0(
+    gsub(" ", ".*", collection.species)
+  ),
+  full.names = FALSE,
+  recursive = FALSE,
+  ignore.case = TRUE
+)
+
+if(length(collection.folder)>1) {
+  folder.choice <- utils::menu(
+    c(collection.folder),
+    graphics = TRUE,
+    title = cat(
+      paste0(
+        "\nMore than one collection was found.\nSelect one to access.\n"
+      )
+    )
+  )
+  collection.folder<- collection.folder[folder.choice]
+}
+
+archived_data<- c()
+  
+select.import.app(
+  dir = paste0(
+    "//ifw7ro-file.fws.doi.net/datamgt/mbm/mbmlb_008_Migratory_Tracking_Collection/data/final_data",
+    "/",
+    collection.folder,"/"
+  ),
+  ext = c("txt", "csv", "xls*"),
+  multiple = TRUE,
+  type = "reference"
+)
+
+archived_data<- archived_data %>% 
+  append(importer(path = selected.files$path[1], files = selected.files$filename))
+
+select.import.app(
+  dir = paste0(
+    "//ifw7ro-file.fws.doi.net/datamgt/mbm/mbmlb_008_Migratory_Tracking_Collection/data/final_data",
+    "/",
+    collection.folder, "/"
+  ),
+  ext = c("txt", "csv", "xls*"),
+  multiple = TRUE,
+  type = "location"
+)
+
+archived_data <- archived_data %>%
+  append(importer(path = selected.files$path[1], files = selected.files$filename))
 
 ```
 
@@ -4664,7 +5010,8 @@ movebank_attributes<- Movebank_dictionary$codeName[Movebank_dictionary$domainIte
 # extract import colnames
 all_colnames <- import.dfs %>%
   purrr::map_df(~ names(.x) %>%
-                  tibble::enframe(name = NULL)) %>% dplyr::pull(value)
+                  tibble::enframe(name = NULL)) %>% dplyr::pull(value) %>% 
+  unique()
 
 # find dictionary field that matches unknown colnames
 new_colnames <-
@@ -4672,7 +5019,7 @@ new_colnames <-
     grep(paste0("-", x),
          movebank_attributes,
          value = TRUE)
-  }) %>% purrr::compact(.)
+  }) %>% purrr::compact(.) 
 
 
 # rename unknown colnames
@@ -4707,49 +5054,114 @@ import.dfs <- import.dfs %>%
                  rep(NA, length(setdiff(
                    all_req_cols, colnames(.x)
                  ))), setdiff(all_req_cols, colnames(.x))
-               )) %>% dplyr::relocate(
-                 c("animal-ring-id", "animal-marker-id", "tag-local-identifier"),
+               ))  %>%
+               dplyr::relocate(
+                 c(
+                   "animal-ring-id",
+                   "tag-local-identifier",
+                   "animal-marker-id"
+                 ),
                  .after = "animal-id"
-               ))
+               ) %>%
+               dplyr::mutate_at("animal-ring-id", 
+                                ~stringr::str_remove_all(., "-")) %>%
+               dplyr::mutate(dplyr::across(everything(), 
+                              ~ type.convert(as.character(.x), 
+                                             as.is = TRUE))))
 
 
 # create deploy year column in reference data
-import.dfs[grep("reference-data$", names(import.dfs))] <-
-  import.dfs[grep("reference-data$", names(import.dfs))] %>%
-  purrr::map(
-    .f = ~ .x %>%
-      dplyr::mutate(
-        "deploy-date" = lubridate::as_date(.$"deploy-on-timestamp"),
-        .after = "deploy-on-timestamp"
-      ) %>%
-      dplyr::mutate("deploy-year" = as.character(
-        lubridate::year(.$"deploy-on-timestamp"),
-        .after = "deploy-date"
-      ))
+import.dfs[[ref.idx]] <-
+  import.dfs[[ref.idx]] %>%
+  dplyr::mutate(`deploy-on-timestamp` =
+                  dplyr::coalesce(
+                    .data$`deploy-on-timestamp`, 
+                    NA)) %>%
+  dplyr::relocate(
+                 c(
+                   "deploy-on-timestamp"
+                 ),
+                 .after = "animal-marker-id"
+               ) %>%
+  dplyr::mutate(
+    "deploy-date" = lubridate::as_date(.$"deploy-on-timestamp"),
+    .after = "deploy-on-timestamp"
+    ) %>%
+  dplyr::mutate("deploy-year" =
+                  lubridate::year(.$"deploy-on-timestamp"),
+                .after = "deploy-date"
+                )
+
+
+```
+
+### Subset new records
+
+```{r}
+
+archived_loc<- archived_data[grep("location-data", names(archived_data))] %>%
+  dplyr::bind_rows(.) %>%
+  setNames(., gsub(pattern = "\\.", replacement = "-", names(.))) %>%
+  setNames(., sub(pattern = "^argos-", replacement = "argos:", names(.)))
+
+import.dfs[[loc.idx]] <-
+  import.dfs[[loc.idx]] %>%
+  dplyr::filter(
+    !`event-id` %in% archived_loc$`event-id`,
+    !is.na(`animal-id`)
   )
 
-# evaluate data
+
+archived_ref<- archived_data[grep("reference-data", 
+                                  names(archived_data))] %>%
+  dplyr::bind_rows(.) %>%
+  setNames(., gsub(pattern = "\\.", replacement = "-", names(.))) 
+
+import.dfs[[ref.idx]] <-
+  import.dfs[[ref.idx]] %>%
+  dplyr::filter(!`deployment-id` %in% archived_ref$`deployment-id`)
+
+import.dfs[["reference-data"]] <- archived_ref
+
+
+empty.idx <- purrr::map_int(import.dfs, nrow) == 0
+
+if (any(empty.idx) ==TRUE) {
+message(
+  "Nothing new found in the following:\n- ",
+  paste(names(import.dfs)[empty.idx], collapse = "\n- ")
+)
+}
+
+```
+
+### Quality checks
+
+```{r}
+  
+# evaluate new reference data (if not empty)
 ## missing band numbers
 view <-
-  import.dfs[["reference-data"]] %>%
+  import.dfs[[ref.idx]] %>%
   dplyr::filter(is.na(`animal-ring-id`))
 
 ## duplicate band numbers
 view <-
-  import.dfs[["reference-data"]] %>%
+  import.dfs[[ref.idx]] %>%
   dplyr::filter(!is.na(`animal-ring-id`)) %>%
   dplyr::group_by(`animal-ring-id`) %>%
   dplyr::filter(dplyr::n() > 1)
 
+
 # duplicate local identifiers and band numbers
 view <-
-  import.dfs[["reference-data"]] %>%
+  import.dfs[[ref.idx]] %>%
   dplyr::group_by(`tag-local-identifier`, `animal-ring-id`) %>%
   dplyr::filter(dplyr::n() > 1)
 
 ## missing deploy dates
 view <-
-  import.dfs[["reference-data"]] %>%
+  import.dfs[[ref.idx]] %>%
   dplyr::filter(is.na(`deploy-date`))
 
 ## duplicate studies
@@ -4811,7 +5223,19 @@ banding.file.list <- importer(
 # Add missing columns
 all_band_data <-  data.table::rbindlist(banding.file.list, fill = TRUE)
 miss_cols <- setdiff(
-  c("FlagCodeOut", "LLOut", "ULOut", "LROut", "UROut"),
+  c(
+    "FlagCodeOut",
+    "LLOut",
+    "ULOut",
+    "LROut",
+    "UROut",
+    "CHDSex",
+    "TagStatus1",
+    "TagMass1_g",
+    "TagAttachment1",
+    "TagManufacturer1",
+    "TagModel1"
+  ),
   colnames(all_band_data)
 )
 
@@ -4828,9 +5252,6 @@ all_band_data <- all_band_data %>%
                    ~ dplyr::na_if(., "NULL")) %>%
   dplyr::mutate_if(is.character, 
                    ~ dplyr::na_if(., missing_values)) %>%
-  dplyr::mutate_at(
-    dplyr::vars("BandNumberOut", "Year"), 
-    as.character) %>%
   dplyr::mutate_at("Date",
                    ~ format(
                      as.Date(.,format = "%m/%d/%Y"), 
@@ -4844,9 +5265,12 @@ all_band_data <- all_band_data %>%
   dplyr::mutate_at("Mass_g",  
                    ~ units::set_units(
                      ., "g", mode = "standard")) %>%
-  dplyr::mutate_at(c("FieldSex", "CHDSex"), 
-                   ~ tolower(.) %>%
-                     dplyr::na_if(., "u")) %>%
+  dplyr::mutate(
+    dplyr::across(
+      any_of(c("FieldSex", "CHDSex")),
+      ~ dplyr::na_if(tolower(as.character(.)), "u")
+    )
+  ) %>%
   dplyr::mutate_at(
     "Age",
     ~ dplyr::recode(
@@ -4881,7 +5305,10 @@ all_band_data <- all_band_data %>%
     by = c("SpeciesCode" = "SPEC"),
     keep = FALSE,
     relationship = "many-to-many"
-  )
+  ) %>%
+  dplyr::mutate(dplyr::across(everything(), 
+                              ~ type.convert(as.character(.x), 
+                                             as.is = TRUE)))
 
 
 
@@ -4893,11 +5320,11 @@ all_band_data <- all_band_data %>%
 # which(is.na(Year))
 # detach(all_band_data)
 
-view<- all_band_data %>%
-  dplyr::filter(is.na(CHDSex))
+# view<- all_band_data %>%
+#   dplyr::filter(is.na(CHDSex))
 
 
-# Load sex results
+# Load sex results (if not in banding data)
 select.import.app(dir = paste0(dirname(rstudioapi::documentPath()),"/reference/analysis_results"),
                   ext = c("txt", "csv", "xls*"),
                   multiple = FALSE,
@@ -4911,20 +5338,22 @@ sexing_results <- importer(
     c(column = time.col, format = time.format)
   )
 )[[1]]
- 
+
 # Join sex results (usually in data postprocessing)
 all_band_data <- all_band_data %>%
   dplyr::left_join(
     .,
     dplyr::distinct(sexing_results[, c("BandNumber", "Sex")]) %>%
-    dplyr::mutate_at(dplyr::vars("BandNumber", "Sex"), as.character),
+      dplyr::mutate(dplyr::across(everything(), 
+                              ~ type.convert(as.character(.x), 
+                                             as.is = TRUE))),
     by = c("BandNumberOut" = "BandNumber"),
     keep = FALSE,
     relationship = "many-to-many"
   ) %>%
   dplyr::mutate_at("CHDSex", ~ dplyr::case_when(is.na(.) ~ Sex, TRUE ~ `CHDSex`)) %>%
   dplyr::select(-"Sex") %>%
-  dplyr::group_by(Year, BandNumberOut, SCINAME) %>% 
+  dplyr::group_by(Year, BandNumberOut, SCINAME) %>%
   dplyr::slice_head(n = 1) %>%
   dplyr::ungroup() # remove recpatures within the same year
 
@@ -4937,24 +5366,22 @@ view <- all_band_data %>%
   ) %>%
   dplyr::summarise(count = dplyr::n()) %>%
   dplyr::filter(count > 1)
-    
 
-save(all_band_data, file = "reference/movebank/banding_files.RData")
+
+# save(all_band_data, file = "reference/movebank/banding_files.RData")
 
 
 
 # Join missing band numbers
-na_animal_ring <- import.dfs$`reference-data` %>%
+na_animal_ring <- import.dfs[[ref.idx]] %>%
   dplyr::filter(is.na(`animal-ring-id`)) %>%
-  dplyr::mutate_at("tag-local-identifier", ~as.character(.)) %>%
   dplyr::left_join(
     .,
     all_band_data[, c("Year", 
                       "BandNumberOut", 
                       "SCINAME", 
                       # "FlagCodeOut", 
-                      "TagID1")] %>%
-       dplyr::mutate_at("TagID1", ~as.character(.)),
+                      "TagID1")],
     by = c(
       "individual-taxon-canonical-name" = "SCINAME",
       "deploy-year"  = "Year",
@@ -4984,8 +5411,6 @@ na_animal_ring <- import.dfs$`reference-data` %>%
     "tag-local-identifier"
   ) %>%
   dplyr::distinct() %>%
-  dplyr::mutate_at(c("animal-id", "animal-ring-id"),
-                   ~ as.character(.)) %>%
   dplyr::rename("temp:animal-ring-id" = "animal-ring-id") %>%
   dplyr::distinct()
 
@@ -5001,10 +5426,15 @@ view<- all_band_data %>%
                 is.na(TagStatus1))
 
 # associated tag ids missing from imported banding files
-view<- import.dfs[["reference-data"]] %>%
-  dplyr::filter(!`tag-local-identifier` %in% 
-                  c(all_band_data$TagID1, all_band_data$TagID2),
-                `animal-ring-id` %in% all_band_data$BandNumberOut)
+view <- import.dfs[[ref.idx]] %>%
+  dplyr::filter(
+    !`tag-local-identifier` %in% (
+      all_band_data %>%
+        dplyr::select(any_of(c("TagID1", "TagID2"))) %>%
+        unlist(use.names = FALSE)
+    ),
+    `animal-ring-id` %in% all_band_data$BandNumberOut
+  )
 
 # view2<- all_band_data %>%
 #   dplyr::filter(BandNumberOut == view$`animal-ring-id`[1])
@@ -5013,10 +5443,17 @@ view<- import.dfs[["reference-data"]] %>%
 
 
 # tagged individuals missing from imported banding files
-view<- import.dfs[["reference-data"]] %>%
-  dplyr::filter(!`tag-local-identifier` %in% 
-                  c(all_band_data$TagID1, all_band_data$TagID2),
-                !`animal-ring-id` %in% all_band_data$BandNumberOut)
+# associated tag ids missing from imported banding files
+view <- import.dfs[[ref.idx]] %>%
+  dplyr::filter(
+    !`tag-local-identifier` %in% (
+      all_band_data %>%
+        dplyr::select(any_of(c("TagID1", "TagID2"))) %>%
+        unlist(use.names = FALSE)
+    ),
+    !`animal-ring-id` %in% all_band_data$BandNumberOut
+  )
+
 
 
 # Create animal id key
@@ -5037,6 +5474,13 @@ ref_req_cols<-
 
 suppressWarnings(
 animal_key<- import.dfs$`reference-data` %>%
+  dplyr::mutate(dplyr::across(everything(), 
+                              ~ type.convert(as.character(.x), 
+                                             as.is = TRUE))) %>%
+  dplyr::bind_rows(., 
+                   if (nrow(import.dfs[[ref.idx]]) > 0)
+                     import.dfs[[ref.idx]]
+                   else NULL) %>% 
   dplyr::mutate(!!!setNames(
                  rep(NA, length(setdiff(
                    c(all_req_cols,ref_req_cols),
@@ -5045,10 +5489,7 @@ animal_key<- import.dfs$`reference-data` %>%
                  setdiff(c(all_req_cols,ref_req_cols),
                          colnames(.))
                )) %>%
-  dplyr::mutate(".id" = seq_along(1:nrow(.))) %>%
-  dplyr::mutate_at(dplyr::vars(
-          all_req_cols
-        ), as.character) %>%
+  dplyr::mutate(".id" = seq_len(nrow(.))) %>%
     dplyr::left_join(
     .,
     na_animal_ring[, c("animal-id", "temp:animal-ring-id")],
@@ -5092,17 +5533,10 @@ animal_key<- import.dfs$`reference-data` %>%
             TRUE ~ `animal-marker-id`
           )
         ) %>%
-  dplyr::mutate_at(
-          "animal-marker-id",
-          ~ dplyr::case_when(
-            !is.na(as.numeric(.)) ~ format(as.numeric(.),
-             scientific = FALSE), 
-            TRUE ~ `animal-marker-id`)
-        ) %>%
    dplyr::mutate_at(
           "animal-mass",
           ~ dplyr::case_when(
-            is.na(.) ~ Mass_g,
+            is.na(.) ~ as.numeric(Mass_g),
             TRUE ~ `animal-mass`
           )
         ) %>%
@@ -5154,13 +5588,11 @@ animal_key<- import.dfs$`reference-data` %>%
   dplyr::distinct() %>%
   dplyr::mutate_at(
     "animal-taxon-detail",
-    ~  dplyr::case_when(
-      `animal-taxon-detail` %in% c("Lesser Yellowlegs",
-                                   "LesserYellowlegs") ~ NA,
-      TRUE ~ `animal-taxon-detail`
+    ~ dplyr::case_when(
+        . %in% c("Lesser Yellowlegs", "LesserYellowlegs") ~ NA_character_,
+        TRUE ~ .
     )
-  ) %>%
-  dplyr::mutate_at("animal-ring-id", ~stringr::str_remove_all(., "-"))
+  )
 )
       
 
@@ -5256,7 +5688,7 @@ tagging_events <- all_band_data %>%
 animal_key<- animal_key %>%
   dplyr::left_join(
     .,
-    tagging_events %>%  dplyr::mutate_at("TagID", ~as.character(.)),
+    tagging_events,
     by = c("individual-taxon-canonical-name" = "SCINAME",
            "animal-ring-id" = "BandNumberOut",
            "tag-local-identifier" = "TagID",
@@ -5286,7 +5718,7 @@ animal_key<- animal_key %>%
                      TRUE ~ `tag-manufacturer-name`)) %>%
   dplyr::mutate_at("tag-mass",
                    ~ dplyr::case_when(
-                     is.na(.) ~ TagMass_g, 
+                     is.na(.) ~ as.numeric(TagMass_g), 
                      TRUE ~ `tag-mass`)) %>%
   dplyr::mutate_at("attachment-type",
                    ~ dplyr::case_when(
@@ -5389,8 +5821,8 @@ view <-
 #   dplyr::slice(1, dplyr::n())
 
   
-# review tag events unassociated with animals (timestamp after deployment ends)
-view <- import.dfs[["location-data"]] %>%
+# review events unassociated with animals
+view <- import.dfs[[loc.idx]] %>%
   dplyr::filter(is.na(`animal-id`)) %>%
   dplyr::select(c( `study-name`,
                    `tag-local-identifier`, 
@@ -5415,21 +5847,18 @@ view <- animal_key %>%
 # fill animal marker and ring id in location data
 suppressWarnings(
   locations <-
-    import.dfs[["location-data"]] %>%
+    import.dfs[[loc.idx]] %>%
     dplyr::mutate(!!!setNames(rep(NA, length(
       setdiff(c(all_req_cols), colnames(.)))), 
       setdiff(c(all_req_cols), colnames(.)))) %>%
     dplyr::mutate(".id" = seq_along(1:nrow(.))) %>%
-    dplyr::mutate_at("animal-ring-id", ~ gsub(
-      pattern = "-", replacement = "", .)) %>%
-    dplyr::mutate_at(dplyr::vars(all_req_cols), as.character) %>%
     dplyr::filter(!is.na(`animal-id`)) %>% # remove unaffliated events
     # dplyr::mutate_at("animal-taxon-detail", ~ "roselaari") %>%
     dplyr::left_join(
       .,
       animal_key %>%
         dplyr::select(all_req_cols) %>%
-          dplyr::rename("temp:animal-ring-id" = "animal-ring-id",
+        dplyr::rename("temp:animal-ring-id" = "animal-ring-id",
                         "temp:animal-marker-id" = "animal-marker-id"),
       by = c("study-name" = "study-name", 
              "study-id" = "study-id", 
@@ -5467,10 +5896,9 @@ suppressWarnings(
     dplyr::relocate(all_req_cols) %>%
     dplyr::mutate_at(
     "animal-taxon-detail",
-    ~  dplyr::case_when(
-      `animal-taxon-detail` %in% c("Lesser Yellowlegs",
-                                   "LesserYellowlegs") ~ NA,
-      TRUE ~ `animal-taxon-detail`
+    ~ dplyr::case_when(
+        . %in% c("Lesser Yellowlegs", "LesserYellowlegs") ~ NA_character_,
+        TRUE ~ .
     )
   )
 )
@@ -5485,6 +5913,26 @@ suppressWarnings(
 
 
 # missing required fields
+colnames(animal_key)[
+  intersect(all_req_cols, colnames(animal_key)) |> 
+  sapply(\(col) any(is.na(animal_key[[col]]))) |> 
+  which()
+]
+
+view <- animal_key %>%
+  dplyr::filter(
+    dplyr::if_any(
+      all_req_cols[!all_req_cols %in% "animal-taxon-detail"],
+      is.na
+    )
+  )
+
+colnames(locations)[
+  intersect(all_req_cols, colnames(locations)) |> 
+  sapply(\(col) any(is.na(locations[[col]]))) |> 
+  which()
+]
+
 view<- locations %>%
    dplyr::filter(if_any(
      all_req_cols[!all_req_cols %in% c("animal-taxon-detail")], 
@@ -5494,7 +5942,6 @@ view<- locations %>%
 # colnames not in dictioanry
 # colnames(animal_key)[!colnames(animal_key) %in% movebank_attributes]
 # colnames(locations)[!colnames(locations) %in% movebank_attributes]
-
 
 ```
 
@@ -5549,6 +5996,11 @@ for (i in seq_along(export_ref)) {
     quote = FALSE,
     sep = "\t"
   )
+  
+  data.table::fwrite(
+  data.table::fread(
+    paste0("data-processed/movebank/", names(export_ref[i]), ".txt"), sep = "\t"), 
+  paste0("data-processed/movebank/", names(export_ref[i]), ".csv"))
 }
 
 
@@ -5561,7 +6013,13 @@ for (i in seq_along(export_loc)) {
     quote = FALSE,
     sep = "\t"
   )
+  
+  data.table::fwrite(
+  data.table::fread(
+    paste0("data-processed/movebank/", names(export_loc[i]), ".txt"), sep = "\t"), 
+  paste0("data-processed/movebank/", names(export_loc[i]), ".csv"))
 }
+
 
 
 # for (i in seq_along(export_ref)) {
